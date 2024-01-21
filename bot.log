@@ -1,0 +1,778 @@
+INFO:root:All open orders cancelled successfully.
+ERROR:root:Error setting leverage for ARBUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:10:24).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "ARBUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for LDOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:10:24).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "LDOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for DYDXUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:10:24).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "DYDXUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for WOOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:10:24).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "WOOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for MINAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:10:25).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "MINAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for GALAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:10:25).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "GALAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+INFO:root:Symbol=ARBUSDT, PNL=-0.4827627283424371/absolute=-1.02938, Position Value=213.2269, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8381
+INFO:root:Symbol=LDOUSDT, PNL=-0.3593436349584275/absolute=-1.51597, Position Value=421.87195, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8835
+INFO:root:Symbol=DYDXUSDT, PNL=-0.39584903197479515/absolute=-1.6679, Position Value=421.3475, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.795
+INFO:root:Symbol=WOOUSDT, PNL=0.08230960967618944/absolute=0.21098, Position Value=256.32487, profit_threshold=3.0
+INFO:root:Symbol=MINAUSDT, PNL=-0.41158211754344937/absolute=-0.87188, Position Value=211.83622, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.142
+INFO:root:Symbol=GALAUSDT, PNL=-0.24245910630558312/absolute=-0.99554, Position Value=410.6012, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02438
+INFO:root:Symbol=ARBUSDT, PNL=-0.5522239053698568/absolute=-1.17952, Position Value=213.59452, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8369
+INFO:root:Symbol=LDOUSDT, PNL=-0.421552084702479/absolute=-1.77841, Position Value=421.87195, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.88
+INFO:root:Symbol=DYDXUSDT, PNL=-0.39556290275527894/absolute=-1.6678, Position Value=421.627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.794
+INFO:root:Symbol=WOOUSDT, PNL=0.032255941454295875/absolute=0.08268, Position Value=256.32487, profit_threshold=3.0
+INFO:root:Symbol=MINAUSDT, PNL=-0.4106588148776629/absolute=-0.8718, Position Value=212.29302, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.1411
+INFO:root:Symbol=GALAUSDT, PNL=-0.28302400843807957/absolute=-1.16348, Position Value=411.0888, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02437
+INFO:root:Symbol=ARBUSDT, PNL=-0.5089269144170927/absolute=-1.08704, Position Value=213.59452, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8381
+INFO:root:Symbol=LDOUSDT, PNL=-0.36947576548529076/absolute=-1.55978, Position Value=422.1603, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8815
+INFO:root:Symbol=DYDXUSDT, PNL=-0.3243150936728435/absolute=-1.3674, Position Value=421.627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.796
+INFO:root:Symbol=WOOUSDT, PNL=-0.042824560878544485/absolute=-0.10977, Position Value=256.32487, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:12:39).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.2000000000000002", "price": "0.3993"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.3060298449755908/absolute=-0.64968, Position Value=212.29302, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.1428
+INFO:root:Symbol=GALAUSDT, PNL=-0.24173895380733873/absolute=-0.99494, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02438
+INFO:root:Symbol=ARBUSDT, PNL=-0.47645417120251965/absolute=-1.01768, Position Value=213.59452, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8385
+INFO:root:Symbol=LDOUSDT, PNL=-0.3798438649963059/absolute=-1.60355, Position Value=422.1603, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.883
+INFO:root:Symbol=DYDXUSDT, PNL=-0.28869118913162584/absolute=-1.2172, Position Value=421.627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.798
+INFO:root:Symbol=WOOUSDT, PNL=-0.017797726767597697/absolute=-0.04562, Position Value=256.32487, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:13:44).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.2000000000000002", "price": "0.3995"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.2973107641504181/absolute=-0.63117, Position Value=212.29302, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.144
+INFO:root:Symbol=GALAUSDT, PNL=-0.28264024984923813/absolute=-1.16328, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02439
+INFO:root:Symbol=ARBUSDT, PNL=-0.4223329325115645/absolute=-0.90208, Position Value=213.59452, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8393
+INFO:root:Symbol=LDOUSDT, PNL=-0.362563699144614/absolute=-1.5306, Position Value=422.1603, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.883
+INFO:root:Symbol=DYDXUSDT, PNL=-0.2530672845904081/absolute=-1.067, Position Value=421.627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.798
+INFO:root:Symbol=WOOUSDT, PNL=0.007229107343349087/absolute=0.01853, Position Value=256.32487, profit_threshold=3.0
+INFO:root:Symbol=MINAUSDT, PNL=-0.24445052146029/absolute=-0.52007, Position Value=212.75062, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.1429
+INFO:root:Symbol=GALAUSDT, PNL=-0.20083765776543933/absolute=-0.8266, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02439
+INFO:root:All open orders cancelled successfully.
+ERROR:root:Error setting leverage for ARBUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:15:31).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "ARBUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for LDOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:15:31).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "LDOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for DYDXUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:15:31).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "DYDXUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for WOOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:15:31).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "WOOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for MINAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:15:31).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "MINAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for GALAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:15:32).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "GALAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+INFO:root:Symbol=ARBUSDT, PNL=-0.4864967383518542/absolute=-1.04092, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price and average buy price: 0.4779460547066128
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8389
+INFO:root:Symbol=LDOUSDT, PNL=-0.3521955996335989/absolute=-1.48683, Position Value=422.1603, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price and average buy price: 0.39870749479526957
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.882
+INFO:root:Symbol=DYDXUSDT, PNL=-0.32388522042149137/absolute=-1.3674, Position Value=422.1866, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price and average buy price: 0.3608065784769465
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.797
+INFO:root:Symbol=WOOUSDT, PNL=-0.06785139498949126/absolute=-0.17392, Position Value=256.32487, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price and average buy price: 0.06789631855748102
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:15:36).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.2000000000000002", "price": "0.3993"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.34833156651225394/absolute=-0.74267, Position Value=213.20778, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price and average buy price: 0.34954939189779655
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.1429
+INFO:root:Symbol=GALAUSDT, PNL=-0.28264024984923813/absolute=-1.16328, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price and average buy price: 0.28342904019689197
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02438
+INFO:root:All open orders cancelled successfully.
+ERROR:root:Error setting leverage for ARBUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:16:36).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "ARBUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for LDOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:16:37).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "LDOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for DYDXUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:16:37).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "DYDXUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for WOOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:16:37).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "WOOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for MINAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:16:37).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "MINAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for GALAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:16:37).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "GALAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+INFO:root:Symbol=ARBUSDT, PNL=-0.40531424262526905/absolute=-0.86722, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8393 and average buy price 1.84768895: 0.45609470994401047
+INFO:root:Placed limit buy order for 0.2 of ARBUSDT at 1.8393
+INFO:root:Symbol=LDOUSDT, PNL=-0.4178602298700281/absolute=-1.76404, Position Value=422.1603, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8825 and average buy price 2.89349075: 0.3812922810060737
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8825
+INFO:root:Symbol=DYDXUSDT, PNL=-0.2526371040672537/absolute=-1.0666, Position Value=422.1866, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.799 and average buy price 2.80709176: 0.2890946766702429
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.799
+INFO:root:Symbol=WOOUSDT, PNL=-0.09287822910043805/absolute=-0.23807, Position Value=256.32487, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3992 and average buy price 0.39957111: 0.0929634268536983
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:16:40).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.2000000000000002", "price": "0.3992"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.28729720838517236/absolute=-0.61254, Position Value=213.20778, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1435 and average buy price 1.146895: 0.29689549628333367
+INFO:root:Placed limit buy order for 0.4 of MINAUSDT at 1.1435
+INFO:root:Symbol=GALAUSDT, PNL=-0.28264024984923813/absolute=-1.16328, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02437 and average buy price 0.0244491: 0.32457940090275805
+INFO:root:Placed limit buy order for 20.0 of GALAUSDT at 0.02437
+INFO:root:Symbol=ARBUSDT, PNL=-0.15094242268196867/absolute=-0.32296, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8445 and average buy price 1.84768895: 0.17288967199782235
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:17:44).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8445"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.23469047184209413/absolute=-0.99077, Position Value=422.1603, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8905 and average buy price 2.89349075: 0.10346825808682514
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8905
+INFO:root:Symbol=DYDXUSDT, PNL=-0.03889275500454065/absolute=-0.1642, Position Value=422.1866, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.805 and average buy price 2.80709176: 0.07457254901961363
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.805
+INFO:root:Placed limit buy order for 0.1 of WOOUSDT at 0.4002
+INFO:root:Symbol=MINAUSDT, PNL=-0.01700219382238303/absolute=-0.03625, Position Value=213.20778, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1468 and average buy price 1.146895: 0.008283920474361217
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1468
+INFO:root:Symbol=GALAUSDT, PNL=-0.03723247359784166/absolute=-0.15324, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02443 and average buy price 0.0244491: 0.07818256242324573
+INFO:root:Placed limit buy order for 23.0 of GALAUSDT at 0.02443
+INFO:root:Symbol=ARBUSDT, PNL=-0.19423975373614746/absolute=-0.4156, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8441 and average buy price 1.84768895: 0.19461797082587218
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:18:49).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8441"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.13093877408025367/absolute=-0.55315, Position Value=422.44935, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.888 and average buy price 2.8934887: 0.19005193905816675
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.888
+INFO:root:Symbol=DYDXUSDT, PNL=-0.0744179269143101/absolute=-0.3146, Position Value=422.7476, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.803 and average buy price 2.80708898: 0.1458787013913776
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.803
+INFO:root:Placed limit buy order for 0.1 of WOOUSDT at 0.4002
+INFO:root:Symbol=MINAUSDT, PNL=-0.07801435093584946/absolute=-0.16678, Position Value=213.78118, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1458 and average buy price 1.14689474: 0.0955437249083646
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1458
+INFO:root:Symbol=GALAUSDT, PNL=-0.03723247359784166/absolute=-0.15324, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02443 and average buy price 0.0244491: 0.07818256242324573
+INFO:root:Placed limit buy order for 23.0 of GALAUSDT at 0.02443
+INFO:root:Symbol=ARBUSDT, PNL=-0.026462595901204686/absolute=-0.05662, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8465 and average buy price 1.84768895: 0.06438938532358218
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:19:54).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8465"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.10329048914384648/absolute=-0.43635, Position Value=422.44935, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8905 and average buy price 2.8934887: 0.10339733610102986
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8905
+INFO:root:Symbol=DYDXUSDT, PNL=-0.03879383348362002/absolute=-0.164, Position Value=422.7476, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.805 and average buy price 2.80708898: 0.07447344028519431
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.805
+INFO:root:Placed limit buy order for 0.1 of WOOUSDT at 0.4005
+INFO:root:Symbol=MINAUSDT, PNL=-0.034418371158770854/absolute=-0.07358, Position Value=213.78118, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1464 and average buy price 1.14689474: 0.04315596650383835
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1464
+INFO:root:Symbol=GALAUSDT, PNL=0.044570118485957155/absolute=0.18344, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.07517209333715583/absolute=-0.16084, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8461 and average buy price 1.84768895: 0.08607063539352033
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:20:58).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8461"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.13778024423615173/absolute=-0.58245, Position Value=422.7384, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8895 and average buy price 2.89348665: 0.13797023706523248
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8895
+INFO:root:Symbol=DYDXUSDT, PNL=-0.03879383348362002/absolute=-0.164, Position Value=422.7476, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.805 and average buy price 2.80708898: 0.07447344028519431
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.805
+INFO:root:Symbol=WOOUSDT, PNL=-0.24968789013732834/absolute=-0.0001, Position Value=0.04005, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.4002 and average buy price 0.4005: 0.07496251874063997
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:21:00).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.4002"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.034418371158770854/absolute=-0.07358, Position Value=213.78118, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1464 and average buy price 1.14689474: 0.04315596650383835
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1464
+INFO:root:Symbol=GALAUSDT, PNL=0.044570118485957155/absolute=0.18344, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.16176675544551336/absolute=-0.34612, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8449 and average buy price 1.84768895: 0.1511707951650454
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:22:02).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8449"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.14114217437714133/absolute=-0.59707, Position Value=423.02735, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8905 and average buy price 2.89348393: 0.10323231274866895
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8905
+INFO:root:Symbol=DYDXUSDT, PNL=-0.03879383348362002/absolute=-0.164, Position Value=422.7476, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.805 and average buy price 2.80708898: 0.07447344028519431
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.805
+INFO:root:Symbol=WOOUSDT, PNL=-0.1498875843117662/absolute=-0.00018, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3994 and average buy price 0.4003: 0.22533800701052265
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:22:04).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3994"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.04302221396175809/absolute=-0.09222, Position Value=214.35438, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1467 and average buy price 1.14689342: 0.016867532920561423
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1467
+INFO:root:Symbol=GALAUSDT, PNL=0.044570118485957155/absolute=0.18344, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.1780032545908304/absolute=-0.38086, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8441 and average buy price 1.84768895: 0.19461797082587218
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:23:06).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8441"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.06856530671125637/absolute=-0.29005, Position Value=423.02735, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8905 and average buy price 2.89348393: 0.10323231274866895
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8905
+INFO:root:Symbol=DYDXUSDT, PNL=-0.002972612331717113/absolute=-0.0126, Position Value=423.8696, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.807 and average buy price 2.80708344: 0.002972568578551993
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.807
+INFO:root:Symbol=WOOUSDT, PNL=-0.19985011241568823/absolute=-0.00024, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3994 and average buy price 0.4003: 0.22533800701052265
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:23:09).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3994"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.01686459590888696/absolute=-0.03615, Position Value=214.35438, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1467 and average buy price 1.14689342: 0.016867532920561423
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1467
+INFO:root:Symbol=GALAUSDT, PNL=0.08547141452785657/absolute=0.35178, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.10223292524601754/absolute=-0.21874, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8457 and average buy price 1.84768895: 0.10776128298206622
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:24:11).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8457"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.009812604315063788/absolute=-0.04151, Position Value=423.02735, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.892 and average buy price 2.89348393: 0.05131154910096303
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.892
+INFO:root:Symbol=DYDXUSDT, PNL=0.03265548463707882/absolute=0.1386, Position Value=424.431, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.1498875843117662/absolute=-0.00018, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3994 and average buy price 0.4003: 0.22533800701052265
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:24:13).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3994"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.01681960722332107/absolute=-0.03615, Position Value=214.92773, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Placed limit buy order for 0.5 of MINAUSDT at 1.1474
+INFO:root:Symbol=GALAUSDT, PNL=0.08547141452785657/absolute=0.35178, Position Value=411.5762, profit_threshold=3.0
+INFO:root:All open orders cancelled successfully.
+ERROR:root:Error setting leverage for ARBUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:24:27).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "ARBUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for LDOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:24:27).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "LDOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for DYDXUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:24:28).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "DYDXUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for WOOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:24:28).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "WOOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for MINAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:24:28).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "MINAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for GALAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:24:28).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "GALAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+INFO:root:Symbol=ARBUSDT, PNL=-0.0859964261007005/absolute=-0.184, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8461 and average buy price 1.84768895: 0.08607063539352033
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:24:30).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8461"}.
+INFO:root:Symbol=LDOUSDT, PNL=-0.030548852219602355/absolute=-0.12923, Position Value=423.02735, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.892 and average buy price 2.89348393: 0.05131154910096303
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.892
+INFO:root:Symbol=DYDXUSDT, PNL=0.06827964969571026/absolute=0.2898, Position Value=424.431, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.1498875843117662/absolute=-0.00018, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3996 and average buy price 0.4003: 0.17517517517517955
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:24:31).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3996"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.06165328224515281/absolute=0.13251, Position Value=214.92773, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.08547141452785657/absolute=0.35178, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.037286928664749384/absolute=-0.07978, Position Value=213.96238, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8469 and average buy price 1.84768895: 0.04271752666631379
+ERROR:root:Failed to place order for ARBUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:25:33).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "ARBUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "1.8469"}.
+INFO:root:Symbol=LDOUSDT, PNL=0.004011560954628584/absolute=0.01697, Position Value=423.02735, profit_threshold=3.0
+INFO:root:Symbol=DYDXUSDT, PNL=0.10390381475434171/absolute=0.441, Position Value=424.431, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.12490632025980514/absolute=-0.00015, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3997 and average buy price 0.4003: 0.1501125844383333
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:25:35).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3997"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.12268775183174362/absolute=0.26369, Position Value=214.92773, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.1672740066116554/absolute=0.68846, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.09260506449778695/absolute=0.19814, Position Value=213.96238, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=0.06622030466824426/absolute=0.28013, Position Value=423.02735, profit_threshold=3.0
+INFO:root:Symbol=DYDXUSDT, PNL=0.06827964969571026/absolute=0.2898, Position Value=424.431, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.09992505620784412/absolute=-0.00012, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3997 and average buy price 0.4003: 0.1501125844383333
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:26:37).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3997"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.12268775183174362/absolute=0.26369, Position Value=214.92773, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.08547141452785657/absolute=0.35178, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.11966589640664868/absolute=0.25604, Position Value=213.96238, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=0.08695655257278283/absolute=0.36785, Position Value=423.02735, profit_threshold=3.0
+INFO:root:Symbol=DYDXUSDT, PNL=0.06827964969571026/absolute=0.2898, Position Value=424.431, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.09992505620784412/absolute=-0.00012, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3997 and average buy price 0.4003: 0.1501125844383333
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:27:40).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3997"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.13140696177268518/absolute=0.28243, Position Value=214.92773, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.044570118485957155/absolute=0.18344, Position Value=411.5762, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.11966589640664868/absolute=0.25604, Position Value=213.96238, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=-0.037460934854448534/absolute=-0.15847, Position Value=423.02735, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.892 and average buy price 2.89348393: 0.05131154910096303
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.892
+INFO:root:Symbol=DYDXUSDT, PNL=-0.03859284548018406/absolute=-0.1638, Position Value=424.431, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.805 and average buy price 2.80708333: 0.07427201426024599
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.805
+INFO:root:Symbol=WOOUSDT, PNL=-0.19985011241568823/absolute=-0.00024, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3994 and average buy price 0.4003: 0.22533800701052265
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:28:44).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3994"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.05293407230421128/absolute=0.11377, Position Value=214.92773, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=-0.07813376963974107/absolute=-0.32158, Position Value=411.5762, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02442 and average buy price 0.0244491: 0.1191646191646134
+INFO:root:Placed limit buy order for 23.0 of GALAUSDT at 0.02442
+INFO:root:Symbol=ARBUSDT, PNL=0.11966589640664868/absolute=0.25604, Position Value=213.96238, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=-0.02702276822257488/absolute=-0.11447, Position Value=423.60575, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8925 and average buy price 2.8934819: 0.03394641313740898
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8925
+INFO:root:Symbol=DYDXUSDT, PNL=-0.1453674422106769/absolute=-0.6178, Position Value=424.992, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.802 and average buy price 2.80708058: 0.18131977159172585
+INFO:root:Placed limit buy order for 0.2 of DYDXUSDT at 2.802
+INFO:root:Symbol=WOOUSDT, PNL=-0.1748688483637272/absolute=-0.00021, Position Value=0.12009, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3994 and average buy price 0.4003: 0.22533800701052265
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:29:48).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "1.4000000000000001", "price": "0.3994"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.035495652422328196/absolute=0.07629, Position Value=214.92773, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=-0.1188728451203197/absolute=-0.48992, Position Value=412.13786, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02441 and average buy price 0.02444906: 0.1600163867267579
+INFO:root:Placed limit buy order for 23.0 of GALAUSDT at 0.02441
+INFO:root:All open orders cancelled successfully.
+ERROR:root:Error setting leverage for ARBUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:43:29).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "ARBUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for LDOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:43:29).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "LDOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for DYDXUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:43:30).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "DYDXUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for WOOUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:43:30).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "WOOUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for MINAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:43:30).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "MINAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+ERROR:root:Error setting leverage for GALAUSDT: leverage not modified (ErrCode: 110043) (ErrTime: 18:43:30).
+Request → POST https://api-testnet.bybit.com/v5/position/set-leverage: {"symbol": "GALAUSDT", "buyLeverage": "4", "sellLeverage": "4", "category": "linear"}.
+INFO:root:Placed limit buy order for 0.1 of ARBUSDT at 1.8457
+INFO:root:Placed limit buy order for 0.1 of LDOUSDT at 2.8915
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.794
+INFO:root:Placed limit buy order for 0.1 of WOOUSDT at 0.3993
+INFO:root:Placed limit buy order for 0.1 of MINAUSDT at 1.1461
+INFO:root:Placed limit buy order for 1.0 of GALAUSDT at 0.02443
+INFO:root:Symbol=ARBUSDT, PNL=-0.021671994365281465/absolute=-4e-05, Position Value=0.18457, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8449 and average buy price 1.8457: 0.043362783890721346
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8449
+INFO:root:Symbol=LDOUSDT, PNL=-0.01383365035448729/absolute=-4e-05, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:44:37).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8915"}.
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.794
+INFO:root:Symbol=WOOUSDT, PNL=0.0/absolute=0.0, Position Value=0.03993, profit_threshold=3.0
+INFO:root:Placed limit buy order for 0.1 of MINAUSDT at 1.1461
+INFO:root:Symbol=GALAUSDT, PNL=0.0/absolute=0.0, Position Value=0.02443, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.05417998591320366/absolute=-0.0001, Position Value=0.18457, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8449 and average buy price 1.8457: 0.043362783890721346
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8449
+INFO:root:Symbol=LDOUSDT, PNL=0.0/absolute=0.0, Position Value=0.28915, profit_threshold=3.0
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.794
+INFO:root:Symbol=WOOUSDT, PNL=-0.07513148009015778/absolute=-3e-05, Position Value=0.03993, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.399 and average buy price 0.3993: 0.07518796992480592
+INFO:root:Adjusted QTY from basic 2.5 to 2.5.
+INFO:root:Placed limit buy order for 2.5 of WOOUSDT at 0.399
+INFO:root:Symbol=MINAUSDT, PNL=-0.017450484250937964/absolute=-4e-05, Position Value=0.22922, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1455 and average buy price 1.1461: 0.052378873854208585
+INFO:root:Adjusted QTY from basic 0.8 to 0.8.
+INFO:root:Placed limit buy order for 0.8 of MINAUSDT at 1.1455
+INFO:root:Symbol=GALAUSDT, PNL=0.0/absolute=0.0, Position Value=0.02443, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.0906640650021927/absolute=-0.00184, Position Value=2.02947, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8437 and average buy price 1.84497273: 0.06903129576396605
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8437
+INFO:root:Symbol=LDOUSDT, PNL=-0.05187618882932733/absolute=-0.00015, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8885 and average buy price 2.8915: 0.10386013501817448
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:46:45).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8885"}.
+INFO:root:Placed limit buy order for 0.1 of DYDXUSDT at 2.794
+INFO:root:Symbol=WOOUSDT, PNL=-0.12521913348359628/absolute=-5e-05, Position Value=0.03993, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.399 and average buy price 0.3993: 0.07518796992480592
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:46:47).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.399"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.010474677467222988/absolute=-0.00012, Position Value=1.14562, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1449 and average buy price 1.14562: 0.06288758843566722
+INFO:root:Adjusted QTY from basic 0.8 to 0.8.
+INFO:root:Placed limit buy order for 0.8 of MINAUSDT at 1.1449
+INFO:root:Symbol=GALAUSDT, PNL=-0.08186655751125665/absolute=-2e-05, Position Value=0.02443, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.0244 and average buy price 0.02443: 0.12295081967212962
+INFO:root:Adjusted QTY from basic 40.0 to 40.0.
+INFO:root:Placed limit buy order for 40.0 of GALAUSDT at 0.0244
+INFO:root:Symbol=ARBUSDT, PNL=-0.1233346434815608/absolute=-0.00364, Position Value=2.95132, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8421 and average buy price 1.844575: 0.13435752673578438
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8421
+INFO:root:Symbol=LDOUSDT, PNL=-0.14525332872211655/absolute=-0.00042, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.887 and average buy price 2.8915: 0.15587114651889333
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:47:51).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.887"}.
+INFO:root:Symbol=DYDXUSDT, PNL=-0.07158196134574088/absolute=-0.0008, Position Value=1.1176, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.791 and average buy price 2.794: 0.10748835542817581
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for DYDXUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:47:51).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "DYDXUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.791"}.
+INFO:root:Symbol=WOOUSDT, PNL=-0.15326335270813451/absolute=-0.00159, Position Value=1.03743, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39901154: 0.22897261994474505
+INFO:root:Adjusted QTY from basic 2.5 to 2.5.
+INFO:root:Placed limit buy order for 2.5 of WOOUSDT at 0.3981
+INFO:root:Symbol=MINAUSDT, PNL=-0.10649255425010037/absolute=-0.00122, Position Value=1.14562, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1449 and average buy price 1.14562: 0.06288758843566722
+INFO:root:Adjusted QTY from basic 0.8 to 0.8.
+INFO:root:Placed limit buy order for 0.8 of MINAUSDT at 1.1449
+INFO:root:Symbol=GALAUSDT, PNL=-0.0439810881321032/absolute=-0.00044, Position Value=1.00043, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02439 and average buy price 0.02440073: 0.04399343993439775
+INFO:root:Adjusted QTY from basic 40.0 to 40.0.
+INFO:root:Placed limit buy order for 40.0 of GALAUSDT at 0.02439
+INFO:root:Symbol=ARBUSDT, PNL=-0.052857704349240336/absolute=-0.00156, Position Value=2.95132, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8433 and average buy price 1.844575: 0.06916942440189366
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8433
+INFO:root:Symbol=LDOUSDT, PNL=-0.08646031471554556/absolute=-0.00025, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.888 and average buy price 2.8915: 0.1211911357340778
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:48:56).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.888"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.0/absolute=0.0, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.12820142081875402/absolute=-0.00133, Position Value=1.03743, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3983 and average buy price 0.39901154: 0.17864423801154938
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:48:57).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3983"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.006983118311481993/absolute=8e-05, Position Value=1.14562, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.07896604460082166/absolute=0.00079, Position Value=1.00043, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.06912161337977583/absolute=-0.00204, Position Value=2.95132, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8433 and average buy price 1.844575: 0.06916942440189366
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8433
+INFO:root:Symbol=LDOUSDT, PNL=-0.08646031471554556/absolute=-0.00025, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8885 and average buy price 2.8915: 0.10386013501817448
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:50:00).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8885"}.
+INFO:root:Symbol=DYDXUSDT, PNL=-0.03579098067287044/absolute=-0.0004, Position Value=1.1176, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.791 and average buy price 2.794: 0.10748835542817581
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for DYDXUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:50:01).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "DYDXUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.791"}.
+INFO:root:Symbol=WOOUSDT, PNL=-0.12820142081875402/absolute=-0.00133, Position Value=1.03743, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3984 and average buy price 0.39901154: 0.15349899598393613
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:50:01).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3984"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.010747415582409168/absolute=0.00032, Position Value=2.97746, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.03798366702318004/absolute=0.00038, Position Value=1.00043, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.1395985525120963/absolute=-0.00412, Position Value=2.95132, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8433 and average buy price 1.844575: 0.06916942440189366
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8433
+INFO:root:Symbol=LDOUSDT, PNL=-0.11412761542452013/absolute=-0.00033, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8885 and average buy price 2.8915: 0.10386013501817448
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:51:04).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8885"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.0/absolute=0.0, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.12820142081875402/absolute=-0.00133, Position Value=1.03743, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39901154: 0.22897261994474505
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:51:06).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3981"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.019479690743116618/absolute=0.00058, Position Value=2.97746, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=-0.0439810881321032/absolute=-0.00044, Position Value=1.00043, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02439 and average buy price 0.02440073: 0.04399343993439775
+INFO:root:Adjusted QTY from basic 40.0 to 40.0.
+INFO:root:Placed limit buy order for 40.0 of GALAUSDT at 0.02439
+INFO:root:Symbol=ARBUSDT, PNL=-0.11161124299586969/absolute=-0.00638, Position Value=5.71627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8421 and average buy price 1.84395806: 0.10086640247544132
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8421
+INFO:root:Symbol=LDOUSDT, PNL=-0.15908697907660382/absolute=-0.00046, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8865 and average buy price 2.8915: 0.17322016282697028
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:52:09).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8865"}.
+INFO:root:Symbol=DYDXUSDT, PNL=-0.14316392269148176/absolute=-0.0016, Position Value=1.1176, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.79 and average buy price 2.794: 0.14336917562725038
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for DYDXUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:52:10).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "DYDXUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.79"}.
+INFO:root:Symbol=WOOUSDT, PNL=-0.20338721648689548/absolute=-0.00211, Position Value=1.03743, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39901154: 0.22897261994474505
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:52:11).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3981"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.03694424106453151/absolute=0.0011, Position Value=2.97746, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=-0.014907017478477991/absolute=-0.00044, Position Value=2.95163, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02438 and average buy price 0.02439364: 0.055947497949149216
+INFO:root:Adjusted QTY from basic 40.0 to 40.0.
+INFO:root:Placed limit buy order for 40.0 of GALAUSDT at 0.02438
+INFO:root:Symbol=ARBUSDT, PNL=-0.1387268271092863/absolute=-0.00793, Position Value=5.71627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8421 and average buy price 1.84395806: 0.10086640247544132
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8421
+INFO:root:Symbol=LDOUSDT, PNL=-0.16600380425384748/absolute=-0.00048, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8865 and average buy price 2.8915: 0.17322016282697028
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:53:14).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8865"}.
+INFO:root:Symbol=DYDXUSDT, PNL=-0.14316392269148176/absolute=-0.0016, Position Value=1.1176, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.79 and average buy price 2.794: 0.14336917562725038
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for DYDXUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:53:15).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "DYDXUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.79"}.
+INFO:root:Symbol=WOOUSDT, PNL=-0.20338721648689548/absolute=-0.00211, Position Value=1.03743, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39901154: 0.22897261994474505
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:53:16).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3981"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.019479690743116618/absolute=0.00058, Position Value=2.97746, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.06708157865315097/absolute=0.00198, Position Value=2.95163, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.11161124299586969/absolute=-0.00638, Position Value=5.71627, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8421 and average buy price 1.84395806: 0.10086640247544132
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8421
+INFO:root:Symbol=LDOUSDT, PNL=-0.08991872730416738/absolute=-0.00026, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.888 and average buy price 2.8915: 0.1211911357340778
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:54:19).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.888"}.
+INFO:root:Symbol=DYDXUSDT, PNL=-0.10737294201861132/absolute=-0.0012, Position Value=1.1176, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol DYDXUSDT
+INFO:root:Diff between ask price 2.792 and average buy price 2.794: 0.07163323782235498
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for DYDXUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:54:20).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "DYDXUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.792"}.
+INFO:root:Symbol=WOOUSDT, PNL=-0.11659484030934532/absolute=-0.00237, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39856471: 0.11673197689021642
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:54:20).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3981"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.024181685060420628/absolute=-0.00072, Position Value=2.97746, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.145 and average buy price 1.14517692: 0.01545152838426933
+INFO:root:Adjusted QTY from basic 0.8 to 0.8.
+INFO:root:Placed limit buy order for 0.8 of MINAUSDT at 1.145
+INFO:root:Symbol=GALAUSDT, PNL=-0.014907017478477991/absolute=-0.00044, Position Value=2.95163, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02439 and average buy price 0.02439364: 0.014924149241513085
+INFO:root:Adjusted QTY from basic 40.0 to 40.0.
+INFO:root:Placed limit buy order for 40.0 of GALAUSDT at 0.02439
+INFO:root:Symbol=ARBUSDT, PNL=-0.017871446853189255/absolute=-0.00168, Position Value=9.40047, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8425 and average buy price 1.84322941: 0.039588059701478606
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8425
+INFO:root:Symbol=LDOUSDT, PNL=-0.06570983918381464/absolute=-0.00019, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8885 and average buy price 2.8915: 0.10386013501817448
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:55:24).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8885"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.0/absolute=0.0, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.09150481138201784/absolute=-0.00186, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39856471: 0.11673197689021642
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:55:25).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3981"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.002015140421701719/absolute=6e-05, Position Value=2.97746, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.10807587671896544/absolute=0.00319, Position Value=2.95163, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.05231686191836245/absolute=-0.0054, Position Value=10.32172, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8421 and average buy price 1.84316429: 0.057775907931167936
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8421
+INFO:root:Symbol=LDOUSDT, PNL=-0.08646031471554556/absolute=-0.00025, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.888 and average buy price 2.8915: 0.1211911357340778
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:56:28).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.888"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.10737294201861132/absolute=0.0012, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.09150481138201784/absolute=-0.00186, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3981 and average buy price 0.39856471: 0.11673197689021642
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:56:29).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3981"}.
+INFO:root:Symbol=MINAUSDT, PNL=-0.02927986931932009/absolute=-0.00114, Position Value=3.89346, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol MINAUSDT
+INFO:root:Diff between ask price 1.1447 and average buy price 1.14513529: 0.038026557176551457
+INFO:root:Adjusted QTY from basic 0.8 to 0.8.
+INFO:root:Placed limit buy order for 0.8 of MINAUSDT at 1.1447
+INFO:root:Symbol=GALAUSDT, PNL=-0.014907017478477991/absolute=-0.00044, Position Value=2.95163, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol GALAUSDT
+INFO:root:Diff between ask price 0.02439 and average buy price 0.02439364: 0.014924149241513085
+INFO:root:Adjusted QTY from basic 40.0 to 40.0.
+INFO:root:Placed limit buy order for 40.0 of GALAUSDT at 0.02439
+INFO:root:Symbol=ARBUSDT, PNL=-0.025189600182915255/absolute=-0.0026, Position Value=10.32172, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8425 and average buy price 1.84316429: 0.036053731343277384
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8425
+INFO:root:Symbol=LDOUSDT, PNL=-0.09683555248141101/absolute=-0.00028, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.89 and average buy price 2.8915: 0.05190311418685756
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:57:34).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.89"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.10737294201861132/absolute=0.0012, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.11659484030934532/absolute=-0.00237, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3979 and average buy price 0.39856471: 0.16705453631566947
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:57:34).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3979"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.11044161234480385/absolute=0.0043, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.026087280587336482/absolute=0.00077, Position Value=2.95163, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.061617637370515774/absolute=0.00636, Position Value=10.32172, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=-0.017292062943109112/absolute=-5e-05, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:58:36).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.892"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.1789549033643522/absolute=0.002, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.09150481138201784/absolute=-0.00186, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.398 and average buy price 0.39856471: 0.1418869346733631
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:58:38).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.398"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.1628371679688503/absolute=0.00634, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.11178362357183053/absolute=0.00439, Position Value=3.92723, profit_threshold=3.0
