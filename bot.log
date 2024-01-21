@@ -776,3 +776,80 @@ ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrT
 Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.398"}.
 INFO:root:Symbol=MINAUSDT, PNL=0.1628371679688503/absolute=0.00634, Position Value=3.89346, profit_threshold=3.0
 INFO:root:Symbol=GALAUSDT, PNL=0.11178362357183053/absolute=0.00439, Position Value=3.92723, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.10502125614723129/absolute=0.01084, Position Value=10.32172, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=0.04150095106346187/absolute=0.00012, Position Value=0.28915, profit_threshold=3.0
+INFO:root:Symbol=DYDXUSDT, PNL=0.25053686471009307/absolute=0.0028, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.11659484030934532/absolute=-0.00237, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.398 and average buy price 0.39856471: 0.1418869346733631
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 18:59:40).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.398"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.2152327235928968/absolute=0.00838, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.11178362357183053/absolute=0.00439, Position Value=3.92723, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.07246854206469465/absolute=0.00748, Position Value=10.32172, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=0.05187618882932733/absolute=0.00015, Position Value=0.28915, profit_threshold=3.0
+INFO:root:Symbol=DYDXUSDT, PNL=0.21474588403722264/absolute=0.0024, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.09150481138201784/absolute=-0.00186, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3979 and average buy price 0.39856471: 0.16705453631566947
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:00:43).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3979"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.15410457536484257/absolute=0.006, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.11178362357183053/absolute=0.00439, Position Value=3.92723, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=0.08874489910596296/absolute=0.00916, Position Value=10.32172, profit_threshold=3.0
+INFO:root:Symbol=LDOUSDT, PNL=-0.01383365035448729/absolute=-4e-05, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:01:44).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8915"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.21474588403722264/absolute=0.0024, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.19186492709132769/absolute=-0.0039, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3977 and average buy price 0.39856471: 0.21742770932864364
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:01:46).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3977"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.18030235317686583/absolute=0.00702, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.029791990792492416/absolute=0.00117, Position Value=3.92723, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.04689140957127301/absolute=-0.00484, Position Value=10.32172, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8425 and average buy price 1.84316429: 0.036053731343277384
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8425
+INFO:root:Symbol=LDOUSDT, PNL=-0.058793014006570984/absolute=-0.00017, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.889 and average buy price 2.8915: 0.08653513326410955
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:02:49).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.889"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.14316392269148176/absolute=0.0016, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.24204498494598262/absolute=-0.00492, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3972 and average buy price 0.39856471: 0.34358257804631975
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:02:50).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3972"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.1628371679688503/absolute=0.00634, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.07078780718216146/absolute=0.00278, Position Value=3.92723, profit_threshold=3.0
+INFO:root:Symbol=ARBUSDT, PNL=-0.008878497758179315/absolute=-0.00108, Position Value=12.16422, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol ARBUSDT
+INFO:root:Diff between ask price 1.8429 and average buy price 1.84306364: 0.008879483422874479
+INFO:root:Adjusted QTY from basic 0.5 to 0.5.
+INFO:root:Placed limit buy order for 0.5 of ARBUSDT at 1.8429
+INFO:root:Symbol=LDOUSDT, PNL=-0.07262666436105827/absolute=-0.00021, Position Value=0.28915, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol LDOUSDT
+INFO:root:Diff between ask price 2.8895 and average buy price 2.8915: 0.06921612735768523
+INFO:root:Adjusted QTY from basic 0.30000000000000004 to 0.30000000000000004.
+ERROR:root:Failed to place order for LDOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:03:53).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "LDOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "0.30000000000000004", "price": "2.8895"}.
+INFO:root:Symbol=DYDXUSDT, PNL=0.21474588403722264/absolute=0.0024, Position Value=1.1176, profit_threshold=3.0
+INFO:root:Symbol=WOOUSDT, PNL=-0.21695495601865514/absolute=-0.00441, Position Value=2.03268, profit_threshold=3.0
+INFO:root:PNL Negative, sending order to catch up for symbol WOOUSDT
+INFO:root:Diff between ask price 0.3976 and average buy price 0.39856471: 0.242633299798789
+INFO:root:Adjusted QTY from basic 2.4000000000000004 to 2.4000000000000004.
+ERROR:root:Failed to place order for WOOUSDT: Qty invalid (ErrCode: 10001) (ErrTime: 19:03:54).
+Request → POST https://api-testnet.bybit.com/v5/order/create: {"symbol": "WOOUSDT", "category": "linear", "isLeverage": "1", "side": "Buy", "order_type": "Limit", "qty": "2.4000000000000004", "price": "0.3976"}.
+INFO:root:Symbol=MINAUSDT, PNL=0.2326979088009123/absolute=0.00906, Position Value=3.89346, profit_threshold=3.0
+INFO:root:Symbol=GALAUSDT, PNL=0.07301905226165296/absolute=0.00358, Position Value=4.90283, profit_threshold=3.0
