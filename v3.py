@@ -6,14 +6,17 @@ from pybit.unified_trading import HTTP
 
 from LiveTradingStrategy import LiveTradingStrategy
 
-# Set up logging
-logging.basicConfig(filename='bot.log', level=logging.DEBUG)
-
 
 def read_config(file_path):
     config = configparser.ConfigParser()
     config.read(file_path)
     return config
+
+
+config = read_config('config.ini')
+log_level = getattr(logging, config.get('Logging', 'level', fallback='INFO'))
+# Set up logging
+logging.basicConfig(filename='bot.log', level=log_level)
 
 
 def get_api_credentials(config):
@@ -40,8 +43,8 @@ def get_account_balance(client):
 def get_open_positions(client):
     return client.get_positions(category='linear', settleCoin='USDT')['result']['list']
 
+
 def main():
-    config = read_config('config.ini')
     api_key, api_secret = get_api_credentials(config)
     client = setup_client(api_key, api_secret)
 
