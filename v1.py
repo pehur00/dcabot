@@ -56,7 +56,7 @@ def main():
     profit_threshold = config.getfloat('Script', 'profitThreshold')
     proportion_of_balance = config.getfloat('Script', 'beginSizeOfBalance')
     buy_until_limit = config.getfloat('Script', 'buyUntilLimit')
-    skip_ema_check = config.getboolean('Script', 'skipEmaCheck')
+    strategy_filter = config.get('Script', 'strategyFilter')
     ema_interval = config.getfloat('Script', 'emaInterval')
 
     strategy = LiveTradingStrategy(client, leverage, profit_threshold, profit_pnl, proportion_of_balance, buy_until_limit)
@@ -75,7 +75,7 @@ def main():
         open_positions = {pos['symbol']: pos for pos in get_open_positions(client)}
 
         for symbol in symbols:
-            strategy.execute_strategy(symbol, total_balance, open_positions, skip_ema_check, ema_interval)
+            strategy.execute_strategy(symbol, total_balance, open_positions, strategy_filter, ema_interval)
 
         time.sleep(60)  # Sleep for 60 seconds
 

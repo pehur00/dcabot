@@ -101,7 +101,7 @@ class LiveTradingStrategy:
     def close_position(self, symbol, qty):
         try:
             self.client.place_order(symbol=symbol, category='linear', isLeverage='1', side="Sell", order_type="Market",
-                                    qty=qty)
+                                    qty=qty, reduceOnly=True)
             self.cancel_all_open_orders(symbol)
             logging.info(f"Closed positions and orders for {qty} of {symbol}.")
         except Exception as e:
@@ -130,12 +130,12 @@ class LiveTradingStrategy:
         except Exception as e:
             logging.info(f"Failed to place order for {symbol}: {e}")
 
-    def execute_strategy(self, symbol, total_balance, open_positions, skip_ema_check, ema_interval):
+    def execute_strategy(self, symbol, total_balance, open_positions, strategy_filter, ema_interval):
 
         position = open_positions.get(symbol)
         current_price, _ = self.get_ticker_info(symbol)
 
-        if skip_ema_check or current_price > self.get_ema(symbol=symbol,interval=ema_interval):
+        if strategy_filter != 'EMA' or current_price > self.get_ema(symbol=symbol, interval=ema_interval):
             if position:
                 position_value = float(position['positionValue'])
                 pnl_absolute = float(position['unrealisedPnl'])
