@@ -36,9 +36,11 @@ def setup_client(api_key, api_secret):
 
 
 def get_account_balance(client):
-    balance_info = client.get_wallet_balance(accountType='UNIFIED', coin='USDT')['result']['list'][0]
-    return float(balance_info['totalAvailableBalance'])
-
+    try:
+        balance_info = client.get_wallet_balance(accountType='UNIFIED', coin='USDT')['result']['list'][0]
+        return float(balance_info['totalAvailableBalance'])
+    except Exception as e:
+        logging.error(f'Error on retrieving balance: {e}')
 
 def get_open_positions(client):
     return client.get_positions(category='linear', settleCoin='USDT')['result']['list']
@@ -50,22 +52,30 @@ def main():
 
     # Set strategy parameters from config
     leverage = config.getint('Script', 'leverage')
+    profit_pnl = config.getfloat('Script', 'profitPnL')
     profit_threshold = config.getfloat('Script', 'profitThreshold')
     proportion_of_balance = config.getfloat('Script', 'beginSizeOfBalance')
     buy_until_limit = config.getfloat('Script', 'buyUntilLimit')
+    skip_ema_check = config.getboolean('Script', 'skipEmaCheck')
+    ema_interval = config.getfloat('Script', 'emaInterval')
 
-    strategy = LiveTradingStrategy(client, leverage, profit_threshold, proportion_of_balance, buy_until_limit)
+    strategy = LiveTradingStrategy(client, leverage, profit_threshold, profit_pnl, proportion_of_balance, buy_until_limit)
 
     # Cancel all open orders at the start
     strategy.cancel_all_open_orders(None)
 
     symbols = get_symbols(config)
+
+    # Fix leverage for provided symbols
+    for symbol in symbols:
+        strategy.set_leverage(symbol, leverage)
+
     while True:
         total_balance = get_account_balance(client)
         open_positions = {pos['symbol']: pos for pos in get_open_positions(client)}
 
         for symbol in symbols:
-            strategy.execute_strategy(symbol, total_balance, open_positions)
+            strategy.execute_strategy(symbol, total_balance, open_positions, skip_ema_check, ema_interval)
 
         time.sleep(60)  # Sleep for 60 seconds
 
