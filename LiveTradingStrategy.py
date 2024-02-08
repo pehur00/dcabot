@@ -142,7 +142,7 @@ class LiveTradingStrategy:
                 pnl_percentage = pnl_absolute / position_value
 
                 if pnl_percentage > self.profit_pnl or pnl_absolute > self.profit_threshold:
-                    self.close_position(self.client, symbol)
+                    self.close_position(symbol, position['size'])
                 elif pnl_percentage < 0 or position_value < self.buy_until_limit:
                     order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
                                                               pnl_percentage)

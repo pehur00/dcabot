@@ -61,9 +61,6 @@ def main():
 
     strategy = LiveTradingStrategy(client, leverage, profit_threshold, profit_pnl, proportion_of_balance, buy_until_limit)
 
-    # Cancel all open orders at the start
-    strategy.cancel_all_open_orders(None)
-
     symbols = get_symbols(config)
 
     # Fix leverage for provided symbols
@@ -71,6 +68,10 @@ def main():
         strategy.set_leverage(symbol, leverage)
 
     while True:
+
+        # Cancel all open orders at the start, so we don't pile up orders
+        strategy.cancel_all_open_orders(None)
+
         total_balance = get_account_balance(client)
         open_positions = {pos['symbol']: pos for pos in get_open_positions(client)}
 
