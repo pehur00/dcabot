@@ -17,7 +17,7 @@ git clone [repository-url]
 
 2. Navigate to the bot directory:
 ```
-cd diptrader-bot
+cd [directory]
 ```
 
 3. Install the required dependencies:
@@ -42,7 +42,7 @@ Before running the bot, make sure to update the `config.ini` file with your API 
 ## Usage
 To start the bot with standard installation:
 ```
-python bot.py
+python MartingaleTradingStrategy.py
 ```
 
 For Docker, after the container is running, the bot will automatically start and use the provided configuration.
