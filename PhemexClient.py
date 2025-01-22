@@ -277,7 +277,10 @@ class PhemexClient():
         else:
             return None
 
-    def place_order(self, symbol, qty, price, side="Buy", order_type="Limit", time_in_force="GoodTillCancel", posSide="Long"):
+    def place_order(self, symbol, qty, price, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
+                    posSide="Long", reduceOnly=False):
+        logging.info(f"Ordering symbol={symbol}, qty={qty}, price={price}")
+
         try:
             # Generate a unique client order ID
             cl_ord_id = f"order_{int(time.time() * 1000)}"
@@ -292,15 +295,16 @@ class PhemexClient():
                 "symbol": symbol,
                 "clOrdID": cl_ord_id,
                 "side": side,
-                "orderQty": qty,
-                "priceRp": price,
+                "orderQtyRq": f"{qty}",
+                "priceRp": f"{price}",
                 "ordType": order_type,
                 "timeInForce": time_in_force,
-                "posSide": posSide
+                "posSide": posSide,
+                "reduceOnly": reduceOnly
             }
 
             # Send the order request
-            response = self._send_request("PUT", "/g-orders/create", params=order)
+            response = self._send_request("POST", "/g-orders", body=order)
             logging.info(f"Placed order: {response}")
 
         except PhemexAPIException as e:
@@ -310,7 +314,7 @@ class PhemexClient():
         try:
             position = self.get_position_for_symbol(symbol)
             if position and position['size'] >= qty:
-                self.place_order(symbol, -qty, 0)  # Market close position
+                self.place_order(symbol=symbol, qty=qty, order_type="Market", reduceOnly=True)  # Market close position
                 logging.info(f"Closed position for {symbol}: {position}")
         except PhemexAPIException as e:
             logging.error(f"Failed to close position for {symbol}: {e}")
@@ -318,11 +322,11 @@ class PhemexClient():
     def cancel_all_open_orders(self, symbol):
         try:
             # Cancel active orders, including triggered conditional orders
-            self._send_request("DELETE", "/orders/all", params={"symbol": symbol, "untriggered": "false"})
+            self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "false"})
             logging.info(f"All active orders for {symbol} have been cancelled.")
 
             # Cancel untriggered conditional orders
-            self._send_request("DELETE", "/orders/all", params={"symbol": symbol, "untriggered": "true"})
+            self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "true"})
             logging.info(f"All untriggered conditional orders for {symbol} have been cancelled.")
         except PhemexAPIException as e:
             logging.error(f"Failed to cancel all open orders for {symbol}: {e}")

@@ -89,7 +89,7 @@ class MartingaleTradingStrategy:
 
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
-        logging.debug(f'Calculating order quantity: symbol {symbol}, '
+        logging.info(f'Calculating order quantity: symbol {symbol}, '
                       f'total_balance={total_balance}, '
                       f'position_value={position_value}, '
                       f'current_price={current_price}, '

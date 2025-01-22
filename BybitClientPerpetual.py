@@ -166,7 +166,7 @@ class BybitClient:
                     logging.info(f"Cancelled previous order. New lowest ask is lower at {new_lowest_ask}.")
                 else:
                     logging.info(
-                        "Current lowest ask is not lower than the order price. Checking again after 10 seconds.")
+                        "Current lowest ask is not lower than the order price. Checking again next iteration.")
 
         except Exception as e:
             logging.error(f"Failed to close position for {symbol}: {e}")
