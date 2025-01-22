@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from _decimal import ROUND_DOWN, Decimal
 
 import TradingClient
@@ -114,19 +115,21 @@ CONFIG = {
 }
 
 def main():
-    # Set up command-line argument parsing
-    parser = argparse.ArgumentParser(description="Execute Martingale Trading Strategy.")
-    parser.add_argument('--api-key', required=True, help="API key for the trading platform.")
-    parser.add_argument('--api-secret', required=True, help="API secret for the trading platform.")
-    parser.add_argument('--symbol', required=True, help="Trading pair symbol, e.g., BTCUSDT.")
-    parser.add_argument('--testnet', action='store_true', help="Use testnet environment.")
-    args = parser.parse_args()
+    # Retrieve environment variables
+    api_key = os.getenv('API_KEY')
+    api_secret = os.getenv('API_SECRET')
+    symbol = os.getenv('SYMBOL')
+    testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
+
+    # Validate required environment variables
+    if not all([api_key, api_secret, symbol]):
+        raise ValueError("API_KEY, API_SECRET, and SYMBOL environment variables must be set.")
 
     # Configure logging
     logging.basicConfig(level=CONFIG['logging_level'], format='%(asctime)s - %(levelname)s - %(message)s')
 
     # Initialize Phemex client
-    client = PhemexClient(args.api_key, args.api_secret, args.testnet)
+    client = PhemexClient(api_key, api_secret, testnet)
 
     # Initialize trading strategy with configuration parameters
     strategy = MartingaleTradingStrategy(
@@ -141,14 +144,14 @@ def main():
     try:
         # Execute the trading strategy for the specified symbol
         strategy.execute_strategy(
-            symbol=args.symbol,
+            symbol=symbol,
             strategy_filter=CONFIG['strategy_filter'],
             ema_interval=CONFIG['ema_interval'],
             buy_below_percentage=CONFIG['buy_below_percentage'],
             leverage=CONFIG['leverage']
         )
     except Exception as e:
-        logging.error(f'Error executing strategy for {args.symbol}: {e}')
+        logging.error(f'Error executing strategy for {symbol}: {e}')
 
 
 if __name__ == "__main__":
