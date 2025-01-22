@@ -62,7 +62,10 @@ docker build -t martingale_strategy .
 docker run --rm martingale_strategy --api-key API_KEY --api-secret API_SECRET --symbol INJUSDT >> bot.log 2>&1
 ```
 
-3. D
+3. Deploy
+
+I currently use render.com to build and run a docker container as cron job. 
+- 
 
 ## Features
 - Automated trading based on predefined strategies

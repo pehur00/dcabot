@@ -190,6 +190,14 @@ class PhemexClient():
             logging.error(f"Failed to set leverage for {symbol}: {e}")
 
     def fetch_historical_data(self, symbol, interval, period):
+        """
+        Fetch historical kline data for a given symbol and interval, returning the most recent 'period' data points.
+
+        :param symbol: Trading pair symbol, e.g., 'BTCUSDT'.
+        :param interval: Interval in minutes, e.g., 1, 5, 15.
+        :param period: Number of data points to retrieve.
+        :return: DataFrame containing the most recent 'period' data points.
+        """
         try:
             # Define the resolution mapping based on Phemex API documentation
             resolution_mapping = {
@@ -229,17 +237,27 @@ class PhemexClient():
                 }
             )
 
+            logging.info(f"Kline data from API: {response}")
+
             if response['code'] == 0:
                 rows = response['data']['rows']
+                # Create DataFrame from the retrieved data
                 data = pd.DataFrame(rows, columns=[
                     'timestamp', 'interval', 'last_close', 'open', 'high', 'low', 'close', 'volume', 'turnover',
                     'symbol'
                 ])
+
+                # Convert 'timestamp' to datetime and set as index
                 data['timestamp'] = pd.to_datetime(data['timestamp'], unit='ms')
                 data.set_index('timestamp', inplace=True)
+
+                # Select relevant columns and ensure correct data types
                 data = data[['open', 'high', 'low', 'close', 'volume', 'turnover']].astype(float)
 
-                # Trim the DataFrame to the desired period
+                # Sort data by timestamp to ensure chronological order
+                data.sort_index(inplace=True)
+
+                # Trim the DataFrame to the most recent 'period' entries
                 if len(data) > period:
                     data = data.tail(period)
 

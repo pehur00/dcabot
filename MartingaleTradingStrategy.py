@@ -47,6 +47,8 @@ class MartingaleTradingStrategy:
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
 
+        logging.info(f"EMA's: 50={ema_50}, 200={ema_200}")
+
         if strategy_filter != 'EMA' or current_price > ema_200:
             if position:
                 position_value = float(position['positionValue'])
@@ -106,10 +108,10 @@ CONFIG = {
     'buy_until_limit': 5,
     'profit_threshold': 0.5,
     'profit_pnl': 0.05,
-    'leverage': 1,
+    'leverage': 10,
     'begin_size_of_balance': 0.001,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
-    'ema_interval': 1,  # EMA interval in minutes
+    'ema_interval': 5,  # EMA interval in minutes
     'buy_below_percentage': 0.02,
     'logging_level': logging.INFO
 }
