@@ -277,7 +277,7 @@ class PhemexClient():
         else:
             return None
 
-    def place_order(self, symbol, qty, price, side="Buy", order_type="Limit", time_in_force="GoodTillCancel"):
+    def place_order(self, symbol, qty, price, side="Buy", order_type="Limit", time_in_force="GoodTillCancel", posSide="Long"):
         try:
             # Generate a unique client order ID
             cl_ord_id = f"order_{int(time.time() * 1000)}"
@@ -288,16 +288,15 @@ class PhemexClient():
                 logging.error(f"Failed to retrieve instrument info for {symbol}")
                 return
 
-            order_qty = int(qty)
-
             order = {
                 "symbol": symbol,
                 "clOrdID": cl_ord_id,
                 "side": side,
-                "orderQty": order_qty,
+                "orderQty": qty,
                 "priceRp": price,
                 "ordType": order_type,
-                "timeInForce": time_in_force
+                "timeInForce": time_in_force,
+                "posSide": posSide
             }
 
             # Send the order request

@@ -40,32 +40,18 @@ docker run -v diptrader-bot
 Before running the bot, make sure to update the `Config map inside the code` file with your prefferred trading parameters.
 
 ## Usage
+1. Setup environment variables
+- API_KEY, API_SECRET, SYMBOL
+2. Start script
 To start the bot with standard installation:
 ```
-python MartingaleTradingStrategy.py --api-key YOUR_API_KEY --api-secret YOUR_API_SECRET --symbol BTCUSDT
-```
-
-To use the testnet, use the testnet parameter
-```
-python MartingaleTradingStrategy.py --api-key YOUR_API_KEY --api-secret YOUR_API_SECRET --symbol BTCUSDT --testnet
+python /Users/jasperoudejans/Documents/repos/private/diptrader/MartingaleTradingStrategy.py 
 ```
 
 # Deployment
-## Docker
-1. Build
-```
-docker build -t martingale_strategy .
-```
+1. Render
 
-2. Run local
-```
-docker run --rm martingale_strategy --api-key API_KEY --api-secret API_SECRET --symbol INJUSDT >> bot.log 2>&1
-```
-
-3. Deploy
-
-I currently use render.com to build and run a docker container as cron job. 
-- 
+I currently use render.com to build and run a docker container as cron job. It watches my github repo and on commits it will rebuild etc.
 
 ## Features
 - Automated trading based on predefined strategies
