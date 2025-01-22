@@ -237,7 +237,7 @@ class PhemexClient():
                 }
             )
 
-            logging.info(f"Kline data from API: {response}")
+            logging.debug(f"Kline data from API: {response}")
 
             if response['code'] == 0:
                 rows = response['data']['rows']
