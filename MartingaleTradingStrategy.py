@@ -60,27 +60,29 @@ class MartingaleTradingStrategy:
                 }
             })
 
+        if position:
+            position_value = float(position['positionValue'])
+            unrealized_pnl = float(position['unrealisedPnl'])
+            pnl_percentage = unrealized_pnl / position_value * self.leverage
+            position_value_percentage_of_total_balance = position_value / total_balance * 100
+
+            self.logger.info(
+                "Current position state",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "balance": total_balance,
+                        "position_value": position_value,
+                        "unrealized_pnl": unrealized_pnl,
+                        "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
+                        "TP": self.profit_threshold,
+                        "TP%": self.profit_pnl
+                    }
+                })
+
         if strategy_filter != 'EMA' or current_price > ema_200:
+
             if position:
-                position_value = float(position['positionValue'])
-                unrealized_pnl = float(position['unrealisedPnl'])
-                pnl_percentage = unrealized_pnl / position_value * self.leverage
-                position_value_percentage_of_total_balance = position_value / total_balance * 100
-
-                self.logger.info(
-                    "Current position state",
-                    extra={
-                        "symbol": symbol,
-                        "json": {
-                            "balance": total_balance,
-                            "position_value": position_value,
-                            "unrealized_pnl": unrealized_pnl,
-                            "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
-                            "TP": self.profit_threshold,
-                            "TP%": self.profit_pnl
-                        }
-                    })
-
                 if unrealized_pnl > 0:
                     if position_value_percentage_of_total_balance > 40:
                         self.client.close_position(symbol, position['size'] * 0.5)
