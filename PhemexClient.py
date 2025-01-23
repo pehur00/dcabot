@@ -37,9 +37,10 @@ class PhemexClient():
     MAIN_NET_API_URL = 'https://api.phemex.com'
     TEST_NET_API_URL = 'https://testnet-api.phemex.com'
 
-    def __init__(self, api_key, api_secret, testnet=False):
+    def __init__(self, api_key, api_secret, logger, testnet=False):
         self.api_key = api_key
         self.api_secret = api_secret
+        self.logger = logger
         self.api_URL = self.TEST_NET_API_URL if testnet else self.MAIN_NET_API_URL
         self.session = requests.session()
 
@@ -86,7 +87,12 @@ class PhemexClient():
             usdt_balance = balance_info.get('accountBalanceRv', 0)
             return float(usdt_balance)
         except PhemexAPIException as e:
-            logging.error(f"Failed to get account balance: {e}")
+            self.logger.error(
+                "Failed to get account balance",
+                extra={
+                    "error_details": e
+                },
+            )
             return None
 
     def get_ticker_info(self, symbol):
@@ -98,7 +104,13 @@ class PhemexClient():
             highest_ask = float(ticker['askRp'])
             return highest_bid, highest_ask
         except PhemexAPIException as e:
-            logging.error(f"Failed to fetch ticker info for {symbol}: {e}")
+            self.logger.error(
+                "Failed to fetch ticker info.",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
             return None, None
 
     def get_position_for_symbol(self, symbol):
@@ -120,10 +132,20 @@ class PhemexClient():
                     'size': size
                 }
             else:
-                logging.info(f"No position found for symbol: {symbol}")
+                self.logger.info(
+                    "No position found for symbol.",
+                    extra={
+                        "symbol": symbol
+                    })
                 return None
         except PhemexAPIException as e:
-            logging.error(f"Failed to get position for {symbol}: {e}")
+            self.logger.error(
+                "Failed to get account balance",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
             return None
 
     def define_instrument_info(self, symbol):
@@ -135,11 +157,25 @@ class PhemexClient():
             qty_step_size = float(product_info.get('qtyStepSize', 0))
             max_order_qty_rq = float(product_info.get('maxOrderQtyRq', 0))
             min_order_qty = qty_step_size  # Assuming min_order_qty is the same as qty_step_size
-            logging.info(
-                f"Instrument info for {symbol}: min_order_qty={min_order_qty}, max_order_qty={max_order_qty_rq}, qty_step={qty_step_size}")
+            self.logger.info(
+                "Instrument info.",
+                extra={
+                    "json": {
+                        "symbol": symbol,
+                        "min_order_qty": min_order_qty,
+                        "max_order_qty_rq": max_order_qty_rq,
+                        "qty_step_size": qty_step_size
+                    }
+                })
             return min_order_qty, max_order_qty_rq, qty_step_size
         else:
-            logging.error(f"Symbol {symbol} not found in product list.")
+            self.logger.error(
+                "Symbol not found in product list",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": ""
+                             }}
+            )
             return None, None, None
 
     def get_product_info(self, symbol):
@@ -152,10 +188,22 @@ class PhemexClient():
                 product_info = next((item for item in products if item['symbol'] == symbol), None)
                 return product_info
             else:
-                logging.error(f"Failed to retrieve products: {response['msg']}")
+                self.logger.error(
+                    "Failed to retrieve products.",
+                    extra={
+                        "symbol": symbol,
+                        "json": {"error_description": response['msg']
+                                 }}
+                )
                 return None, None, None
         except Exception as e:
-            logging.error(f"ERROR: Unable to determine lot size for symbol {symbol}: {e}")
+            self.logger.error(
+                "Unable to determine lot size for symbol",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
             return None, None, None
 
     def set_leverage(self, symbol, leverage):
@@ -178,7 +226,7 @@ class PhemexClient():
 
             # TODO Disabled because of ERROR:root:Failed to set leverage for {symbol}: HTTP(code=200), API(errorcode=20004):
             # TODO TE_ERR_INCONSISTENT_POS_MODE
-            logging.info("Leverage should be altered manually in Phemex because of known error. ")
+            logging.debug("Leverage should be altered manually in Phemex because of known error. ")
             # response = self._send_request("PUT", "/g-positions/leverage", params=params)
 
             # Check if the response indicates success
@@ -187,7 +235,13 @@ class PhemexClient():
             # else:
             #     logging.error(f"Failed to set leverage for {symbol}: {response.get('msg')}")
         except PhemexAPIException as e:
-            logging.error(f"Failed to set leverage for {symbol}: {e}")
+            self.logger.error(
+                "Failed to set leverage.",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
 
     def fetch_historical_data(self, symbol, interval, period):
         """
@@ -215,7 +269,14 @@ class PhemexClient():
             }
 
             if interval not in resolution_mapping:
-                logging.error(f"Unsupported interval: {interval} minutes")
+                self.logger.error(
+                    "Unsupported interval.",
+                    extra={
+                        "symbol": symbol,
+                        "json": {
+                            "error_description": f"{interval} as interval not supported. See resolution_mapping in code. "
+                        }}
+                )
                 return pd.DataFrame()
 
             resolution = resolution_mapping[interval]
@@ -263,10 +324,22 @@ class PhemexClient():
 
                 return data
             else:
-                logging.error(f"Failed to fetch historical data: {response['msg']}")
+                self.logger.error(
+                    "Error fetching historical data.",
+                    extra={
+                        "symbol": symbol,
+                        "json": {"error_description": response['msg']
+                                 }}
+                )
                 return pd.DataFrame()
         except Exception as e:
-            logging.error(f"Error fetching historical data for {symbol}: {e}")
+            self.logger.error(
+                "Error fetching historical data.",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
             return pd.DataFrame()
 
     def get_ema(self, symbol, interval=5, period=200):
@@ -278,9 +351,20 @@ class PhemexClient():
             return None
 
     def place_order(self, symbol, qty, price, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
-                    posSide="Long", reduceOnly=False):
-        logging.info(f"Ordering symbol={symbol}, qty={qty}, price={price}")
+                    pos_side="Long", reduce_only=False):
 
+        self.logger.info(
+            "Placing order.",
+            extra={
+                "symbol": symbol,
+                "json": {
+                    "qty": qty,
+                    "price": price,
+                    "side": side,
+                    "order_type": order_type,
+                    "reduce_only": reduce_only
+                }
+            })
         try:
             # Generate a unique client order ID
             cl_ord_id = f"order_{int(time.time() * 1000)}"
@@ -288,7 +372,13 @@ class PhemexClient():
             # Retrieve instrument information to get the price scale
             min_order_qty, max_order_qty, qty_step = self.define_instrument_info(symbol)
             if min_order_qty is None:
-                logging.error(f"Failed to retrieve instrument info for {symbol}")
+                self.logger.error(
+                    "Failed to retrieve instrument info.",
+                    extra={
+                        "symbol": symbol,
+                        "json": {"error_description": "Check product info for symbol."
+                                 }}
+                )
                 return
 
             order = {
@@ -299,34 +389,75 @@ class PhemexClient():
                 "priceRp": f"{price}",
                 "ordType": order_type,
                 "timeInForce": time_in_force,
-                "posSide": posSide,
-                "reduceOnly": reduceOnly
+                "posSide": pos_side,
+                "reduceOnly": reduce_only
             }
 
             # Send the order request
             response = self._send_request("POST", "/g-orders", body=order)
-            logging.info(f"Placed order: {response}")
+            self.logger.info(
+                "Placed order.",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "response": response
+                    }
+                })
 
         except PhemexAPIException as e:
-            logging.error(f"Failed to place order for {symbol}: {e}")
+            self.logger.error(
+                "Failed to place order.",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
 
     def close_position(self, symbol, qty):
         try:
             position = self.get_position_for_symbol(symbol)
             if position and position['size'] >= qty:
-                self.place_order(symbol=symbol, qty=qty, order_type="Market", reduceOnly=True)  # Market close position
-                logging.info(f"Closed position for {symbol}: {position}")
+                self.place_order(symbol=symbol, qty=qty, order_type="Market", reduce_only=True)  # Market close position
+                self.logger.info(
+                    "Closed position.",
+                    extra={
+                        "symbol": symbol,
+                        "json": {
+                            "position": position,
+                            "qty": qty
+                        }
+                    })
         except PhemexAPIException as e:
-            logging.error(f"Failed to close position for {symbol}: {e}")
+            self.logger.error(
+                "Failed to close position.",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )
 
     def cancel_all_open_orders(self, symbol):
         try:
             # Cancel active orders, including triggered conditional orders
             self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "false"})
-            logging.info(f"All active orders for {symbol} have been cancelled.")
+            self.logger.info(
+                "Cancelled active orders.",
+                extra={
+                    "symbol": symbol
+                })
 
             # Cancel untriggered conditional orders
             self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "true"})
-            logging.info(f"All untriggered conditional orders for {symbol} have been cancelled.")
+            self.logger.info(
+                'Cancelled untriggered conditional orders.',
+                extra={
+                    "symbol": symbol
+                })
         except PhemexAPIException as e:
-            logging.error(f"Failed to cancel all open orders for {symbol}: {e}")
+            self.logger.error(
+                "Failed to cancel all open orders.",
+                extra={
+                    "symbol": symbol,
+                    "json": {"error_description": e
+                             }}
+            )

@@ -1,7 +1,22 @@
-import argparse
 import logging
 import os
 from _decimal import ROUND_DOWN, Decimal
+
+from pythonjsonlogger import json
+
+# Configure logging
+# Configure the logger to output structured JSON logs
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logHandler = logging.StreamHandler()
+
+# Define a JSON log formatter
+formatter = json.JsonFormatter(
+    '%(asctime)s %(levelname)s %(message)s %(symbol)s %(action)s %(json)s'
+)
+
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
 
 import TradingClient
 # from BybitClient import BybitClient
@@ -56,11 +71,19 @@ class MartingaleTradingStrategy:
                 pnl_percentage = pnl_absolute / position_value * self.leverage
                 position_value_percentage_of_total_balance = position_value / total_balance * 100
 
-                logging.info(
-                    f"{symbol}: Percentage of total balance={[position_value_percentage_of_total_balance]}, "
-                    f"Position value={position_value}, "
-                    f"Current UPNL={pnl_absolute} vs TP={self.profit_threshold}, "
-                    f"PNL%={pnl_percentage} vs TP% {self.profit_pnl} ")
+                logger.info(
+                    "Current position state",
+                    extra={
+                        "symbol": symbol,
+                        "json": {
+                            "balance": total_balance,
+                            "position_value": position_value,
+                            "pnl_absolute": pnl_absolute,
+                            "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
+                            "TP": self.profit_threshold,
+                            "TP%": self.profit_pnl
+                        }
+                    })
 
                 if pnl_absolute > 0:
                     if position_value_percentage_of_total_balance > 40:
@@ -85,15 +108,30 @@ class MartingaleTradingStrategy:
                 order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
                 self.client.place_order(symbol, order_qty, current_price)
         else:
-            logging.info(f'{symbol}: Price {current_price} below EMA {ema_200}')
+            logger.info(
+                "Skip buying below EMA",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "current_price": current_price,
+                        "ema": ema_200,
+                    }
+                })
 
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
-        logging.info(f'Calculating order quantity: symbol {symbol}, '
-                      f'total_balance={total_balance}, '
-                      f'position_value={position_value}, '
-                      f'current_price={current_price}, '
-                      f'pnl_percentage={pnl_percentage}')
+
+        logger.info(
+            "Calculating order quantity",
+            extra={
+                "symbol": symbol,
+                "json": {
+                    "total_balance": total_balance,
+                    "position_value": position_value,
+                    "current_price": current_price,
+                    "pnl_percentage": pnl_percentage
+                }
+            })
 
         if position_value == 0:  # No open position 100 * 0,05 / 20
             qty = (total_balance * self.proportion_of_balance) / current_price
@@ -101,7 +139,6 @@ class MartingaleTradingStrategy:
             qty = (position_value * (-pnl_percentage)) / current_price
 
         return self.custom_round(qty, min_qty, max_qty, qty_step)
-
 
 # Configuration parameters
 CONFIG = {
@@ -113,7 +150,9 @@ CONFIG = {
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
     'buy_below_percentage': 0.02,
     'logging_level': logging.INFO
+
 }
+
 
 def main():
     # Retrieve environment variables
@@ -127,11 +166,8 @@ def main():
     if not all([api_key, api_secret, symbol]):
         raise ValueError("API_KEY, API_SECRET, and SYMBOL environment variables must be set.")
 
-    # Configure logging
-    logging.basicConfig(level=CONFIG['logging_level'], format='%(asctime)s - %(levelname)s - %(message)s')
-
     # Initialize Phemex client
-    client = PhemexClient(api_key, api_secret, testnet)
+    client = PhemexClient(api_key, api_secret, testnet, logger)
 
     # Initialize trading strategy with configuration parameters
     strategy = MartingaleTradingStrategy(
