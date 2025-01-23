@@ -1,12 +1,9 @@
-import logging
-import os
 from _decimal import ROUND_DOWN, Decimal
 
-from pythonjsonlogger import json
-
 import TradingClient
+
+
 # from BybitClient import BybitClient
-from PhemexClient import PhemexClient
 
 
 class MartingaleTradingStrategy:
@@ -50,7 +47,7 @@ class MartingaleTradingStrategy:
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
 
         self.logger.info(
-            "Current EMA info",
+            "Current EMA info.",
             extra={
                 "symbol": symbol,
                 "json": {
@@ -67,7 +64,7 @@ class MartingaleTradingStrategy:
             position_value_percentage_of_total_balance = position_value / total_balance * 100
 
             self.logger.info(
-                "Current position state",
+                "Current position state.",
                 extra={
                     "symbol": symbol,
                     "json": {
@@ -107,7 +104,7 @@ class MartingaleTradingStrategy:
                 self.client.place_order(symbol, order_qty, current_price)
         else:
             self.logger.info(
-                "Skip buying below EMA",
+                "Skip buying below EMA.",
                 extra={
                     "symbol": symbol,
                     "json": {
@@ -120,7 +117,7 @@ class MartingaleTradingStrategy:
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
 
         self.logger.info(
-            "Calculating order quantity",
+            "Calculating order quantity.",
             extra={
                 "symbol": symbol,
                 "json": {
@@ -137,73 +134,3 @@ class MartingaleTradingStrategy:
             qty = (position_value * (-pnl_percentage)) / current_price
 
         return self.custom_round(qty, min_qty, max_qty, qty_step)
-
-# Configuration parameters
-CONFIG = {
-    'buy_until_limit': 5,
-    'profit_threshold': 0.5,
-    'profit_pnl': 0.05,
-    'leverage': 10,
-    'begin_size_of_balance': 0.001,
-    'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
-    'buy_below_percentage': 0.02,
-    'logging_level': logging.INFO
-
-}
-
-
-def main():
-    # Configure logging
-    # Configure the logger to output structured JSON logs
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    logHandler = logging.StreamHandler()
-
-    # Define a JSON log formatter
-    formatter = json.JsonFormatter(
-        '%(asctime)s %(levelname)s %(message)s %(symbol)s %(action)s %(json)s'
-    )
-
-    logHandler.setFormatter(formatter)
-    logger.addHandler(logHandler)
-
-    # Retrieve environment variables
-    api_key = os.getenv('API_KEY')
-    api_secret = os.getenv('API_SECRET')
-    symbol = os.getenv('SYMBOL')
-    ema_interval = int(os.getenv('EMA_INTERVAL', 5))  # Provide a default value (e.g., 200) if the variable isn't set
-    testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
-
-    # Validate required environment variables
-    if not all([api_key, api_secret, symbol]):
-        raise ValueError("API_KEY, API_SECRET, and SYMBOL environment variables must be set.")
-
-    # Initialize Phemex client
-    client = PhemexClient(api_key, api_secret, logger, testnet)
-
-    # Initialize trading strategy with configuration parameters
-    strategy = MartingaleTradingStrategy(
-        client=client,
-        leverage=CONFIG['leverage'],
-        profit_threshold=CONFIG['profit_threshold'],
-        profit_pnl=CONFIG['profit_pnl'],
-        proportion_of_balance=CONFIG['begin_size_of_balance'],
-        buy_until_limit=CONFIG['buy_until_limit'],
-        logger=logger
-    )
-
-    try:
-        # Execute the trading strategy for the specified symbol
-        strategy.execute_strategy(
-            symbol=symbol,
-            strategy_filter=CONFIG['strategy_filter'],
-            ema_interval=ema_interval,
-            buy_below_percentage=CONFIG['buy_below_percentage'],
-            leverage=CONFIG['leverage']
-        )
-    except Exception as e:
-        logging.error(f'Error executing strategy for {symbol}: {e}')
-
-
-if __name__ == "__main__":
-    main()
