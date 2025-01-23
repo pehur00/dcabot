@@ -22,6 +22,10 @@ CONFIG = {
 
 def main():
     # Configure logging
+    # Remove default handlers
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
     # Configure the logger to output structured JSON logs
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
