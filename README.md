@@ -52,6 +52,8 @@ python /Users/jasperoudejans/Documents/repos/private/diptrader/MartingaleTrading
 1. Render
 
 I currently use render.com to build and run a docker container as cron job. It watches my github repo and on commits it will rebuild etc.
+As described on https://render.com/docs/infrastructure-as-code we will use a render.yaml "Blueprint".
+You may fork and use this approach yourselves. Fill in the environment vars in Render environment.
 
 ## Features
 - Automated trading based on predefined strategies

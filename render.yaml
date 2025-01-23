@@ -1,0 +1,21 @@
+# Exported from Render on 2025-01-23T21:22:46Z
+services:
+- type: cron
+  name: dcabot
+  runtime: docker
+  repo: https://github.com/pehur00/dcabot
+  plan: starter
+  envVars:
+  - key: EMA_INTERVAL
+    sync: false
+  - key: SYMBOL
+    sync: false
+  - key: API_SECRET
+    sync: false
+  - key: API_KEY
+    sync: false
+  region: frankfurt
+  schedule: '*/1 * * * *'
+  dockerContext: .
+  dockerfilePath: ./Dockerfile
+version: "1"
