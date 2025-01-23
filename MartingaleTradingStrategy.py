@@ -87,25 +87,25 @@ class MartingaleTradingStrategy:
 
         if strategy_filter != 'EMA' or current_price > ema_200:
 
-            if position:
-                if unrealized_pnl > 0:
-                    if position_value_percentage_of_total_balance > 40:
-                        return self.client.close_position(symbol, position['size'] * 0.5)
-                    elif position_value_percentage_of_total_balance > 30:
-                        self.client.close_position(symbol, position['size'] * 0.4)
-                    elif position_value_percentage_of_total_balance > 20:
-                        self.client.close_position(symbol, position['size'] * 0.3)
-                    elif position_value_percentage_of_total_balance > 10:
-                        self.client.close_position(symbol, position['size'] * 0.2)
-                    elif pnl_percentage < buy_below_percentage or (
-                            position_value < self.buy_until_limit and current_price > ema_50):
-                        order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
-                                                                  pnl_percentage)
-                        self.client.place_order(symbol, order_qty, current_price)
-                    else:
-                        # Existing logic to close the entire position if profit targets are reached
-                        if pnl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
-                            self.client.close_position(symbol, position['size'])
+            if position and unrealized_pnl > 0:
+
+                if position_value_percentage_of_total_balance > 40:
+                    return self.client.close_position(symbol, position['size'] * 0.5)
+                elif position_value_percentage_of_total_balance > 30:
+                    self.client.close_position(symbol, position['size'] * 0.4)
+                elif position_value_percentage_of_total_balance > 20:
+                    self.client.close_position(symbol, position['size'] * 0.3)
+                elif position_value_percentage_of_total_balance > 10:
+                    self.client.close_position(symbol, position['size'] * 0.2)
+                elif pnl_percentage < buy_below_percentage or (
+                        position_value < self.buy_until_limit and current_price > ema_50):
+                    order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
+                                                              pnl_percentage)
+                    self.client.place_order(symbol, order_qty, current_price)
+                else:
+                    # Existing logic to close the entire position if profit targets are reached
+                    if pnl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
+                        self.client.close_position(symbol, position['size'])
 
             else:
                 order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
