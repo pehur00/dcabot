@@ -1,6 +1,5 @@
 import logging
 import time
-from decimal import Decimal, ROUND_DOWN
 
 import numpy as np
 import pandas as pd
@@ -89,7 +88,6 @@ class BybitClient:
         tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
         atr = tr.rolling(window=length).mean()
         return atr.iloc[-1]
-
 
     def cancel_all_open_orders(self, symbol):
         try:

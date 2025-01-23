@@ -415,18 +415,42 @@ class PhemexClient():
 
     def close_position(self, symbol, qty):
         try:
-            position = self.get_position_for_symbol(symbol)
-            if position and position['size'] >= qty:
-                self.place_order(symbol=symbol, qty=qty, order_type="Market", reduce_only=True)  # Market close position
-                self.logger.info(
-                    "Closed position.",
-                    extra={
-                        "symbol": symbol,
-                        "json": {
-                            "position": position,
-                            "qty": qty
-                        }
-                    })
+
+            while True:
+                position = self.get_position_for_symbol(symbol)
+                _, lowest_ask = self.get_ticker_info(symbol)
+
+                if position and position['size'] >= qty:
+                    self.place_order(symbol=symbol, qty=qty, price=lowest_ask, side="Sell", reduce_only=True)
+
+                    self.logger.info(
+                        "Close position requested.",
+                        extra={
+                            "symbol": symbol,
+                            "json": {
+                                "position": position,
+                                "qty": qty
+                            }
+                        })
+
+                time.sleep(10)  # Wait for 10 seconds
+
+                # Check if the position is closed
+                if self.is_position_closed(symbol, qty):
+                    logging.info(f"Position closed for {qty} of {symbol}.")
+                    break
+
+                # Fetch the current lowest ask price again
+                _, new_lowest_ask = self.get_ticker_info(symbol)
+
+                # If the new lowest ask price is lower than our order price, cancel the previous order and place a new one
+                if new_lowest_ask < lowest_ask:
+                    self.cancel_all_open_orders(symbol)
+                    logging.info(f"Cancelled previous order. New lowest ask is lower at {new_lowest_ask}.")
+                else:
+                    logging.info(
+                        "Current lowest ask is not lower than the order price. Checking again next iteration.")
+
         except PhemexAPIException as e:
             self.logger.error(
                 "Failed to close position.",
@@ -435,6 +459,18 @@ class PhemexClient():
                     "json": {"error_description": e
                              }}
             )
+
+    def is_position_closed(self, symbol, qty):
+        position = self.get_position_for_symbol(symbol)
+        if position:
+            # Assuming 'size' is the key that holds the position's quantity. Adjust as per your API response.
+            current_qty = float(position.get('size', 0))
+            # Position is considered closed if its current quantity is less than or equal to the desired quantity.
+            # This logic may need adjustment based on how you define a position being 'closed'.
+            return current_qty <= qty
+        else:
+            # If there's no position found for the symbol, consider it closed.
+            return True
 
     def cancel_all_open_orders(self, symbol):
         try:
@@ -456,11 +492,11 @@ class PhemexClient():
         except PhemexAPIException as e:
             try:
                 self.logger.error(
-                "Failed to cancel all open orders.",
-                extra={
-                    "symbol": symbol,
-                    "json": {"error_description": e
-                             }}
-            )
+                    "Failed to cancel all open orders.",
+                    extra={
+                        "symbol": symbol,
+                        "json": {"error_description": e
+                                 }}
+                )
             except Exception as e1:
                 logging.error("unresolved error:", e)
