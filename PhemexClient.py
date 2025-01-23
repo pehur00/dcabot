@@ -454,10 +454,13 @@ class PhemexClient():
                     "symbol": symbol
                 })
         except PhemexAPIException as e:
-            self.logger.error(
+            try:
+                self.logger.error(
                 "Failed to cancel all open orders.",
                 extra={
                     "symbol": symbol,
                     "json": {"error_description": e
                              }}
             )
+            except Exception as e1:
+                logging.error("unresolved error:", e)

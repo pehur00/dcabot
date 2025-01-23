@@ -167,7 +167,7 @@ def main():
         raise ValueError("API_KEY, API_SECRET, and SYMBOL environment variables must be set.")
 
     # Initialize Phemex client
-    client = PhemexClient(api_key, api_secret, testnet, logger)
+    client = PhemexClient(api_key, api_secret, logger, testnet)
 
     # Initialize trading strategy with configuration parameters
     strategy = MartingaleTradingStrategy(
