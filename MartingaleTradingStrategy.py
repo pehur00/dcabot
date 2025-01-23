@@ -37,7 +37,7 @@ class MartingaleTradingStrategy:
 
         return rounded_qty
 
-    def execute_strategy(self, symbol, strategy_filter, ema_interval, buy_below_percentage, leverage):
+    def execute_strategy(self, symbol, strategy_filter, buy_below_percentage, leverage, ema_interval=5):
         self.client.cancel_all_open_orders(symbol)
         self.client.set_leverage(symbol, leverage)
         position = self.client.get_position_for_symbol(symbol)
@@ -111,7 +111,6 @@ CONFIG = {
     'leverage': 10,
     'begin_size_of_balance': 0.001,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
-    'ema_interval': 5,  # EMA interval in minutes
     'buy_below_percentage': 0.02,
     'logging_level': logging.INFO
 }
@@ -121,6 +120,7 @@ def main():
     api_key = os.getenv('API_KEY')
     api_secret = os.getenv('API_SECRET')
     symbol = os.getenv('SYMBOL')
+    ema_interval = int(os.getenv('EMA_INTERVAL', 5))  # Provide a default value (e.g., 200) if the variable isn't set
     testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
 
     # Validate required environment variables
@@ -148,7 +148,7 @@ def main():
         strategy.execute_strategy(
             symbol=symbol,
             strategy_filter=CONFIG['strategy_filter'],
-            ema_interval=CONFIG['ema_interval'],
+            ema_interval=ema_interval,
             buy_below_percentage=CONFIG['buy_below_percentage'],
             leverage=CONFIG['leverage']
         )
