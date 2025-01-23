@@ -4,20 +4,6 @@ from _decimal import ROUND_DOWN, Decimal
 
 from pythonjsonlogger import json
 
-# Configure logging
-# Configure the logger to output structured JSON logs
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logHandler = logging.StreamHandler()
-
-# Define a JSON log formatter
-formatter = json.JsonFormatter(
-    '%(asctime)s %(levelname)s %(message)s %(symbol)s %(action)s %(json)s'
-)
-
-logHandler.setFormatter(formatter)
-logger.addHandler(logHandler)
-
 import TradingClient
 # from BybitClient import BybitClient
 from PhemexClient import PhemexClient
@@ -25,13 +11,14 @@ from PhemexClient import PhemexClient
 
 class MartingaleTradingStrategy:
     def __init__(self, client: TradingClient, leverage, profit_threshold, profit_pnl, proportion_of_balance,
-                 buy_until_limit):
+                 buy_until_limit, logger):
         self.client = client
         self.leverage = leverage
         self.profit_threshold = profit_threshold
         self.profit_pnl = profit_pnl
         self.proportion_of_balance = proportion_of_balance
         self.buy_until_limit = buy_until_limit
+        self.logger = logger
 
     def custom_round(self, number, min_qty, max_qty, qty_step):
         # Convert all inputs to Decimal for precise arithmetic
@@ -62,7 +49,16 @@ class MartingaleTradingStrategy:
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
 
-        logging.info(f"EMA's: 50={ema_50}, 200={ema_200}")
+        self.logger.info(
+            "Current EMA info",
+            extra={
+                "symbol": symbol,
+                "json": {
+                    "ema_interval": ema_interval,
+                    "ema_50": ema_50,
+                    "ema_200": ema_200
+                }
+            })
 
         if strategy_filter != 'EMA' or current_price > ema_200:
             if position:
@@ -71,7 +67,7 @@ class MartingaleTradingStrategy:
                 pnl_percentage = pnl_absolute / position_value * self.leverage
                 position_value_percentage_of_total_balance = position_value / total_balance * 100
 
-                logger.info(
+                self.logger.info(
                     "Current position state",
                     extra={
                         "symbol": symbol,
@@ -108,7 +104,7 @@ class MartingaleTradingStrategy:
                 order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
                 self.client.place_order(symbol, order_qty, current_price)
         else:
-            logger.info(
+            self.logger.info(
                 "Skip buying below EMA",
                 extra={
                     "symbol": symbol,
@@ -121,7 +117,7 @@ class MartingaleTradingStrategy:
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
 
-        logger.info(
+        self.logger.info(
             "Calculating order quantity",
             extra={
                 "symbol": symbol,
@@ -155,6 +151,20 @@ CONFIG = {
 
 
 def main():
+    # Configure logging
+    # Configure the logger to output structured JSON logs
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logHandler = logging.StreamHandler()
+
+    # Define a JSON log formatter
+    formatter = json.JsonFormatter(
+        '%(asctime)s %(levelname)s %(message)s %(symbol)s %(action)s %(json)s'
+    )
+
+    logHandler.setFormatter(formatter)
+    logger.addHandler(logHandler)
+
     # Retrieve environment variables
     api_key = os.getenv('API_KEY')
     api_secret = os.getenv('API_SECRET')
@@ -176,7 +186,8 @@ def main():
         profit_threshold=CONFIG['profit_threshold'],
         profit_pnl=CONFIG['profit_pnl'],
         proportion_of_balance=CONFIG['begin_size_of_balance'],
-        buy_until_limit=CONFIG['buy_until_limit']
+        buy_until_limit=CONFIG['buy_until_limit'],
+        logger=logger
     )
 
     try:
