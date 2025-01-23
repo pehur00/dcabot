@@ -41,13 +41,22 @@ class MartingaleTradingStrategy:
         self.client.set_leverage(symbol, leverage)
         position = self.client.get_position_for_symbol(symbol)
         current_price, _ = self.client.get_ticker_info(symbol)
-        total_balance = self.client.get_account_balance()
+        total_balance, used_balance = self.client.get_account_balance()
+
+        self.logger.info(
+            "Balance info",
+            extra={
+                "json": {
+                    "total_balance": total_balance,
+                    "used_balance": used_balance
+                }
+            })
 
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
 
         self.logger.info(
-            "Current EMA info.",
+            "EMA info",
             extra={
                 "symbol": symbol,
                 "json": {
@@ -64,11 +73,10 @@ class MartingaleTradingStrategy:
             position_value_percentage_of_total_balance = position_value / total_balance * 100
 
             self.logger.info(
-                "Current position state.",
+                "Position info",
                 extra={
                     "symbol": symbol,
                     "json": {
-                        "balance": total_balance,
                         "position_value": position_value,
                         "unrealized_pnl": unrealized_pnl,
                         "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
@@ -104,7 +112,7 @@ class MartingaleTradingStrategy:
                 self.client.place_order(symbol, order_qty, current_price)
         else:
             self.logger.info(
-                "Skip buying below EMA.",
+                "Skip buying below EMA",
                 extra={
                     "symbol": symbol,
                     "json": {
@@ -117,7 +125,7 @@ class MartingaleTradingStrategy:
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
 
         self.logger.info(
-            "Calculating order quantity.",
+            "Calculating order quantity",
             extra={
                 "symbol": symbol,
                 "json": {

@@ -82,10 +82,11 @@ class PhemexClient():
 
     def get_account_balance(self):
         try:
-            response = self._send_request("GET", "/g-accounts/accountPositions", {'currency': 'USDT'})
+            response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             balance_info = response['data']['account']
             usdt_balance = balance_info.get('accountBalanceRv', 0)
-            return float(usdt_balance)
+            used_balance = balance_info.get('totalUsedBalanceRv', 0)
+            return float(usdt_balance), float(used_balance)
         except PhemexAPIException as e:
             self.logger.error(
                 "Failed to get account balance",
@@ -105,7 +106,7 @@ class PhemexClient():
             return highest_bid, highest_ask
         except PhemexAPIException as e:
             self.logger.error(
-                "Failed to fetch ticker info.",
+                "Failed to fetch ticker info",
                 extra={
                     "symbol": symbol,
                     "json": {"error_description": e
@@ -133,7 +134,7 @@ class PhemexClient():
                 }
             else:
                 self.logger.info(
-                    "No position found for symbol.",
+                    "No position found for symbol",
                     extra={
                         "symbol": symbol
                     })
@@ -158,7 +159,7 @@ class PhemexClient():
             max_order_qty_rq = float(product_info.get('maxOrderQtyRq', 0))
             min_order_qty = qty_step_size  # Assuming min_order_qty is the same as qty_step_size
             self.logger.info(
-                "Instrument info.",
+                "Instrument info",
                 extra={
                     "json": {
                         "symbol": symbol,
@@ -236,7 +237,7 @@ class PhemexClient():
             #     logging.error(f"Failed to set leverage for {symbol}: {response.get('msg')}")
         except PhemexAPIException as e:
             self.logger.error(
-                "Failed to set leverage.",
+                "Failed to set leverage",
                 extra={
                     "symbol": symbol,
                     "json": {"error_description": e
@@ -270,7 +271,7 @@ class PhemexClient():
 
             if interval not in resolution_mapping:
                 self.logger.error(
-                    "Unsupported interval.",
+                    "Unsupported interval",
                     extra={
                         "symbol": symbol,
                         "json": {
@@ -325,7 +326,7 @@ class PhemexClient():
                 return data
             else:
                 self.logger.error(
-                    "Error fetching historical data.",
+                    "Error fetching historical data",
                     extra={
                         "symbol": symbol,
                         "json": {"error_description": response['msg']
@@ -334,7 +335,7 @@ class PhemexClient():
                 return pd.DataFrame()
         except Exception as e:
             self.logger.error(
-                "Error fetching historical data.",
+                "Error fetching historical data",
                 extra={
                     "symbol": symbol,
                     "json": {"error_description": e
@@ -353,8 +354,8 @@ class PhemexClient():
     def place_order(self, symbol, qty, price=None, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
                     pos_side="Long", reduce_only=False):
 
-        self.logger.info(
-            "Placing order.",
+        self.logger.debug(
+            "Placing order",
             extra={
                 "symbol": symbol,
                 "json": {
@@ -373,7 +374,7 @@ class PhemexClient():
             min_order_qty, max_order_qty, qty_step = self.define_instrument_info(symbol)
             if min_order_qty is None:
                 self.logger.error(
-                    "Failed to retrieve instrument info.",
+                    "Failed to retrieve instrument info",
                     extra={
                         "symbol": symbol,
                         "json": {"error_description": "Check product info for symbol."
@@ -396,7 +397,7 @@ class PhemexClient():
             # Send the order request
             response = self._send_request("POST", "/g-orders", body=order)
             self.logger.info(
-                "Placed order.",
+                "Placed order",
                 extra={
                     "symbol": symbol,
                     "json": {
@@ -406,7 +407,7 @@ class PhemexClient():
 
         except PhemexAPIException as e:
             self.logger.error(
-                "Failed to place order.",
+                "Failed to place order",
                 extra={
                     "symbol": symbol,
                     "json": {"error_description": e
@@ -423,8 +424,8 @@ class PhemexClient():
                 if position and position['size'] >= qty:
                     self.place_order(symbol=symbol, qty=qty, price=lowest_ask, side="Sell", reduce_only=True)
 
-                    self.logger.info(
-                        "Close position requested.",
+                    self.logger.debug(
+                        "Close position requested",
                         extra={
                             "symbol": symbol,
                             "json": {
@@ -437,7 +438,14 @@ class PhemexClient():
 
                 # Check if the position is closed
                 if self.is_position_closed(symbol, qty):
-                    logging.info(f"Position closed for {qty} of {symbol}.")
+                    self.logger.info(
+                        "Closed position",
+                        extra={
+                            "symbol": symbol,
+                            "json": {
+                                "qty": qty
+                            }
+                        })
                     break
 
                 # Fetch the current lowest ask price again
@@ -446,14 +454,28 @@ class PhemexClient():
                 # If the new lowest ask price is lower than our order price, cancel the previous order and place a new one
                 if new_lowest_ask < lowest_ask:
                     self.cancel_all_open_orders(symbol)
-                    logging.info(f"Cancelled previous order. New lowest ask is lower at {new_lowest_ask}.")
+                    self.logger.info(
+                        "Cancelled previous closing attempt",
+                        extra={
+                            "symbol": symbol,
+                            "json": {
+                                "new_lowest_ask": new_lowest_ask
+                            }
+                        })
                 else:
-                    logging.info(
-                        "Current lowest ask is not lower than the order price. Checking again next iteration.")
+                    self.logger.info(
+                        "Closing attempt still pending",
+                        extra={
+                            "symbol": symbol,
+                            "json": {
+                                "new_lowest_ask": new_lowest_ask,
+                                "lowest_ask": lowest_ask
+                            }
+                        })
 
         except PhemexAPIException as e:
             self.logger.error(
-                "Failed to close position.",
+                "Failed to close position",
                 extra={
                     "symbol": symbol,
                     "json": {"error_description": e
@@ -477,7 +499,7 @@ class PhemexClient():
             # Cancel active orders, including triggered conditional orders
             self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "false"})
             self.logger.info(
-                "Cancelled active orders.",
+                "Cancelled active orders",
                 extra={
                     "symbol": symbol
                 })
@@ -492,7 +514,7 @@ class PhemexClient():
         except PhemexAPIException as e:
             try:
                 self.logger.error(
-                    "Failed to cancel all open orders.",
+                    "Failed to cancel all open orders",
                     extra={
                         "symbol": symbol,
                         "json": {"error_description": e
