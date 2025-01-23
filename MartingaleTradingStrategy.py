@@ -63,8 +63,8 @@ class MartingaleTradingStrategy:
         if strategy_filter != 'EMA' or current_price > ema_200:
             if position:
                 position_value = float(position['positionValue'])
-                pnl_absolute = float(position['unrealisedPnl'])
-                pnl_percentage = pnl_absolute / position_value * self.leverage
+                unrealized_pnl = float(position['unrealisedPnl'])
+                pnl_percentage = unrealized_pnl / position_value * self.leverage
                 position_value_percentage_of_total_balance = position_value / total_balance * 100
 
                 self.logger.info(
@@ -74,14 +74,14 @@ class MartingaleTradingStrategy:
                         "json": {
                             "balance": total_balance,
                             "position_value": position_value,
-                            "pnl_absolute": pnl_absolute,
+                            "unrealized_pnl": unrealized_pnl,
                             "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
                             "TP": self.profit_threshold,
                             "TP%": self.profit_pnl
                         }
                     })
 
-                if pnl_absolute > 0:
+                if unrealized_pnl > 0:
                     if position_value_percentage_of_total_balance > 40:
                         self.client.close_position(symbol, position['size'] * 0.5)
                     elif position_value_percentage_of_total_balance > 30:
@@ -92,7 +92,7 @@ class MartingaleTradingStrategy:
                         self.client.close_position(symbol, position['size'] * 0.2)
                     else:
                         # Existing logic to close the entire position if profit targets are reached
-                        if pnl_percentage > self.profit_pnl and pnl_absolute > self.profit_threshold:
+                        if pnl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
                             self.client.close_position(symbol, position['size'])
                 elif pnl_percentage < buy_below_percentage or (
                         position_value < self.buy_until_limit and current_price > ema_50):

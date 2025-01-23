@@ -115,13 +115,13 @@ class PhemexClient():
 
     def get_position_for_symbol(self, symbol):
         try:
-            response = self._send_request("GET", "/g-accounts/accountPositions", {'currency': 'USDT'})
+            response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             positions = response['data']['positions']
             position = next((p for p in positions if p['symbol'] == symbol), None)
             if position:
                 position_value = float(position.get('positionMarginRv', 0))
-                unrealised_pnl = float(position.get('curTermRealisedPnlRv', 0))
-                size = float(position.get('size', 0))
+                unrealised_pnl = float(position.get('unRealisedPnlRv', 0))
+                size = float(position.get('sizeRq', 0))
 
                 if size == 0:
                     return None
@@ -350,7 +350,7 @@ class PhemexClient():
         else:
             return None
 
-    def place_order(self, symbol, qty, price, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
+    def place_order(self, symbol, qty, price=None, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
                     pos_side="Long", reduce_only=False):
 
         self.logger.info(
