@@ -66,26 +66,20 @@ async def main():
         logger=logger
     )
 
-    # Create tasks for each symbol
-    tasks = [
-        execute_symbol_strategy(symbol, strategy, ema_interval, CONFIG)
-        for symbol in symbols
-    ]
-
-    # Run all tasks concurrently
-    await asyncio.gather(*tasks)
+    for symbol in symbols:
+        await execute_symbol_strategy(symbol, strategy, ema_interval)  # Sequentially process each symbol
 
 
-async def execute_symbol_strategy(symbol, strategy, ema_interval, config):
+async def execute_symbol_strategy(symbol, strategy, ema_interval):
     try:
         # Execute the trading strategy for the specific symbol
         await asyncio.to_thread(
             strategy.execute_strategy,
             symbol=symbol,
-            strategy_filter=config['strategy_filter'],
+            strategy_filter=CONFIG['strategy_filter'],
             ema_interval=ema_interval,
-            buy_below_percentage=config['buy_below_percentage'],
-            leverage=config['leverage']
+            buy_below_percentage=CONFIG['buy_below_percentage'],
+            leverage=CONFIG['leverage']
         )
         logging.info(f'Successfully executed strategy for {symbol}')
     except Exception as e:
