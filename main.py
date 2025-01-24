@@ -4,8 +4,8 @@ import os
 
 from pythonjsonlogger import json
 
-from MartingaleTradingStrategy import MartingaleTradingStrategy
 from PhemexClient import PhemexClient
+from MartingaleTradingStrategy import MartingaleTradingStrategy
 
 CONFIG = {
     'buy_until_limit': 5,

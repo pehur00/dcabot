@@ -67,10 +67,25 @@ class MartingaleTradingStrategy:
             })
 
         if position:
-            position_value = float(position['positionValue'])
-            unrealized_pnl = float(position['unrealisedPnl'])
-            pnl_percentage = unrealized_pnl / position_value
+            # Extract necessary values from the position
+            pos_size = float(position['contracts']) / leverage  # Position size in contracts
+            contract_size = float(position.get('contractSize', 1))  # Default to 1 if not provided
+            avg_entry_price = float(position['entryPrice'])
+            mark_price = float(position['markPrice'])
+            margin = float(position['initialMargin'])
+
+            # Calculate Unrealized PnL based on the provided formula
+            unrealized_pnl = (pos_size * contract_size) / avg_entry_price - (pos_size * contract_size) / mark_price
+
+            # Calculate the position value based on the average entry price
+            position_value = (pos_size * contract_size) / avg_entry_price
+
+            # Calculate PnL percentage
+            unpl_percentage = unrealized_pnl / position_value * leverage
+            unpl_absolute = margin * unpl_percentage
+
             position_value_percentage_of_total_balance = position_value / total_balance * 100
+
 
             self.logger.info(
                 "Position info",
@@ -97,14 +112,14 @@ class MartingaleTradingStrategy:
                     self.client.close_position(symbol, position['size'] * 0.3)
                 elif position_value_percentage_of_total_balance > 10:
                     self.client.close_position(symbol, position['size'] * 0.2)
-                elif pnl_percentage < buy_below_percentage or (
+                elif unpl_percentage < buy_below_percentage or (
                         position_value < self.buy_until_limit and current_price > ema_50):
                     order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
-                                                              pnl_percentage)
+                                                              unpl_percentage)
                     self.client.place_order(symbol, order_qty, current_price)
                 else:
                     # Existing logic to close the entire position if profit targets are reached
-                    if pnl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
+                    if unpl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
                         self.client.close_position(symbol, position['size'])
 
             else:
