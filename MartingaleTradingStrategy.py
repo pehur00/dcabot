@@ -54,7 +54,7 @@ class MartingaleTradingStrategy:
                 extra={
                     "symbol": symbol,
                     "json": {
-                        "position_pos_side": pos_side,
+                        "position_pos_side": position_pos_side,
                         "position_size": size,
                         "position_value": position_value,
                         "unrealized_pnl": unrealized_pnl,

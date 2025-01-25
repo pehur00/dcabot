@@ -118,7 +118,7 @@ class PhemexClient():
         try:
             response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             positions = response['data']['positions']
-            position = next((p for p in positions if p['symbol'] == symbol and p["side"] == pos_side), None)
+            position = next((p for p in positions if p['symbol'] == symbol and p["posSide"] == pos_side), None)
             if position:
                 position_value = float(position.get('positionMarginRv', 0))
                 unrealised_pnl = float(position.get('unRealisedPnlRv', 0))
