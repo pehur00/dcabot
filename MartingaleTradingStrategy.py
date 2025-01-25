@@ -84,7 +84,7 @@ class MartingaleTradingStrategy:
                                                                    (side == 'Sell' and current_price < ema_50))):
                     order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
                                                               pnl_percentage)
-                    self.client.place_order(symbol, order_qty, current_price)
+                    self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, side=side)
                 else:
                     # Existing logic to close the entire position if profit targets are reached
                     if pnl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
