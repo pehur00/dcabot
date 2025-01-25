@@ -5,8 +5,8 @@ import os
 
 from pythonjsonlogger import json
 
-from MartingaleTradingStrategy import MartingaleTradingStrategy
-from PhemexClient import PhemexClient
+from strategies.MartingaleTradingStrategy import MartingaleTradingStrategy
+from clients.PhemexClient import PhemexClient
 
 CONFIG = {
     'buy_until_limit': 5,
@@ -57,7 +57,7 @@ async def main():
     # Initialize Phemex client
     client = PhemexClient(api_key, api_secret, logger, testnet)
 
-    # Initialize trading strategy with configuration parameters
+    # Initialize trading strategies with configuration parameters
     strategy = MartingaleTradingStrategy(
         client=client,
         leverage=CONFIG['leverage'],
@@ -87,7 +87,7 @@ async def parse_symbols(symbol_sides):
 
 async def execute_symbol_strategy(symbol, strategy, ema_interval, pos_side):
     try:
-        # Execute the trading strategy for the specific symbol
+        # Execute the trading strategies for the specific symbol
         await asyncio.to_thread(
             strategy.execute_strategy,
             symbol=symbol,
