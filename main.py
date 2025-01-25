@@ -13,7 +13,7 @@ CONFIG = {
     'profit_threshold': 0.5,
     'profit_pnl': 0.05,
     'leverage': 10,
-    'begin_size_of_balance': 0.001,
+    'begin_size_of_balance': 0.01,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
     'buy_below_percentage': 0.02,
     'logging_level': logging.INFO
@@ -43,13 +43,15 @@ async def main():
     # Retrieve environment variables
     api_key = os.getenv('API_KEY')
     api_secret = os.getenv('API_SECRET')
-    # Retrieve symbols from environment or configuration
-    symbols = os.getenv('SYMBOL', '').split(',')  # Example: "BTCUSDT,ETHUSDT,ADAUSDT"
     ema_interval = int(os.getenv('EMA_INTERVAL', 5))  # Provide a default value (e.g., 200) if the variable isn't set
     testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
+    # Parse the symbol configuration into a dictionary
+    # Retrieve symbols from environment or configuration
+    symbol_sides = os.getenv('SYMBOL', '')  # Example: "BTCUSDT:Buy,ETHUSDT:Sell,ADAUSDT:Buy"
+    symbol_side_map = await parse_symbols(symbol_sides)
 
     # Validate required environment variables
-    if not all([api_key, api_secret, symbols]):
+    if not all([api_key, api_secret, symbol_sides]):
         raise ValueError("API_KEY, API_SECRET, and SYMBOL environment variables must be set.")
 
     # Initialize Phemex client
@@ -66,11 +68,24 @@ async def main():
         logger=logger
     )
 
-    for symbol in symbols:
-        await execute_symbol_strategy(symbol, strategy, ema_interval)  # Sequentially process each symbol
+    for symbol, side in symbol_side_map.items():
+        await execute_symbol_strategy(symbol, strategy, ema_interval, side)  # Sequentially process each symbol
 
 
-async def execute_symbol_strategy(symbol, strategy, ema_interval):
+async def parse_symbols(symbol_sides):
+    symbol_side_map = {}
+    if symbol_sides:
+        try:
+            for item in symbol_sides.split(','):
+                if ':' in item:
+                    key, value = item.split(':', 1)
+                    symbol_side_map[key.strip()] = value.strip()
+        except Exception as e:
+            print(f"Error parsing SYMBOL_SIDES: {e}")
+    return symbol_side_map
+
+
+async def execute_symbol_strategy(symbol, strategy, ema_interval, side):
     try:
         # Execute the trading strategy for the specific symbol
         await asyncio.to_thread(
@@ -78,6 +93,7 @@ async def execute_symbol_strategy(symbol, strategy, ema_interval):
             symbol=symbol,
             strategy_filter=CONFIG['strategy_filter'],
             ema_interval=ema_interval,
+            side=side,
             buy_below_percentage=CONFIG['buy_below_percentage'],
             leverage=CONFIG['leverage']
         )

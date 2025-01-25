@@ -114,11 +114,11 @@ class PhemexClient():
             )
             return None, None
 
-    def get_position_for_symbol(self, symbol):
+    def get_position_for_symbol(self, symbol, side):
         try:
             response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             positions = response['data']['positions']
-            position = next((p for p in positions if p['symbol'] == symbol), None)
+            position = next((p for p in positions if p['symbol'] == symbol and p["side"] == side), None)
             if position:
                 position_value = float(position.get('positionMarginRv', 0))
                 unrealised_pnl = float(position.get('unRealisedPnlRv', 0))
@@ -130,7 +130,8 @@ class PhemexClient():
                 return {
                     'positionValue': position_value,
                     'unrealisedPnl': unrealised_pnl,
-                    'size': size
+                    'size': size,
+                    'side': position["side"]
                 }
             else:
                 self.logger.info(
@@ -414,15 +415,13 @@ class PhemexClient():
                              }}
             )
 
-    def close_position(self, symbol, qty):
+    def close_position(self, symbol, qty,  side="Sell"):
         try:
-
-            while True:
-                position = self.get_position_for_symbol(symbol)
+                position = self.get_position_for_symbol(symbol=symbol, side = side)
                 _, lowest_ask = self.get_ticker_info(symbol)
 
                 if position and position['size'] >= qty:
-                    self.place_order(symbol=symbol, qty=qty, price=lowest_ask, side="Sell", reduce_only=True)
+                    self.place_order(symbol=symbol, qty=qty, price=lowest_ask, side=side, reduce_only=True)
 
                     self.logger.debug(
                         "Close position requested",
@@ -430,46 +429,8 @@ class PhemexClient():
                             "symbol": symbol,
                             "json": {
                                 "position": position,
+                                "price": lowest_ask,
                                 "qty": qty
-                            }
-                        })
-
-                time.sleep(10)  # Wait for 10 seconds
-
-                # Check if the position is closed
-                if self.is_position_closed(symbol, qty):
-                    self.logger.info(
-                        "Closed position",
-                        extra={
-                            "symbol": symbol,
-                            "json": {
-                                "qty": qty
-                            }
-                        })
-                    break
-
-                # Fetch the current lowest ask price again
-                _, new_lowest_ask = self.get_ticker_info(symbol)
-
-                # If the new lowest ask price is lower than our order price, cancel the previous order and place a new one
-                if new_lowest_ask < lowest_ask:
-                    self.cancel_all_open_orders(symbol)
-                    self.logger.info(
-                        "Cancelled previous closing attempt",
-                        extra={
-                            "symbol": symbol,
-                            "json": {
-                                "new_lowest_ask": new_lowest_ask
-                            }
-                        })
-                else:
-                    self.logger.info(
-                        "Closing attempt still pending",
-                        extra={
-                            "symbol": symbol,
-                            "json": {
-                                "new_lowest_ask": new_lowest_ask,
-                                "lowest_ask": lowest_ask
                             }
                         })
 
@@ -481,18 +442,6 @@ class PhemexClient():
                     "json": {"error_description": e
                              }}
             )
-
-    def is_position_closed(self, symbol, qty):
-        position = self.get_position_for_symbol(symbol)
-        if position:
-            # Assuming 'size' is the key that holds the position's quantity. Adjust as per your API response.
-            current_qty = float(position.get('size', 0))
-            # Position is considered closed if its current quantity is less than or equal to the desired quantity.
-            # This logic may need adjustment based on how you define a position being 'closed'.
-            return current_qty <= qty
-        else:
-            # If there's no position found for the symbol, consider it closed.
-            return True
 
     def cancel_all_open_orders(self, symbol):
         try:

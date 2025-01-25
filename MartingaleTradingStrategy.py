@@ -36,39 +36,16 @@ class MartingaleTradingStrategy:
 
         return rounded_qty
 
-    def execute_strategy(self, symbol, strategy_filter, buy_below_percentage, leverage, ema_interval=5):
-        self.client.cancel_all_open_orders(symbol)
-        self.client.set_leverage(symbol, leverage)
-        position = self.client.get_position_for_symbol(symbol)
-        current_price, _ = self.client.get_ticker_info(symbol)
-        total_balance, used_balance = self.client.get_account_balance()
+    def execute_strategy(self, symbol, strategy_filter, buy_below_percentage, leverage, side="Buy", ema_interval=5):
+        self.prepare_strategy(leverage, symbol)
 
-        self.logger.info(
-            "Balance info",
-            extra={
-                "json": {
-                    "total_balance": total_balance,
-                    "used_balance": used_balance
-                }
-            })
-
-        ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
-        ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
-
-        self.logger.info(
-            "EMA info",
-            extra={
-                "symbol": symbol,
-                "json": {
-                    "ema_interval": ema_interval,
-                    "ema_50": ema_50,
-                    "ema_200": ema_200
-                }
-            })
+        current_price, ema_200, ema_50, position, total_balance = self.retrieve_information(ema_interval, symbol, side)
 
         if position:
             position_value = float(position['positionValue'])
             unrealized_pnl = float(position['unrealisedPnl'])
+            side = position['side']
+            size = float(position['size'])
             pnl_percentage = unrealized_pnl / position_value
             position_value_percentage_of_total_balance = position_value / total_balance * 100
 
@@ -77,6 +54,8 @@ class MartingaleTradingStrategy:
                 extra={
                     "symbol": symbol,
                     "json": {
+                        "side": side,
+                        "position_size": size,
                         "position_value": position_value,
                         "unrealized_pnl": unrealized_pnl,
                         "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
@@ -85,7 +64,10 @@ class MartingaleTradingStrategy:
                     }
                 })
 
-        if strategy_filter != 'EMA' or current_price > ema_200:
+        if strategy_filter != 'EMA' or (
+                (side == 'Buy' and current_price > ema_200) or
+                (side == 'Sell' and current_price < ema_200)
+        ):
 
             if position and unrealized_pnl > 0:
 
@@ -98,7 +80,8 @@ class MartingaleTradingStrategy:
                 elif position_value_percentage_of_total_balance > 10:
                     self.client.close_position(symbol, position['size'] * 0.2)
                 elif pnl_percentage < buy_below_percentage or (
-                        position_value < self.buy_until_limit and current_price > ema_50):
+                        position_value < self.buy_until_limit and ((side == 'Buy' and current_price > ema_50) or
+                                                                   (side == 'Sell' and current_price < ema_50))):
                     order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
                                                               pnl_percentage)
                     self.client.place_order(symbol, order_qty, current_price)
@@ -109,10 +92,10 @@ class MartingaleTradingStrategy:
 
             else:
                 order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
-                self.client.place_order(symbol, order_qty, current_price)
+                self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, side=side)
         else:
             self.logger.info(
-                "Skip buying below EMA",
+                "Skip ordering on wrong side of EMA",
                 extra={
                     "symbol": symbol,
                     "json": {
@@ -120,6 +103,36 @@ class MartingaleTradingStrategy:
                         "ema": ema_200,
                     }
                 })
+
+    def retrieve_information(self, ema_interval, symbol, side):
+        position = self.client.get_position_for_symbol(symbol, side)
+        current_price, _ = self.client.get_ticker_info(symbol)
+        total_balance, used_balance = self.client.get_account_balance()
+        self.logger.info(
+            "Balance info",
+            extra={
+                "json": {
+                    "total_balance": total_balance,
+                    "used_balance": used_balance
+                }
+            })
+        ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
+        ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
+        self.logger.info(
+            "EMA info",
+            extra={
+                "symbol": symbol,
+                "json": {
+                    "ema_interval": ema_interval,
+                    "ema_50": ema_50,
+                    "ema_200": ema_200
+                }
+            })
+        return current_price, ema_200, ema_50, position, total_balance
+
+    def prepare_strategy(self, leverage, symbol):
+        self.client.cancel_all_open_orders(symbol)
+        self.client.set_leverage(symbol, leverage)
 
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
