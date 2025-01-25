@@ -8,7 +8,7 @@ from math import trunc
 import pandas as pd
 import requests
 
-from TradingClient import TradingClient
+from clients.TradingClient import TradingClient
 
 
 class PhemexAPIException(TradingClient, Exception):

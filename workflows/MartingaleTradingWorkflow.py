@@ -1,4 +1,4 @@
-from Workflow import Workflow
+from workflows.Workflow import Workflow
 
 
 class MartingaleTradingWorkflow(Workflow):
