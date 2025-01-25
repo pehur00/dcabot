@@ -147,7 +147,6 @@ class MartingaleTradingStrategy(TradingStrategy):
             extra={
                 "symbol": symbol,
                 "json": {
-                    "total_balance": total_balance,
                     "position_value": position_value,
                     "current_price": current_price,
                     "pnl_percentage": pnl_percentage
