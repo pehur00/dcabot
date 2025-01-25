@@ -57,7 +57,7 @@ class MartingaleTradingStrategy(TradingStrategy):
 
             side = "Buy" if pos_side == "Long" else "Sell"
 
-            if unrealized_pnl > 0:
+            if unrealized_pnl > self.profit_threshold:
                 conclusion = self.manage_profitable_position(symbol, position, pnl_percentage,
                                                 position_value_percentage_of_total_balance, pos_side)
             elif pnl_percentage < buy_below_percentage or (
@@ -86,7 +86,7 @@ class MartingaleTradingStrategy(TradingStrategy):
         elif position_value_percentage_of_total_balance > 10:
             self.client.close_position(symbol, size * 0.2, pos_side)
             return f"Closed 20% of positon because of position size vs balance"
-        elif pnl_percentage > self.profit_pnl and un_pln > self.profit_threshold:
+        elif pnl_percentage > self.profit_pnl:
             self.client.close_position(symbol, size, pos_side)
             return f"Closed position, target reached"
 
