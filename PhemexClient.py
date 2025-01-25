@@ -114,11 +114,11 @@ class PhemexClient():
             )
             return None, None
 
-    def get_position_for_symbol(self, symbol, side):
+    def get_position_for_symbol(self, symbol, pos_side):
         try:
             response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             positions = response['data']['positions']
-            position = next((p for p in positions if p['symbol'] == symbol and p["side"] == side), None)
+            position = next((p for p in positions if p['symbol'] == symbol and p["side"] == pos_side), None)
             if position:
                 position_value = float(position.get('positionMarginRv', 0))
                 unrealised_pnl = float(position.get('unRealisedPnlRv', 0))
@@ -415,24 +415,26 @@ class PhemexClient():
                              }}
             )
 
-    def close_position(self, symbol, qty,  side="Sell"):
+    def close_position(self, symbol, qty, pos_side):
         try:
-                position = self.get_position_for_symbol(symbol=symbol, side = side)
-                _, lowest_ask = self.get_ticker_info(symbol)
+            side = "Sell" if pos_side == "Long" else "Buy"
 
-                if position and position['size'] >= qty:
-                    self.place_order(symbol=symbol, qty=qty, price=lowest_ask, side=side, reduce_only=True)
+            position = self.get_position_for_symbol(symbol=symbol, side = side)
+            _, lowest_ask = self.get_ticker_info(symbol)
 
-                    self.logger.debug(
-                        "Close position requested",
-                        extra={
-                            "symbol": symbol,
-                            "json": {
-                                "position": position,
-                                "price": lowest_ask,
-                                "qty": qty
-                            }
-                        })
+            if position and position['size'] >= qty:
+                self.place_order(symbol=symbol, qty=qty, price=lowest_ask, pos_side=pos_side, side=side, reduce_only=True)
+
+                self.logger.debug(
+                    "Close position requested",
+                    extra={
+                        "symbol": symbol,
+                        "json": {
+                            "position": position,
+                            "price": lowest_ask,
+                            "qty": qty
+                        }
+                    })
 
         except PhemexAPIException as e:
             self.logger.error(

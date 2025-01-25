@@ -36,15 +36,15 @@ class MartingaleTradingStrategy:
 
         return rounded_qty
 
-    def execute_strategy(self, symbol, strategy_filter, buy_below_percentage, leverage, side="Buy", ema_interval=5):
+    def execute_strategy(self, symbol, strategy_filter, buy_below_percentage, leverage, pos_side, ema_interval=5):
         self.prepare_strategy(leverage, symbol)
 
-        current_price, ema_200, ema_50, position, total_balance = self.retrieve_information(ema_interval, symbol, side)
+        current_price, ema_200, ema_50, position, total_balance = self.retrieve_information(ema_interval, symbol, pos_side)
 
         if position:
             position_value = float(position['positionValue'])
             unrealized_pnl = float(position['unrealisedPnl'])
-            side = position['side']
+            position_pos_side = position['posSide']
             size = float(position['size'])
             pnl_percentage = unrealized_pnl / position_value
             position_value_percentage_of_total_balance = position_value / total_balance * 100
@@ -54,7 +54,7 @@ class MartingaleTradingStrategy:
                 extra={
                     "symbol": symbol,
                     "json": {
-                        "side": side,
+                        "position_pos_side": pos_side,
                         "position_size": size,
                         "position_value": position_value,
                         "unrealized_pnl": unrealized_pnl,
@@ -65,26 +65,27 @@ class MartingaleTradingStrategy:
                 })
 
         if strategy_filter != 'EMA' or (
-                (side == 'Buy' and current_price > ema_200) or
-                (side == 'Sell' and current_price < ema_200)
+                (pos_side == 'Long' and current_price > ema_200) or
+                (pos_side == 'Short' and current_price < ema_200)
         ):
 
-            if position and unrealized_pnl > 0:
+            side = "Buy" if pos_side == "Long" else "Sell"
 
+            if position and unrealized_pnl > 0:
                 if position_value_percentage_of_total_balance > 40:
-                    return self.client.close_position(symbol, position['size'] * 0.5)
+                    return self.client.close_position(symbol, position['size'] * 0.5, pos_side)
                 elif position_value_percentage_of_total_balance > 30:
-                    self.client.close_position(symbol, position['size'] * 0.4)
+                    self.client.close_position(symbol, position['size'] * 0.4, pos_side)
                 elif position_value_percentage_of_total_balance > 20:
-                    self.client.close_position(symbol, position['size'] * 0.3)
+                    self.client.close_position(symbol, position['size'] * 0.3, pos_side)
                 elif position_value_percentage_of_total_balance > 10:
-                    self.client.close_position(symbol, position['size'] * 0.2)
+                    self.client.close_position(symbol, position['size'] * 0.2, pos_side)
                 elif pnl_percentage < buy_below_percentage or (
-                        position_value < self.buy_until_limit and ((side == 'Buy' and current_price > ema_50) or
-                                                                   (side == 'Sell' and current_price < ema_50))):
+                        position_value < self.buy_until_limit and ((pos_side == 'Long' and current_price > ema_50) or
+                                                                   (pos_side == 'Short' and current_price < ema_50))):
                     order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price,
                                                               pnl_percentage)
-                    self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, side=side)
+                    self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, pos_side=pos_side, side=side)
                 else:
                     # Existing logic to close the entire position if profit targets are reached
                     if pnl_percentage > self.profit_pnl and unrealized_pnl > self.profit_threshold:
@@ -92,7 +93,7 @@ class MartingaleTradingStrategy:
 
             else:
                 order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
-                self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, side=side)
+                self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, pos_side=pos_side, side=side)
         else:
             self.logger.info(
                 "Skip ordering on wrong side of EMA",
@@ -104,8 +105,8 @@ class MartingaleTradingStrategy:
                     }
                 })
 
-    def retrieve_information(self, ema_interval, symbol, side):
-        position = self.client.get_position_for_symbol(symbol, side)
+    def retrieve_information(self, ema_interval, symbol, pos_side):
+        position = self.client.get_position_for_symbol(symbol, pos_side)
         current_bid, current_ask = self.client.get_ticker_info(symbol)
         total_balance, used_balance = self.client.get_account_balance()
 
@@ -131,7 +132,7 @@ class MartingaleTradingStrategy:
                 }
             })
 
-        current_price = current_bid if side == 'Buy' else current_ask
+        current_price = current_bid if pos_side == 'Long' else current_ask
 
         return current_price, ema_200, ema_50, position, total_balance
 

@@ -68,8 +68,8 @@ async def main():
         logger=logger
     )
 
-    for symbol, side in symbol_side_map.items():
-        await execute_symbol_strategy(symbol, strategy, ema_interval, side)  # Sequentially process each symbol
+    for symbol, pos_side in symbol_side_map.items():
+        await execute_symbol_strategy(symbol, strategy, ema_interval, pos_side)  # Sequentially process each symbol
 
 
 async def parse_symbols(symbol_sides):
@@ -85,7 +85,7 @@ async def parse_symbols(symbol_sides):
     return symbol_side_map
 
 
-async def execute_symbol_strategy(symbol, strategy, ema_interval, side):
+async def execute_symbol_strategy(symbol, strategy, ema_interval, pos_side):
     try:
         # Execute the trading strategy for the specific symbol
         await asyncio.to_thread(
@@ -93,7 +93,7 @@ async def execute_symbol_strategy(symbol, strategy, ema_interval, side):
             symbol=symbol,
             strategy_filter=CONFIG['strategy_filter'],
             ema_interval=ema_interval,
-            side=side,
+            pos_side=pos_side,
             buy_below_percentage=CONFIG['buy_below_percentage'],
             leverage=CONFIG['leverage']
         )
