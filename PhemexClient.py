@@ -131,7 +131,7 @@ class PhemexClient():
                     'positionValue': position_value,
                     'unrealisedPnl': unrealised_pnl,
                     'size': size,
-                    'side': position["side"]
+                    'posSide': position["posSide"]
                 }
             else:
                 self.logger.info(
