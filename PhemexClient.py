@@ -363,6 +363,7 @@ class PhemexClient():
                     "qty": qty,
                     "price": price,
                     "side": side,
+                    "pos_side": pos_side,
                     "order_type": order_type,
                     "reduce_only": reduce_only
                 }
@@ -419,11 +420,12 @@ class PhemexClient():
         try:
             side = "Sell" if pos_side == "Long" else "Buy"
 
-            position = self.get_position_for_symbol(symbol=symbol, side = side)
+            position = self.get_position_for_symbol(symbol=symbol, pos_side=pos_side)
             _, lowest_ask = self.get_ticker_info(symbol)
 
             if position and position['size'] >= qty:
-                self.place_order(symbol=symbol, qty=qty, price=lowest_ask, pos_side=pos_side, side=side, reduce_only=True)
+                self.place_order(symbol=symbol, qty=qty, price=lowest_ask, pos_side=pos_side, side=side,
+                                 reduce_only=True)
 
                 self.logger.debug(
                     "Close position requested",
@@ -432,7 +434,8 @@ class PhemexClient():
                         "json": {
                             "position": position,
                             "price": lowest_ask,
-                            "qty": qty
+                            "qty": qty,
+                            "pos_side": pos_side
                         }
                     })
 
