@@ -106,8 +106,10 @@ class MartingaleTradingStrategy:
 
     def retrieve_information(self, ema_interval, symbol, side):
         position = self.client.get_position_for_symbol(symbol, side)
-        current_price, _ = self.client.get_ticker_info(symbol)
+        current_bid, current_ask = self.client.get_ticker_info(symbol)
         total_balance, used_balance = self.client.get_account_balance()
+
+
         self.logger.info(
             "Balance info",
             extra={
@@ -128,6 +130,9 @@ class MartingaleTradingStrategy:
                     "ema_200": ema_200
                 }
             })
+
+        current_price = current_bid if side == 'Buy' else current_ask
+
         return current_price, ema_200, ema_50, position, total_balance
 
     def prepare_strategy(self, leverage, symbol):
