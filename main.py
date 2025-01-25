@@ -5,8 +5,9 @@ import os
 
 from pythonjsonlogger import json
 
-from MartingaleTradingStrategy import MartingaleTradingStrategy
-from PhemexClient import PhemexClient
+from strategies.MartingaleTradingStrategy import MartingaleTradingStrategy
+from workflows.MartingaleTradingWorkflow import MartingaleTradingWorkflow
+from clients.PhemexClient import PhemexClient
 
 CONFIG = {
     'buy_until_limit': 5,
@@ -68,8 +69,10 @@ async def main():
         logger=logger
     )
 
+    workflow = MartingaleTradingWorkflow(strategy, logger)
+
     for symbol, pos_side in symbol_side_map:
-        await execute_symbol_strategy(symbol, strategy, ema_interval, pos_side)  # Sequentially process each symbol
+        await execute_symbol_strategy(symbol, workflow, ema_interval, pos_side)  # Sequentially process each symbol
 
 
 async def parse_symbols(symbol_sides):
@@ -93,13 +96,12 @@ async def parse_symbols(symbol_sides):
     return symbol_side_map
 
 
-async def execute_symbol_strategy(symbol, strategy, ema_interval, pos_side):
+async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side):
     try:
         # Execute the trading strategy for the specific symbol
         await asyncio.to_thread(
-            strategy.execute_strategy,
+            workflow.execute,
             symbol=symbol,
-            strategy_filter=CONFIG['strategy_filter'],
             ema_interval=ema_interval,
             pos_side=pos_side,
             buy_below_percentage=CONFIG['buy_below_percentage'],

@@ -5,7 +5,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy the Python scripts and requirements file into the container
-COPY main.py MartingaleTradingStrategy.py PhemexClient.py TradingClient.py requirements.txt /app/
+# Copy the Python scripts, directories, and requirements file into the container
+COPY main.py requirements.txt /app/
+COPY clients /app/clients/
+COPY strategies /app/strategies/
+COPY workflows /app/workflows/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

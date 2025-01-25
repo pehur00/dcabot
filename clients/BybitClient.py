@@ -1,5 +1,4 @@
 import logging
-from decimal import Decimal
 from pybit.unified_trading import HTTP
 import pandas as pd
 import TradingClient
