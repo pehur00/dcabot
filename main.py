@@ -68,20 +68,28 @@ async def main():
         logger=logger
     )
 
-    for symbol, pos_side in symbol_side_map.items():
+    for symbol, pos_side in symbol_side_map:
         await execute_symbol_strategy(symbol, strategy, ema_interval, pos_side)  # Sequentially process each symbol
 
 
 async def parse_symbols(symbol_sides):
-    symbol_side_map = {}
+    symbol_side_map = []
     if symbol_sides:
         try:
             for item in symbol_sides.split(','):
                 if ':' in item:
-                    key, value = item.split(':', 1)
-                    symbol_side_map[key.strip()] = value.strip()
+                    symbol, side = item.split(':', 1)
+                    symbol_side_map.append((symbol.strip(), side.strip()))
         except Exception as e:
             print(f"Error parsing SYMBOL_SIDES: {e}")
+
+    # Example SYMBOL_SIDES input: "INJUSDT:Short,INJUSDT:Long,POPCATUSDT:Short"
+    # Output symbol_side_map:
+    # [
+    #     ("INJUSDT", "Short"),
+    #     ("INJUSDT", "Long"),
+    #     ("POPCATUSDT", "Short")
+    # ]
     return symbol_side_map
 
 
