@@ -60,7 +60,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             if unrealized_pnl > self.profit_threshold:
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
                                                              position_value_percentage_of_total_balance, pos_side)
-            elif position_value < self.buy_until_limit and self.is_valid_position(current_price, ema_50, pos_side):
+            elif position_value < self.buy_until_limit or (unrealized_pnl < 0 and self.is_valid_position(current_price, ema_50, pos_side)):
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
                                               side,
                                               pos_side)
