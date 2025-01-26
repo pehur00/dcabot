@@ -75,20 +75,17 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         un_pln = float(position['unrealisedPnl'])
         if position_value_percentage_of_total_balance > 40:
-            self.client.close_position(symbol, size * 0.5, pos_side)
-            return f"Closed 50% of positon because of position size vs balance"
-        elif position_value_percentage_of_total_balance > 30:
-            self.client.close_position(symbol, size * 0.4, pos_side)
-            return f"Closed 40% of positon because of position size vs balance"
-        elif position_value_percentage_of_total_balance > 20:
             self.client.close_position(symbol, size * 0.3, pos_side)
-            return f"Closed 30% of positon because of position size vs balance"
-        elif position_value_percentage_of_total_balance > 10:
+            return f"Requested closing 30% of positon because of position size vs balance"
+        elif position_value_percentage_of_total_balance > 30:
             self.client.close_position(symbol, size * 0.2, pos_side)
-            return f"Closed 20% of positon because of position size vs balance"
+            return f"Requested closing 20% of positon because of position size vs balance"
+        elif position_value_percentage_of_total_balance > 20:
+            self.client.close_position(symbol, size * 0.1, pos_side)
+            return f"Requested closing 10% of positon because of position size vs balance"
         elif pnl_percentage > self.profit_pnl:
             self.client.close_position(symbol, size, pos_side)
-            return f"Closed position, target reached"
+            return f"Requested closing position, target reached"
 
         return f"Position above EMA but need no change: unrealised={un_pln} vs min target={self.profit_threshold}," \
                f" pnl_percentage={pnl_percentage} vs target={self.profit_pnl}"

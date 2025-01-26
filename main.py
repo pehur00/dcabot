@@ -14,7 +14,7 @@ CONFIG = {
     'profit_threshold': 0.5,
     'profit_pnl': 0.05,
     'leverage': 10,
-    'begin_size_of_balance': 0.01,
+    'begin_size_of_balance': 0.05,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
     'buy_below_percentage': 0.02,
     'logging_level': logging.INFO
