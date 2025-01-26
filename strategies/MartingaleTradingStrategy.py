@@ -40,7 +40,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             unrealized_pnl = float(position['unrealisedPnl'])
             size = float(position['size'])
             upnl_percentage = unrealized_pnl / position_value
-            position_value_percentage_of_total_balance = position_value / total_balance * 100
+            position_value_percentage_of_total_balance = round(position_value / total_balance * 100, 2)
 
             self.logger.info(
                 "Position info",
@@ -74,15 +74,18 @@ class MartingaleTradingStrategy(TradingStrategy):
         size = float(position['size'])
 
         un_pln = float(position['unrealisedPnl'])
-        if position_value_percentage_of_total_balance > 40:
+        if position_value_percentage_of_total_balance > 30:
             self.client.close_position(symbol, size * 0.3, pos_side)
-            return f"Requested closing 30% of positon because of position size vs balance"
-        elif position_value_percentage_of_total_balance > 30:
-            self.client.close_position(symbol, size * 0.2, pos_side)
-            return f"Requested closing 20% of positon because of position size vs balance"
+            return f"Requested closing 30% of positon because of position size vs balance > " \
+                   f"{position_value_percentage_of_total_balance}%"
         elif position_value_percentage_of_total_balance > 20:
+            self.client.close_position(symbol, size * 0.2, pos_side)
+            return f"Requested closing 20% of positon because of position size vs balance > " \
+                   f"{position_value_percentage_of_total_balance}%"
+        elif position_value_percentage_of_total_balance > 15:
             self.client.close_position(symbol, size * 0.1, pos_side)
-            return f"Requested closing 10% of positon because of position size vs balance"
+            return f"Requested closing 10% of positon because of position size vs balance > " \
+                   f"{position_value_percentage_of_total_balance}%"
         elif pnl_percentage > self.profit_pnl:
             self.client.close_position(symbol, size, pos_side)
             return f"Requested closing position, target reached"
