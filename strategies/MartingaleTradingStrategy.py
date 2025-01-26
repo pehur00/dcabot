@@ -88,7 +88,8 @@ class MartingaleTradingStrategy(TradingStrategy):
             return f"Requested closing position, target reached"
 
         return f"Position above EMA but need no change: unrealised={un_pln} vs min target={self.profit_threshold}," \
-               f" pnl_percentage={pnl_percentage} vs target={self.profit_pnl}"
+               f" pnl_percentage={pnl_percentage} vs target={self.profit_pnl}" \
+               f" and position size = {position_value_percentage_of_total_balance}% of balance"
 
     def add_to_position(self, symbol, current_price, total_balance, position_value, pnl_percentage, side, pos_side):
         order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price, pnl_percentage)
