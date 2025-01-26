@@ -39,7 +39,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             position_value = float(position['positionValue'])
             unrealized_pnl = float(position['unrealisedPnl'])
             size = float(position['size'])
-            pnl_percentage = unrealized_pnl / position_value
+            upnl_percentage = unrealized_pnl / position_value
             position_value_percentage_of_total_balance = position_value / total_balance * 100
 
             self.logger.info(
@@ -50,7 +50,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                         "position_size": size,
                         "position_value": position_value,
                         "unrealized_pnl": unrealized_pnl,
-                        "pnl_percentage": pnl_percentage,
+                        "upnl_percentage": upnl_percentage,
                         "position_value_percentage_of_total_balance": position_value_percentage_of_total_balance,
                     }
                 })
@@ -58,12 +58,12 @@ class MartingaleTradingStrategy(TradingStrategy):
             side = "Buy" if pos_side == "Long" else "Sell"
 
             if unrealized_pnl > self.profit_threshold:
-                conclusion = self.manage_profitable_position(symbol, position, pnl_percentage,
-                                                position_value_percentage_of_total_balance, pos_side)
-            elif pnl_percentage < buy_below_percentage or (
-                    position_value < self.buy_until_limit and self.is_valid_position(current_price, ema_50, pos_side)):
-                conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, pnl_percentage, side,
-                                     pos_side)
+                conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
+                                                             position_value_percentage_of_total_balance, pos_side)
+            elif position_value < self.buy_until_limit and self.is_valid_position(current_price, ema_50, pos_side):
+                conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
+                                              side,
+                                              pos_side)
         else:
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
@@ -89,7 +89,6 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         return f"Position above EMA but need no change: unrealised={un_pln} vs min target={self.profit_threshold}," \
                f" pnl_percentage={pnl_percentage} vs target={self.profit_pnl}"
-
 
     def add_to_position(self, symbol, current_price, total_balance, position_value, pnl_percentage, side, pos_side):
         order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price, pnl_percentage)
