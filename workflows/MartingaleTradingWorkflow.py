@@ -30,7 +30,7 @@ class MartingaleTradingWorkflow(Workflow):
             )
 
             # Step 3: Determine and execute actions based on strategy
-            if self.strategy.is_valid_position(current_price, ema_200, pos_side):
+            if self.strategy.is_valid_position(position, current_price, ema_200, pos_side):
                 conclusion = self.strategy.manage_position(
                     symbol, current_price, ema_200, ema_50, position, total_balance,
                     buy_below_percentage, pos_side
@@ -46,12 +46,13 @@ class MartingaleTradingWorkflow(Workflow):
                     })
             else:
                 self.logger.info(
-                    "Skipping due to wrong EMA side",
+                    "Skipping due to wrong EMA side and margin level >= 200%",
                     extra={
                         "symbol": symbol,
                         "json": {
                             "current_price": current_price,
                             "ema": ema_200,
+                            "margin_level": position['margin_level']
                         }
                     }
                 )

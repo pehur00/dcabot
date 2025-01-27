@@ -120,9 +120,12 @@ class PhemexClient():
             positions = response['data']['positions']
             position = next((p for p in positions if p['symbol'] == symbol and p["posSide"] == pos_side), None)
             if position:
-                position_value = float(position.get('positionMarginRv', 0))
-                unrealised_pnl = float(position.get('unRealisedPnlRv', 0))
+                position_value = round(float(position.get('assignedPosBalanceRv', 0)),2)
+                unrealised_pnl = round(float(position.get('unRealisedPnlRv', 0)), 2)
+                upnl_percentage = round(unrealised_pnl / position_value, 2)
                 size = float(position.get('sizeRq', 0))
+
+                margin_level = self._calculate_maintenance_margin(position, size, unrealised_pnl)
 
                 if size == 0:
                     return None
@@ -130,8 +133,10 @@ class PhemexClient():
                 return {
                     'positionValue': position_value,
                     'unrealisedPnl': unrealised_pnl,
+                    'upnlPercentage': upnl_percentage,
                     'size': size,
-                    'posSide': position["posSide"]
+                    'posSide': position["posSide"],
+                    'margin_level': margin_level
                 }
             else:
                 self.logger.info(
@@ -149,6 +154,15 @@ class PhemexClient():
                              }}
             )
             return None
+
+    def _calculate_maintenance_margin(self, position, size, unrealised_pnl):
+        mark_price = float(position['markPriceRp'])  # Current mark price
+        contract_size = 1.0  # Contract size (check with Phemex documentation; usually 1 for perpetuals)
+        maintenance_margin_rate = float(position['maintMarginReqRr'])  # Maintenance margin rate
+        maintenance_margin = size * contract_size * mark_price * maintenance_margin_rate
+
+        margin_level = (float(position.get('positionMarginRv', 0)) + unrealised_pnl) / maintenance_margin
+        return round(margin_level, 2)
 
     def define_instrument_info(self, symbol):
         # Send request to Phemex API to retrieve all product information
