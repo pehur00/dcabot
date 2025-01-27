@@ -44,7 +44,7 @@ async def main():
     # Retrieve environment variables
     api_key = os.getenv('API_KEY')
     api_secret = os.getenv('API_SECRET')
-    ema_interval = int(os.getenv('EMA_INTERVAL', 5))  # Provide a default value (e.g., 200) if the variable isn't set
+    ema_interval = int(os.getenv('EMA_INTERVAL', 1))  # Provide a default value (e.g., 200) if the variable isn't set
     testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
     # Parse the symbol configuration into a dictionary
     # Retrieve symbols from environment or configuration
