@@ -47,7 +47,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                                                              position_value_percentage_of_total_balance, pos_side)
             elif position['margin_level'] < 2 \
                     or position_value < self.buy_until_limit \
-                    or (unrealised_pnl < 0 and self.is_valid_position(current_price, ema_50, pos_side)):
+                    or (unrealised_pnl < 0 and self.is_valid_position(position, current_price, ema_50, pos_side)):
 
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
                                                   side,
