@@ -28,7 +28,8 @@ class MartingaleTradingStrategy(TradingStrategy):
         return max(min(rounded_qty, max_qty), min_qty)
 
     def is_valid_position(self, position, current_price, ema_200, pos_side):
-        return position['margin_level'] < 2 or (pos_side == 'Long' and current_price > ema_200) or (pos_side == 'Short' and current_price < ema_200)
+        return position['margin_level'] < 2 or (pos_side == 'Long' and current_price > ema_200) or (
+                    pos_side == 'Short' and current_price < ema_200)
 
     def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance,
                         buy_below_percentage, pos_side):
@@ -49,8 +50,8 @@ class MartingaleTradingStrategy(TradingStrategy):
                     or (unrealised_pnl < 0 and self.is_valid_position(current_price, ema_50, pos_side)):
 
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
-                                              side,
-                                              pos_side)
+                                                  side,
+                                                  pos_side)
         else:
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
@@ -58,28 +59,36 @@ class MartingaleTradingStrategy(TradingStrategy):
 
     def manage_profitable_position(self, symbol, position, pnl_percentage, position_value_percentage_of_total_balance,
                                    pos_side):
+        """
+        Manage the profitable position by partially or fully closing it based on thresholds.
+        """
         size = float(position['size'])
+        unrealised_pnl = float(position['unrealisedPnl'])
 
-        un_pln = float(position['unrealisedPnl'])
-        if position_value_percentage_of_total_balance > 30:
-            self.client.close_position(symbol, size * 0.3, pos_side)
-            return f"Requested closing 30% of positon because of position size vs balance > " \
-                   f"{position_value_percentage_of_total_balance}%"
-        elif position_value_percentage_of_total_balance > 20:
-            self.client.close_position(symbol, size * 0.2, pos_side)
-            return f"Requested closing 20% of positon because of position size vs balance > " \
-                   f"{position_value_percentage_of_total_balance}%"
-        elif position_value_percentage_of_total_balance > 15:
-            self.client.close_position(symbol, size * 0.1, pos_side)
-            return f"Requested closing 10% of positon because of position size vs balance > " \
-                   f"{position_value_percentage_of_total_balance}%"
-        elif pnl_percentage > self.profit_pnl:
+        # Define thresholds and corresponding actions
+        thresholds = [
+            (30, 0.3, "Closing 30% of position due to balance > 30%"),
+            (20, 0.2, "Closing 20% of position due to balance > 20%"),
+            (15, 0.1, "Closing 10% of position due to balance > 15%")
+        ]
+
+        # Check thresholds and execute actions
+        for threshold, close_fraction, message in thresholds:
+            if position_value_percentage_of_total_balance > threshold:
+                self.client.close_position(symbol, size * close_fraction, pos_side)
+                return f"{message} (Current: {position_value_percentage_of_total_balance}%)"
+
+        # Full closure if profit target is reached
+        if pnl_percentage > self.profit_pnl:
             self.client.close_position(symbol, size, pos_side)
-            return f"Requested closing position, target reached"
+            return "Closing full position, target profit reached"
 
-        return f"Position above EMA but need no change: unrealised={un_pln} vs min target={self.profit_threshold}," \
-               f" pnl_percentage={pnl_percentage} vs target={self.profit_pnl}" \
-               f" and position size = {position_value_percentage_of_total_balance}% of balance"
+        # No action needed
+        return (
+            f"Position above EMA but no change: unrealised={unrealised_pnl} vs target={self.profit_threshold}, "
+            f"pnl_percentage={pnl_percentage} vs target={self.profit_pnl}, "
+            f"position size={position_value_percentage_of_total_balance}% of balance"
+        )
 
     def add_to_position(self, symbol, current_price, total_balance, position_value, pnl_percentage, side, pos_side):
         order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price, pnl_percentage)
