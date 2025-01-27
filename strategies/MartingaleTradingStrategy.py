@@ -28,8 +28,9 @@ class MartingaleTradingStrategy(TradingStrategy):
         return max(min(rounded_qty, max_qty), min_qty)
 
     def is_valid_position(self, position, current_price, ema_200, pos_side):
-        return position['margin_level'] < 2 or (pos_side == 'Long' and current_price > ema_200) or (
-                    pos_side == 'Short' and current_price < ema_200)
+        return position and position['margin_level'] < 2 \
+            or (pos_side == 'Long' and current_price > ema_200) \
+            or (pos_side == 'Short' and current_price < ema_200)
 
     def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance,
                         buy_below_percentage, pos_side):
@@ -44,7 +45,8 @@ class MartingaleTradingStrategy(TradingStrategy):
 
             if unrealised_pnl > self.profit_threshold:
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
-                                                             position_value_percentage_of_total_balance, pos_side)
+                                                             position_value_percentage_of_total_balance, pos_side,
+                                                             self.buy_until_limit)
             elif position['margin_level'] < 2 \
                     or position_value < self.buy_until_limit \
                     or (unrealised_pnl < 0 and self.is_valid_position(position, current_price, ema_50, pos_side)):
@@ -58,7 +60,7 @@ class MartingaleTradingStrategy(TradingStrategy):
         return conclusion
 
     def manage_profitable_position(self, symbol, position, pnl_percentage, position_value_percentage_of_total_balance,
-                                   pos_side):
+                                   pos_side, buy_until_limit):
         """
         Manage the profitable position by partially or fully closing it based on thresholds.
         """
@@ -78,7 +80,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                 self.client.close_position(symbol, size * close_fraction, pos_side)
                 return f"{message} (Current: {position_value_percentage_of_total_balance}%)"
 
-        # Full closure if profit target is reached
+        # Leave only min amount if profit target is reached
         if pnl_percentage > self.profit_pnl:
             self.client.close_position(symbol, size, pos_side)
             return "Closing full position, target profit reached"
@@ -130,17 +132,18 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         current_price = current_bid if pos_side == 'Long' else current_ask
 
-        position_value_percentage_of_total_balance = round(float(position['positionValue']) / total_balance * 100, 2)
-        position['position_size_percentage'] = position_value_percentage_of_total_balance
+        if position:
+            position_value_percentage_of_total_balance = round(float(position['positionValue']) / total_balance * 100, 2)
+            position['position_size_percentage'] = position_value_percentage_of_total_balance
 
-        self.logger.info(
-            "Position info",
-            extra={
-                "symbol": symbol,
-                "json": {
-                    "position": position
-                }
-            })
+            self.logger.info(
+                "Position info",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "position": position
+                    }
+                })
 
         return current_price, ema_200, ema_50, position, total_balance
 

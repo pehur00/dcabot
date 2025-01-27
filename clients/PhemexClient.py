@@ -118,11 +118,12 @@ class PhemexClient():
         try:
             response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             positions = response['data']['positions']
-            position = next((p for p in positions if p['symbol'] == symbol and p["posSide"] == pos_side), None)
+            position = next((p for p in positions if p['symbol'] == symbol
+                             and p["posSide"] == pos_side and float(p['sizeRq']) > 0), None)
             if position:
                 position_value = round(float(position.get('assignedPosBalanceRv', 0)),2)
                 unrealised_pnl = round(float(position.get('unRealisedPnlRv', 0)), 2)
-                upnl_percentage = round(unrealised_pnl / position_value, 2)
+                upnl_percentage = round(unrealised_pnl / position_value, 2) if position_value != 0 else 0.0
                 size = float(position.get('sizeRq', 0))
 
                 margin_level = self._calculate_maintenance_margin(position, size, unrealised_pnl)
@@ -430,7 +431,7 @@ class PhemexClient():
                              }}
             )
 
-    def close_position(self, symbol, qty, pos_side):
+    def close_position(self, symbol, qty, pos_side, buy_until_limit):
         try:
             side = "Sell" if pos_side == "Long" else "Buy"
 
@@ -440,6 +441,10 @@ class PhemexClient():
             if position and position['size'] >= qty:
                 self.place_order(symbol=symbol, qty=qty, price=lowest_ask, pos_side=pos_side, side=side,
                                  reduce_only=True)
+                if buy_until_limit:
+                    desired_position_qty = buy_until_limit / lowest_ask
+                    qty = max(position['size'] - desired_position_qty,
+                                        0)  # Only close excess quantity above desired minimum
 
                 self.logger.debug(
                     "Close position requested",
