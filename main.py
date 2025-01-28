@@ -18,9 +18,7 @@ CONFIG = {
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
     'buy_below_percentage': 0.02,
     'logging_level': logging.INFO
-
 }
-
 
 async def main():
     # Configure logging
