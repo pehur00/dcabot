@@ -45,6 +45,8 @@ class MartingaleTradingWorkflow(Workflow):
                         }
                     })
             else:
+                margin_level = position.get('margin_level', None) if position else None
+
                 self.logger.info(
                     "Skipping due to wrong EMA side and margin level >= 200%",
                     extra={
@@ -52,7 +54,7 @@ class MartingaleTradingWorkflow(Workflow):
                         "json": {
                             "current_price": current_price,
                             "ema": ema_200,
-                            "margin_level": position['margin_level']
+                            "margin_level": margin_level
                         }
                     }
                 )
