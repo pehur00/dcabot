@@ -147,8 +147,8 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         return current_price, ema_200, ema_50, position, total_balance
 
-    def prepare_strategy(self, leverage, symbol):
-        self.client.cancel_all_open_orders(symbol)
+    def prepare_strategy(self, leverage, symbol, pos_side):
+        self.client.cancel_all_open_orders(symbol, pos_side)
         self.client.set_leverage(symbol, leverage)
 
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):

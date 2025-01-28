@@ -467,31 +467,50 @@ class PhemexClient():
                              }}
             )
 
-    def cancel_all_open_orders(self, symbol):
+    def cancel_all_open_orders(self, symbol, pos_side):
         try:
-            # Cancel active orders, including triggered conditional orders
-            self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "false"})
-            self.logger.info(
-                "Cancelled active orders",
-                extra={
-                    "symbol": symbol
-                })
+            # Retrieve all open orders
+            open_orders = self._send_request("GET", "/g-orders/activeList", params={"symbol": symbol})
 
-            # Cancel untriggered conditional orders
-            self._send_request("DELETE", "/g-orders/all", params={"symbol": symbol, "untriggered": "true"})
+            if not open_orders or "data" not in open_orders or "rows" not in open_orders["data"]:
+                self.logger.info("No open orders found", extra={"symbol": symbol})
+                return
+
+            orders_to_cancel = []
+            for order in open_orders["data"]["rows"]:
+                order_side = order.get("side")  # "Buy" or "Sell"
+                exec_inst = order.get("execInst", "")
+
+                # Infer posSide (Long or Short)
+                if exec_inst == "CloseOnTrigger":
+                    inferred_pos_side = "Short" if order_side == "Buy" else "Long"
+                else:
+                    inferred_pos_side = "Long" if order_side == "Buy" else "Short"
+
+                # Cancel only orders that match the provided pos_side
+                if inferred_pos_side == pos_side:
+                    orders_to_cancel.append(order["orderID"])
+
+            if not orders_to_cancel:
+                self.logger.info(f"No open orders for {pos_side}", extra={"symbol": symbol})
+                return
+
+            # Bulk cancel selected orders
+            self._send_request(
+                "DELETE", "/g-orders/cancel", params={"orderID": ",".join(orders_to_cancel)}
+            )
             self.logger.info(
-                'Cancelled untriggered conditional orders.',
-                extra={
-                    "symbol": symbol
-                })
+                "Cancelled selected orders",
+                extra={"symbol": symbol, "json": {"orders_cancelled": orders_to_cancel}}
+            )
+
         except PhemexAPIException as e:
             try:
                 self.logger.error(
-                    "Failed to cancel all open orders",
-                    extra={
-                        "symbol": symbol,
-                        "json": {"error_description": e
-                                 }}
+                    "Failed to cancel open orders",
+                    extra={"symbol": symbol, "json": {"error_description": str(e)}}
                 )
             except Exception as e1:
-                logging.error("unresolved error:", e)
+                logging.error("Unresolved error:", e)
+
+

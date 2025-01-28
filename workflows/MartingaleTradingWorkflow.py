@@ -22,7 +22,7 @@ class MartingaleTradingWorkflow(Workflow):
             )
 
             # Step 1: Prepare the strategy
-            self.strategy.prepare_strategy(leverage, symbol)
+            self.strategy.prepare_strategy(leverage, symbol, pos_side)
 
             # Step 2: Retrieve required information
             current_price, ema_200, ema_50, position, total_balance = self.strategy.retrieve_information(
@@ -31,7 +31,7 @@ class MartingaleTradingWorkflow(Workflow):
 
             # Step 3: Determine and execute actions based on strategy
             if self.strategy.is_valid_position(position=position, current_price=current_price, ema_200=ema_200, pos_side=pos_side):
-                conclusion = self.strategy.manage_position(
+                conclusion = self.strategy.manage_pxosition(
                     symbol, current_price, ema_200, ema_50, position, total_balance,
                     buy_below_percentage, pos_side
                 )
