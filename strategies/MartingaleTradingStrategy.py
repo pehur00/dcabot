@@ -6,9 +6,9 @@ from strategies.TradingStrategy import TradingStrategy
 
 class MartingaleTradingStrategy(TradingStrategy):
     def __init__(self, client: TradingClient, leverage, profit_threshold, profit_pnl, proportion_of_balance,
-                 buy_until_limit, logger):
+                 buy_until_limit, open_automatically, logger):
         super().__init__(client, logger)
-
+        self.open_automatically = open_automatically
         self.leverage = leverage
         self.profit_threshold = profit_threshold
         self.profit_pnl = profit_pnl
@@ -54,7 +54,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
                                                   side,
                                                   pos_side)
-        else:
+        elif self.open_automatically:
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
         return conclusion

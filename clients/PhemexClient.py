@@ -431,7 +431,7 @@ class PhemexClient():
                              }}
             )
 
-    def close_position(self, symbol, qty, pos_side, buy_until_limit):
+    def close_position(self, symbol, qty, pos_side):
         try:
             side = "Sell" if pos_side == "Long" else "Buy"
 
@@ -441,10 +441,6 @@ class PhemexClient():
             if position and position['size'] >= qty:
                 self.place_order(symbol=symbol, qty=qty, price=lowest_ask, pos_side=pos_side, side=side,
                                  reduce_only=True)
-                if buy_until_limit:
-                    desired_position_qty = buy_until_limit / lowest_ask
-                    qty = max(position['size'] - desired_position_qty,
-                                        0)  # Only close excess quantity above desired minimum
 
                 self.logger.debug(
                     "Close position requested",

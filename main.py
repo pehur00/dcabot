@@ -48,6 +48,7 @@ async def main():
     # Retrieve symbols from environment or configuration
     symbol_sides = os.getenv('SYMBOL', '')  # Example: "BTCUSDT:Buy,ETHUSDT:Sell,ADAUSDT:Buy"
     symbol_side_map = await parse_symbols(symbol_sides)
+    open_automatically = bool(os.getenv('OPEN_POSITIONS', False))
 
     # Validate required environment variables
     if not all([api_key, api_secret, symbol_sides]):
@@ -64,6 +65,7 @@ async def main():
         profit_pnl=CONFIG['profit_pnl'],
         proportion_of_balance=CONFIG['begin_size_of_balance'],
         buy_until_limit=CONFIG['buy_until_limit'],
+        open_automatically=open_automatically,
         logger=logger
     )
 
