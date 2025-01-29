@@ -48,7 +48,7 @@ async def main():
     # Retrieve symbols from environment or configuration
     symbol_sides = os.getenv('SYMBOL', '')  # Example: "BTCUSDT:Buy,ETHUSDT:Sell,ADAUSDT:Buy"
     symbol_side_map = await parse_symbols(symbol_sides)
-    open_automatically = bool(os.getenv('OPEN_POSITIONS', False))
+    open_automatically = os.getenv('OPEN_POSITIONS', "False").lower() in ("true", "1", "yes")
 
     # Validate required environment variables
     if not all([api_key, api_secret, symbol_sides]):
