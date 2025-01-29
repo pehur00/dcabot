@@ -60,7 +60,7 @@ class MartingaleTradingStrategy(TradingStrategy):
         return conclusion
 
     def manage_profitable_position(self, symbol, position, pnl_percentage, position_value_percentage_of_total_balance,
-                                   pos_side, buy_until_limit):
+                                   pos_side):
         """
         Manage the profitable position by partially or fully closing it based on thresholds.
         """
@@ -167,6 +167,6 @@ class MartingaleTradingStrategy(TradingStrategy):
         if position_value == 0:
             qty = (total_balance * self.proportion_of_balance) / current_price
         else:
-            qty = (position_value * (-pnl_percentage)) / current_price
+            qty = (position_value * self.leverage * (-pnl_percentage)) / current_price
 
         return self.custom_round(qty, min_qty, max_qty, qty_step)
