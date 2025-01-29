@@ -154,19 +154,22 @@ class MartingaleTradingStrategy(TradingStrategy):
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
 
+        if position_value == 0:
+            qty = (total_balance * self.proportion_of_balance) / current_price
+        else:
+            qty = (position_value * self.leverage * (-pnl_percentage)) / current_price
+
+        qty = self.custom_round(qty, min_qty, max_qty, qty_step)
+
         self.logger.info(
             "Calculating order quantity",
             extra={
                 "symbol": symbol,
                 "json": {
                     "current_price": current_price,
-                    "pnl_percentage": pnl_percentage
+                    "pnl_percentage": pnl_percentage,
+                    "calculated_qty": qty
                 }
             })
 
-        if position_value == 0:
-            qty = (total_balance * self.proportion_of_balance) / current_price
-        else:
-            qty = (position_value * self.leverage * (-pnl_percentage)) / current_price
-
-        return self.custom_round(qty, min_qty, max_qty, qty_step)
+        return qty
