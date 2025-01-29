@@ -21,23 +21,28 @@ CONFIG = {
 }
 
 async def main():
-    # Configure logging
-    # Remove default handlers
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
+    # Remove all existing handlers to prevent duplicate logging
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
 
-    # Configure the logger to output structured JSON logs
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    logHandler = logging.StreamHandler()
+    # Set the logging level globally
+    root_logger.setLevel(logging.INFO)
 
-    # Define a JSON log formatter
+    # Create a StreamHandler for structured logging
+    log_handler = logging.StreamHandler()
+
+    # Define JSON log formatter
     formatter = json.JsonFormatter(
         '%(asctime)s %(levelname)s %(message)s %(symbol)s %(action)s %(json)s'
     )
 
-    logHandler.setFormatter(formatter)
-    logger.addHandler(logHandler)
+    log_handler.setFormatter(formatter)
+    root_logger.addHandler(log_handler)
+
+    # Ensure there is no "extra" module-based logger overriding the root logger
+    logger = logging.getLogger(__name__)
+    logger.propagate = True
 
     # Retrieve environment variables
     api_key = os.getenv('API_KEY')
