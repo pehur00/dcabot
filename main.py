@@ -10,7 +10,7 @@ from workflows.MartingaleTradingWorkflow import MartingaleTradingWorkflow
 from clients.PhemexClient import PhemexClient
 
 CONFIG = {
-    'buy_until_limit': 5,
+    'buy_until_limit': 0.05,
     'profit_threshold': 0.5,
     'profit_pnl': 0.2,
     'leverage': 6,

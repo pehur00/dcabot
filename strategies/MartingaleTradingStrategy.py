@@ -43,11 +43,11 @@ class MartingaleTradingStrategy(TradingStrategy):
             side = "Buy" if pos_side == "Long" else "Sell"
 
             valid_position = self.is_valid_position(position, current_price, ema_50, pos_side)
-            if unrealised_pnl > self.profit_threshold and position_value >= self.buy_until_limit:
+            if unrealised_pnl > self.profit_threshold and (position_value/total_balance) >= self.buy_until_limit:
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
                                                              position_value_percentage_of_total_balance, pos_side)
             elif position['margin_level'] < 2 \
-                    or position_value < self.buy_until_limit \
+                    or (position_value/total_balance) < self.buy_until_limit \
                     or (unrealised_pnl < 0 and valid_position):
 
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
