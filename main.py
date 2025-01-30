@@ -11,12 +11,12 @@ from clients.PhemexClient import PhemexClient
 
 CONFIG = {
     'buy_until_limit': 5,
-    'profit_threshold': 0.2,
-    'profit_pnl': 0.5,
+    'profit_threshold': 0.5,
+    'profit_pnl': 0.2,
     'leverage': 6,
     'begin_size_of_balance': 0.05,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
-    'buy_below_percentage': 0.02,
+    'buy_below_percentage': 0.04,
     'logging_level': logging.INFO
 }
 
