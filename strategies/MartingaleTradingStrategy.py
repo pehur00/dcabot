@@ -6,9 +6,8 @@ from strategies.TradingStrategy import TradingStrategy
 
 class MartingaleTradingStrategy(TradingStrategy):
     def __init__(self, client: TradingClient, leverage, profit_threshold, profit_pnl, proportion_of_balance,
-                 buy_until_limit, open_automatically, logger):
+                 buy_until_limit, logger):
         super().__init__(client, logger)
-        self.open_automatically = open_automatically
         self.leverage = leverage
         self.profit_threshold = profit_threshold
         self.profit_pnl = profit_pnl
@@ -33,7 +32,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             or (pos_side == 'Short' and current_price < ema_200)
 
     def manage_position(self, symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance,
-                        buy_below_percentage, pos_side):
+                        buy_below_percentage, pos_side, automatic_mode):
 
         conclusion = "Nothing changed"
         if position:
@@ -43,17 +42,18 @@ class MartingaleTradingStrategy(TradingStrategy):
             position_value_percentage_of_total_balance = float(position['position_size_percentage'])
             side = "Buy" if pos_side == "Long" else "Sell"
 
+            valid_position = self.is_valid_position(position, current_price, ema_50, pos_side)
             if unrealised_pnl > self.profit_threshold and position_value >= self.buy_until_limit:
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
                                                              position_value_percentage_of_total_balance, pos_side)
             elif position['margin_level'] < 2 \
                     or position_value < self.buy_until_limit \
-                    or (unrealised_pnl < 0 and self.is_valid_position(position, current_price, ema_50, pos_side)):
+                    or (unrealised_pnl < 0 and valid_position):
 
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
                                                   side,
                                                   pos_side)
-        elif self.open_automatically and \
+        elif automatic_mode and \
                 (pos_side == "Long" and current_price > ema_200_1h) or \
                 (pos_side == "Short" and current_price < ema_200_1h):
 

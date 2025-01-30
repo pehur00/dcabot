@@ -5,7 +5,7 @@ class MartingaleTradingWorkflow(Workflow):
     def __init__(self, strategy, logger):
         super().__init__(logger, strategy)
 
-    def execute(self, symbol, buy_below_percentage, leverage, pos_side, ema_interval):
+    def execute(self, symbol, buy_below_percentage, leverage, pos_side, ema_interval, automatic_mode):
         try:
             self.logger.info(
                 "Starting workflow",
@@ -33,7 +33,7 @@ class MartingaleTradingWorkflow(Workflow):
             if self.strategy.is_valid_position(position=position, current_price=current_price, ema_200=ema_200, pos_side=pos_side):
                 conclusion = self.strategy.manage_position(
                     symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance,
-                    buy_below_percentage, pos_side
+                    buy_below_percentage, pos_side, automatic_mode
                 )
                 self.logger.info(
                     "Position managed",

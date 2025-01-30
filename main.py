@@ -53,7 +53,6 @@ async def main():
     # Retrieve symbols from environment or configuration
     symbol_sides = os.getenv('SYMBOL', '')  # Example: "BTCUSDT:Buy,ETHUSDT:Sell,ADAUSDT:Buy"
     symbol_side_map = await parse_symbols(symbol_sides)
-    open_automatically = os.getenv('OPEN_POSITIONS', "False").lower() in ("true", "1", "yes")
 
     # Validate required environment variables
     if not all([api_key, api_secret, symbol_sides]):
@@ -70,14 +69,13 @@ async def main():
         profit_pnl=CONFIG['profit_pnl'],
         proportion_of_balance=CONFIG['begin_size_of_balance'],
         buy_until_limit=CONFIG['buy_until_limit'],
-        open_automatically=open_automatically,
         logger=logger
     )
 
     workflow = MartingaleTradingWorkflow(strategy, logger)
 
-    for symbol, pos_side in symbol_side_map:
-        await execute_symbol_strategy(symbol, workflow, ema_interval, pos_side)  # Sequentially process each symbol
+    for symbol, pos_side, automatic_mode in symbol_side_map:
+        await execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode)  # Sequentially process each symbol
 
 
 async def parse_symbols(symbol_sides):
@@ -86,22 +84,26 @@ async def parse_symbols(symbol_sides):
         try:
             for item in symbol_sides.split(','):
                 if ':' in item:
-                    symbol, side = item.split(':', 1)
-                    symbol_side_map.append((symbol.strip(), side.strip()))
+                    symbol, side, automatic = item.split(':', 2)
+                    symbol_side_map.append((symbol.strip(), side.strip(), automatic.strip()))
         except Exception as e:
             print(f"Error parsing SYMBOL_SIDES: {e}")
 
-    # Example SYMBOL_SIDES input: "INJUSDT:Short,INJUSDT:Long,POPCATUSDT:Short"
+    # 3 items will be extracted:
+    # - Symbol, the symbol you want to trade
+    # - Position Side, what bias do you have
+    # - Automatic start, do you want the script to automatically start new position if none exist
+    # Example SYMBOL_SIDES input: "INJUSDT:Short:True,INJUSDT:Long:True,POPCATUSDT:Short:false"
     # Output symbol_side_map:
     # [
-    #     ("INJUSDT", "Short"),
-    #     ("INJUSDT", "Long"),
-    #     ("POPCATUSDT", "Short")
+    #     ("INJUSDT", "Short", "True"),
+    #     ("INJUSDT", "Long", "True"),
+    #     ("POPCATUSDT", "Short", False)
     # ]
     return symbol_side_map
 
 
-async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side):
+async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode):
     try:
         # Execute the trading strategy for the specific symbol
         await asyncio.to_thread(
@@ -110,7 +112,8 @@ async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side):
             ema_interval=ema_interval,
             pos_side=pos_side,
             buy_below_percentage=CONFIG['buy_below_percentage'],
-            leverage=CONFIG['leverage']
+            leverage=CONFIG['leverage'],
+            automatic_mode=automatic_mode
         )
         logging.info(f'Successfully executed strategy for {symbol}')
     except Exception as e:
