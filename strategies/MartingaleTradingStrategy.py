@@ -32,7 +32,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             or (pos_side == 'Long' and current_price > ema_200) \
             or (pos_side == 'Short' and current_price < ema_200)
 
-    def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance,
+    def manage_position(self, symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance,
                         buy_below_percentage, pos_side):
 
         conclusion = "Nothing changed"
@@ -53,7 +53,10 @@ class MartingaleTradingStrategy(TradingStrategy):
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
                                                   side,
                                                   pos_side)
-        elif self.open_automatically:
+        elif self.open_automatically and \
+                (pos_side == "Long" and current_price > ema_200_1h) or \
+                (pos_side == "Short" and current_price < ema_200_1h):
+
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
         return conclusion
@@ -118,6 +121,8 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
+        ema_200_1h = self.client.get_ema(symbol=symbol, interval=60,
+                                         period=200)  # 1H EMA is leading to identify Long or Short Bias
         self.logger.info(
             "EMA info",
             extra={
@@ -125,14 +130,16 @@ class MartingaleTradingStrategy(TradingStrategy):
                 "json": {
                     "ema_interval": ema_interval,
                     "ema_50": ema_50,
-                    "ema_200": ema_200
+                    "ema_200": ema_200,
+                    "ema_200_1h": ema_200_1h
                 }
             })
 
         current_price = current_bid if pos_side == 'Long' else current_ask
 
         if position:
-            position_value_percentage_of_total_balance = round(float(position['positionValue']) / total_balance * 100, 2)
+            position_value_percentage_of_total_balance = round(float(position['positionValue']) / total_balance * 100,
+                                                               2)
             position['position_size_percentage'] = position_value_percentage_of_total_balance
 
             self.logger.info(
@@ -144,7 +151,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                     }
                 })
 
-        return current_price, ema_200, ema_50, position, total_balance
+        return current_price, ema_200_1h, ema_200, ema_50, position, total_balance
 
     def prepare_strategy(self, leverage, symbol, pos_side):
         self.client.cancel_all_open_orders(symbol, pos_side)
@@ -154,7 +161,7 @@ class MartingaleTradingStrategy(TradingStrategy):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
 
         if position_value == 0:
-            qty = (total_balance * self.proportion_of_balance) * self.leverage/ current_price
+            qty = (total_balance * self.proportion_of_balance) * self.leverage / current_price
         else:
             qty = (position_value * self.leverage * (-pnl_percentage)) / current_price
 
