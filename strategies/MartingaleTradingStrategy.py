@@ -43,7 +43,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             position_value_percentage_of_total_balance = float(position['position_size_percentage'])
             side = "Buy" if pos_side == "Long" else "Sell"
 
-            if unrealised_pnl > self.profit_threshold:
+            if unrealised_pnl > self.profit_threshold and position_value >= self.buy_until_limit:
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
                                                              position_value_percentage_of_total_balance, pos_side)
             elif position['margin_level'] < 2 \
