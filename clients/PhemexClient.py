@@ -121,7 +121,7 @@ class PhemexClient():
             position = next((p for p in positions if p['symbol'] == symbol
                              and p["posSide"] == pos_side and float(p['sizeRq']) > 0), None)
             if position:
-                position_value = round(float(position.get('assignedPosBalanceRv', 0)),2)
+                position_value = round(float(position.get('assignedPosBalanceRv', 0)), 2)
                 unrealised_pnl = round(float(position.get('unRealisedPnlRv', 0)), 2)
                 upnl_percentage = round(unrealised_pnl / position_value, 2) if position_value != 0 else 0.0
                 size = float(position.get('sizeRq', 0))

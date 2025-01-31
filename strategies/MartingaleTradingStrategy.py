@@ -71,15 +71,15 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         # Define thresholds and corresponding actions
         thresholds = [
-            (30, 0.3, "Closing 30% of position due to balance > 30%"),
-            (20, 0.2, "Closing 20% of position due to balance > 20%"),
-            (15, 0.1, "Closing 10% of position due to balance > 15%")
+            (10, 0.5, "Closing 50% of position due to balance > 10%")
         ]
 
         # Check thresholds and execute actions
         for threshold, close_fraction, message in thresholds:
             if position_value_percentage_of_total_balance > threshold:
-                self.client.close_position(symbol, size * close_fraction, pos_side)
+                min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
+                qty = self.custom_round(size * close_fraction, min_qty, max_qty, qty_step)
+                self.client.close_position(symbol, qty, pos_side)
                 return f"{message} (Current: {position_value_percentage_of_total_balance}%)"
 
         # Leave only min amount if profit target is reached
