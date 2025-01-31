@@ -4,15 +4,26 @@ from clients import TradingClient
 from strategies.TradingStrategy import TradingStrategy
 
 
+CONFIG = {
+    'buy_until_limit': 0.05,
+    'profit_threshold': 0.003, # Percentage of total as min profit, 0,002 = 0,2 % of total balance = 40 cent
+    'profit_pnl': 0.1,
+    'leverage': 6,
+    'begin_size_of_balance': 0.015,
+    'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
+    'buy_below_percentage': 0.04,
+}
+
+
 class MartingaleTradingStrategy(TradingStrategy):
-    def __init__(self, client: TradingClient, leverage, profit_threshold, profit_pnl, proportion_of_balance,
-                 buy_until_limit, logger):
+    def __init__(self, client: TradingClient, logger):
         super().__init__(client, logger)
-        self.leverage = leverage
-        self.profit_threshold = profit_threshold
-        self.profit_pnl = profit_pnl
-        self.proportion_of_balance = proportion_of_balance
-        self.buy_until_limit = buy_until_limit
+
+        self.leverage = CONFIG['leverage']
+        self.profit_threshold = CONFIG['profit_threshold']
+        self.profit_pnl = CONFIG['profit_pnl']
+        self.proportion_of_balance = CONFIG['begin_size_of_balance']
+        self.buy_until_limit = CONFIG['buy_until_limit']
 
     def custom_round(self, number, min_qty, max_qty, qty_step):
         number = Decimal(str(number))
@@ -31,8 +42,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             or (pos_side == 'Long' and current_price > ema_200) \
             or (pos_side == 'Short' and current_price < ema_200)
 
-    def manage_position(self, symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance,
-                        buy_below_percentage, pos_side, automatic_mode):
+    def manage_position(self, symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance, pos_side, automatic_mode):
         """
         Manage the current position based on profit, margin level, and EMA conditions.
         """
@@ -172,9 +182,9 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         return current_price, ema_200_1h, ema_200, ema_50, position, total_balance
 
-    def prepare_strategy(self, leverage, symbol, pos_side):
+    def prepare_strategy(self, symbol, pos_side):
         self.client.cancel_all_open_orders(symbol, pos_side)
-        self.client.set_leverage(symbol, leverage)
+        self.client.set_leverage(symbol, self.leverage)
 
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)

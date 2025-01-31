@@ -1,11 +1,12 @@
 from workflows.Workflow import Workflow
 
 
+
 class MartingaleTradingWorkflow(Workflow):
     def __init__(self, strategy, logger):
         super().__init__(logger, strategy)
 
-    def execute(self, symbol, buy_below_percentage, leverage, pos_side, ema_interval, automatic_mode):
+    def execute(self, symbol, pos_side, ema_interval, automatic_mode):
         try:
             self.logger.info(
                 "Starting workflow",
@@ -13,8 +14,6 @@ class MartingaleTradingWorkflow(Workflow):
                     "symbol": symbol,
                     "json": {
                         "strategy": "MartinGale",
-                        "buy_below_percentage": buy_below_percentage,
-                        "leverage": leverage,
                         "pos_side": pos_side,
                         "ema_interval": ema_interval,
                         "automatic_mode": automatic_mode
@@ -23,7 +22,7 @@ class MartingaleTradingWorkflow(Workflow):
             )
 
             # Step 1: Prepare the strategy
-            self.strategy.prepare_strategy(leverage, symbol, pos_side)
+            self.strategy.prepare_strategy(symbol, pos_side)
 
             # Step 2: Retrieve required information
             current_price, ema_200_1h, ema_200, ema_50, position, total_balance = self.strategy.retrieve_information(
@@ -33,8 +32,9 @@ class MartingaleTradingWorkflow(Workflow):
             # Step 3: Determine and execute actions based on strategy
             if self.strategy.is_valid_position(position=position, current_price=current_price, ema_200=ema_200, pos_side=pos_side):
                 conclusion = self.strategy.manage_position(
-                    symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance,
-                    buy_below_percentage, pos_side, automatic_mode
+                    symbol=symbol, current_price=current_price, ema_200_1h=ema_200_1h,
+                    ema_200=ema_200, ema_50=ema_50, position=position, total_balance=total_balance,
+                    pos_side=pos_side, automatic_mode=automatic_mode
                 )
                 self.logger.info(
                     "Position managed",

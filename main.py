@@ -9,16 +9,6 @@ from strategies.MartingaleTradingStrategy import MartingaleTradingStrategy
 from workflows.MartingaleTradingWorkflow import MartingaleTradingWorkflow
 from clients.PhemexClient import PhemexClient
 
-CONFIG = {
-    'buy_until_limit': 0.05,
-    'profit_threshold': 0.003, # Percentage of total as min profit, 0,002 = 0,2 % of total balance = 40 cent
-    'profit_pnl': 0.1,
-    'leverage': 6,
-    'begin_size_of_balance': 0.03,
-    'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
-    'buy_below_percentage': 0.04,
-    'logging_level': logging.INFO
-}
 
 async def main():
     # Remove all existing handlers to prevent duplicate logging
@@ -64,11 +54,6 @@ async def main():
     # Initialize trading strategy with configuration parameters
     strategy = MartingaleTradingStrategy(
         client=client,
-        leverage=CONFIG['leverage'],
-        profit_threshold=CONFIG['profit_threshold'],
-        profit_pnl=CONFIG['profit_pnl'],
-        proportion_of_balance=CONFIG['begin_size_of_balance'],
-        buy_until_limit=CONFIG['buy_until_limit'],
         logger=logger
     )
 
@@ -108,8 +93,6 @@ async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, auto
             symbol=symbol,
             ema_interval=ema_interval,
             pos_side=pos_side,
-            buy_below_percentage=CONFIG['buy_below_percentage'],
-            leverage=CONFIG['leverage'],
             automatic_mode=automatic_mode
         )
         logging.info(f'Successfully executed strategy for {symbol}')
