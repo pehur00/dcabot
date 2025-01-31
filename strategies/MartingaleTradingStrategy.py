@@ -71,6 +71,7 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         # Define thresholds and corresponding actions
         thresholds = [
+            (7.50, 0.33, "Closing 33% of position due to balance > 7.5%"),
             (10, 0.5, "Closing 50% of position due to balance > 10%")
         ]
 
