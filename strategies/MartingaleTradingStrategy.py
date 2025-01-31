@@ -54,7 +54,7 @@ class MartingaleTradingStrategy(TradingStrategy):
 
             # ✅ 1. Manage profitable positions
             if (
-                    unrealised_pnl > self.profit_threshold  # If we reached our min profit amount
+                    unrealised_pnl/total_balance > self.profit_threshold  # If we reached our min profit amount
                     and position_factor >= self.buy_until_limit  # And we bought the minimum amount
             ):
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,

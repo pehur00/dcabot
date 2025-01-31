@@ -11,7 +11,7 @@ from clients.PhemexClient import PhemexClient
 
 CONFIG = {
     'buy_until_limit': 0.05,
-    'profit_threshold': 0.5,
+    'profit_threshold': 0.003, # Percentage of total as min profit, 0,002 = 0,2 % of total balance = 40 cent
     'profit_pnl': 0.1,
     'leverage': 6,
     'begin_size_of_balance': 0.03,
