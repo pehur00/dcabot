@@ -16,7 +16,8 @@ class MartingaleTradingWorkflow(Workflow):
                         "buy_below_percentage": buy_below_percentage,
                         "leverage": leverage,
                         "pos_side": pos_side,
-                        "ema_interval": ema_interval
+                        "ema_interval": ema_interval,
+                        "automatic_mode": automatic_mode
                     }
                 }
             )

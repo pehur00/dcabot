@@ -12,7 +12,7 @@ from clients.PhemexClient import PhemexClient
 CONFIG = {
     'buy_until_limit': 0.05,
     'profit_threshold': 0.5,
-    'profit_pnl': 0.2,
+    'profit_pnl': 0.1,
     'leverage': 6,
     'begin_size_of_balance': 0.03,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
@@ -84,20 +84,17 @@ async def parse_symbols(symbol_sides):
         try:
             for item in symbol_sides.split(','):
                 if ':' in item:
-                    symbol, side, automatic = item.split(':', 2)
-                    symbol_side_map.append((symbol.strip(), side.strip(), automatic.strip()))
+                    symbol, side, automatic = item.split(':', 3)
+                    automatic_bool = automatic.strip().lower() in ["true", "1", "yes"]  # Convert to Boolean
+                    symbol_side_map.append((symbol.strip(), side.strip(), automatic_bool))
         except Exception as e:
             print(f"Error parsing SYMBOL_SIDES: {e}")
 
-    # 3 items will be extracted:
-    # - Symbol, the symbol you want to trade
-    # - Position Side, what bias do you have
-    # - Automatic start, do you want the script to automatically start new position if none exist
     # Example SYMBOL_SIDES input: "INJUSDT:Short:True,INJUSDT:Long:True,POPCATUSDT:Short:false"
     # Output symbol_side_map:
     # [
-    #     ("INJUSDT", "Short", "True"),
-    #     ("INJUSDT", "Long", "True"),
+    #     ("INJUSDT", "Short", True),
+    #     ("INJUSDT", "Long", True),
     #     ("POPCATUSDT", "Short", False)
     # ]
     return symbol_side_map
