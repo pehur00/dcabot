@@ -33,31 +33,48 @@ class MartingaleTradingStrategy(TradingStrategy):
 
     def manage_position(self, symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance,
                         buy_below_percentage, pos_side, automatic_mode):
+        """
+        Manage the current position based on profit, margin level, and EMA conditions.
+        """
 
         conclusion = "Nothing changed"
+
         if position:
+            # Extract position details
             position_value = float(position['positionValue'])
             unrealised_pnl = float(position['unrealisedPnl'])
             upnl_percentage = float(position['upnlPercentage'])
-            position_value_percentage_of_total_balance = float(position['position_size_percentage'])
+            position_size_percentage = float(position['position_size_percentage'])
             side = "Buy" if pos_side == "Long" else "Sell"
-
-            valid_position = self.is_valid_position(position, current_price, ema_50, pos_side)
             position_factor = position_value / total_balance
-            if unrealised_pnl > self.profit_threshold and position_factor >= self.buy_until_limit:
+            margin_level = float(position.get('margin_level', 0))
+
+            # Validate if adding to position is allowed
+            valid_position = self.is_valid_position(position, current_price, ema_50, pos_side)
+
+            # ✅ 1. Manage profitable positions
+            if (
+                    unrealised_pnl > self.profit_threshold  # If we reached our min profit amount
+                    and position_factor >= self.buy_until_limit  # And we bought the minimum amount
+            ):
                 conclusion = self.manage_profitable_position(symbol, position, upnl_percentage,
-                                                             position_value_percentage_of_total_balance, pos_side)
-            elif position['margin_level'] < 2 \
-                    or (position_factor) < self.buy_until_limit \
-                    or (unrealised_pnl < 0 and upnl_percentage < -0.05 and valid_position):
+                                                             position_size_percentage, pos_side)
 
-                conclusion = self.add_to_position(symbol, current_price, total_balance, position_value, upnl_percentage,
-                                                  side,
-                                                  pos_side)
-        elif automatic_mode and \
-                (pos_side == "Long" and current_price > ema_200_1h) or \
-                (pos_side == "Short" and current_price < ema_200_1h):
+            # ✅ 2. Check conditions to add to the position
+            elif (
+                    margin_level < 2  # Ensure margin level is safe
+                    or position_factor < self.buy_until_limit  # Position size is within limits
+                    or (unrealised_pnl < 0 and upnl_percentage < -0.05  # Buy at a dip, but only if down more than 5%
+                        and valid_position)  # Only on right side of EMA's
+            ):
+                conclusion = self.add_to_position(symbol, current_price, total_balance, position_value,
+                                                  upnl_percentage, side, pos_side)
 
+        # ✅ 3. Open a new position in automatic mode if conditions match
+        elif automatic_mode and (
+                (pos_side == "Long" and current_price > ema_200_1h) or
+                (pos_side == "Short" and current_price < ema_200_1h)
+        ):
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
         return conclusion
