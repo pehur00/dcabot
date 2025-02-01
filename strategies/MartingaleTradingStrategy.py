@@ -5,11 +5,11 @@ from strategies.TradingStrategy import TradingStrategy
 
 
 CONFIG = {
-    'buy_until_limit': 0.05,
+    'buy_until_limit': 0.02,
     'profit_threshold': 0.003, # Percentage of total as min profit, 0,002 = 0,2 % of total balance = 40 cent
     'profit_pnl': 0.1,
     'leverage': 6,
-    'begin_size_of_balance': 0.015,
+    'begin_size_of_balance': 0.006,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
     'buy_below_percentage': 0.04,
 }
