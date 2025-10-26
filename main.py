@@ -63,8 +63,11 @@ async def main():
     # Initialize Telegram notifier
     notifier = TelegramNotifier(logger=logger)
 
-    # Send bot started notification
-    notifier.notify_bot_started(symbol_side_map, testnet)
+    # Only send startup notification if BOT_STARTUP env var is set
+    # This prevents notification spam from cron jobs
+    # Set BOT_STARTUP=true manually when you want to know bot restarted
+    if os.getenv('BOT_STARTUP', 'False').lower() in ('true', '1', 't'):
+        notifier.notify_bot_started(symbol_side_map, testnet)
 
     # Initialize trading strategy with configuration parameters
     strategy = MartingaleTradingStrategy(
@@ -76,7 +79,7 @@ async def main():
     workflow = MartingaleTradingWorkflow(strategy, logger)
 
     for symbol, pos_side, automatic_mode in symbol_side_map:
-        await execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode)  # Sequentially process each symbol
+        await execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode, notifier)  # Sequentially process each symbol
 
 
 async def parse_symbols(symbol_sides):
@@ -101,7 +104,7 @@ async def parse_symbols(symbol_sides):
     return symbol_side_map
 
 
-async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode):
+async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode, notifier=None):
     try:
         # Execute the trading strategy for the specific symbol
         await asyncio.to_thread(
@@ -113,7 +116,16 @@ async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, auto
         )
         logging.info(f'Successfully executed strategy for {symbol}')
     except Exception as e:
-        logging.error(f'Error executing strategy for {symbol}: {e}')
+        error_msg = str(e)
+        logging.error(f'Error executing strategy for {symbol}: {error_msg}')
+
+        # Send Telegram notification on error
+        if notifier:
+            notifier.notify_error(
+                error_type="Strategy Execution Failed",
+                symbol=symbol,
+                error_message=error_msg
+            )
 
 
 # Run the asyncio event loop

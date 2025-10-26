@@ -26,6 +26,8 @@ services:
     sync: false
   - key: TELEGRAM_CHAT_ID
     sync: false
+  - key: BOT_STARTUP
+    sync: false
 
   region: frankfurt
   schedule: '*/5 * * * *'  # Every 5 minutes (recommended)

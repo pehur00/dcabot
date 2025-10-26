@@ -234,8 +234,16 @@ class MartingaleTradingStrategy(TradingStrategy):
 
     def retrieve_information(self, ema_interval, symbol, pos_side):
         position = self.client.get_position_for_symbol(symbol, pos_side)
-        current_bid, current_ask = self.client.get_ticker_info(symbol)
-        total_balance, used_balance = self.client.get_account_balance()
+
+        ticker_info = self.client.get_ticker_info(symbol)
+        if ticker_info is None or ticker_info == (None, None):
+            raise ValueError(f"Failed to fetch ticker info for {symbol}. API error or connection issue.")
+        current_bid, current_ask = ticker_info
+
+        balance_info = self.client.get_account_balance()
+        if balance_info is None:
+            raise ValueError(f"Failed to fetch account balance for {symbol}. API error or connection issue.")
+        total_balance, used_balance = balance_info
 
         self.logger.info(
             "Balance info",
@@ -248,8 +256,12 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
-        ema_200_1h = self.client.get_ema(symbol=symbol, interval=60,
-                                         period=200)  # 1H EMA is leading to identify Long or Short Bias
+        ema_200_1h = self.client.get_ema(symbol=symbol, interval=60, period=200)  # 1H EMA is leading to identify Long or Short Bias
+
+        # Validate EMAs - if any are None, there's an API or data issue
+        if ema_50 is None or ema_200 is None or ema_200_1h is None:
+            raise ValueError(f"Failed to calculate EMAs for {symbol}. Missing historical data or API error.")
+
         self.logger.info(
             "EMA info",
             extra={
