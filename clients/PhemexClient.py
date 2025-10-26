@@ -268,9 +268,11 @@ class PhemexClient(TradingClient):
                 "Failed to set leverage",
                 extra={
                     "symbol": symbol,
-                    "json": {"error_description": e
+                    "json": {"error_description": str(e)
                              }}
             )
+            # Re-raise so error propagates to main.py error handler
+            raise
 
     def fetch_historical_data(self, symbol, interval, period):
         """
@@ -482,9 +484,11 @@ class PhemexClient(TradingClient):
                 "Failed to place order",
                 extra={
                     "symbol": symbol,
-                    "json": {"error_description": e
+                    "json": {"error_description": str(e)
                              }}
             )
+            # Re-raise so error propagates to main.py error handler
+            raise
 
     def close_position(self, symbol, qty, pos_side):
         try:
@@ -514,9 +518,11 @@ class PhemexClient(TradingClient):
                 "Failed to close position",
                 extra={
                     "symbol": symbol,
-                    "json": {"error_description": e
+                    "json": {"error_description": str(e)
                              }}
             )
+            # Re-raise so error propagates to main.py error handler
+            raise
 
     def cancel_all_open_orders(self, symbol, pos_side):
         try:
@@ -541,8 +547,10 @@ class PhemexClient(TradingClient):
                     "Failed to cancel all open orders",
                     extra={
                         "symbol": symbol,
-                        "json": {"error_description": e
+                        "json": {"error_description": str(e)
                                  }}
                 )
             except Exception as e1:
                 logging.error("unresolved error:", e)
+            # Re-raise the exception so it propagates to main.py error handler
+            raise
