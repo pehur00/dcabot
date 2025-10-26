@@ -1,3 +1,23 @@
 bot.log
 /backtest/my_backtest.csv
 /.idea/
+
+# Environment variables (contains secrets)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+dcabot-env/
+
+# IDEs
+.vscode/
+*.swp
+*.swo
+*~

@@ -1,64 +1,165 @@
-# DipTrader Bot
+# Martingale Trading Bot
 
-A sophisticated trading bot designed for the cryptocurrency market, leveraging the Pybit Unified Trading API.
+A sophisticated cryptocurrency trading bot implementing a Martingale-style averaging strategy with EMA filters, volatility protection, and automated risk management.
 
-## Requirements
-- Python 3.x
-- Pybit Unified Trading API
-- Docker (optional for Docker deployment)
+## Features
 
-## Installation
+- **Martingale Strategy**: Systematic position averaging with EMA-based trend filtering
+- **Volatility Protection**: Automatically pauses trading during high volatility (ATR, Bollinger Bands, Historical Volatility)
+- **Telegram Notifications**: Real-time alerts for positions, profits, warnings, and errors
+- **Risk Management**: Margin monitoring, position size limits, and liquidation protection
+- **Multi-Symbol Support**: Trade multiple pairs simultaneously with different strategies
+- **Retry & Rate Limiting**: Built-in error handling and API rate limiting
+- **Cloud Ready**: Docker support and Render.com deployment configuration
 
-### Standard Installation
-1. Clone the repository:
-```
-git clone [repository-url]
-```
+## Quick Start
 
-2. Navigate to the bot directory:
-```
-cd [directory]
-```
+### 1. Installation
 
-3. Install the required dependencies:
-```
+```bash
+git clone https://github.com/pehur00/dcabot.git
+cd dcabot
 pip install -r requirements.txt
 ```
 
-### Docker Installation
-If you prefer to run the bot inside a Docker container, you can build the Docker image:
-```
-docker build -t diptrader-bot .
+### 2. Configuration
+
+Create a `.env` file:
+
+```bash
+API_KEY=your_phemex_api_key
+API_SECRET=your_phemex_api_secret
+SYMBOL=BTCUSDT:Long:True
+EMA_INTERVAL=1
+TESTNET=True
+
+# Optional: Telegram notifications
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 
-And then run the container:
+### 3. Run
+
+```bash
+python main.py
 ```
-docker run -v diptrader-bot
+
+## Documentation
+
+- **[Setup Guide](docs/SETUP.md)** - Local and remote installation
+- **[Strategy Explanation](docs/STRATEGY.md)** - How the Martingale strategy works
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy to Render.com or VPS
+- **[Telegram Setup](docs/TELEGRAM_SETUP.md)** - Configure notifications
+
+## Architecture
+
 ```
+dcabot/
+├── clients/          # Exchange API clients (Phemex)
+├── strategies/       # Trading strategy implementations
+├── workflows/        # Execution workflows
+├── notifications/    # Telegram notification system
+├── indicators/       # Technical indicators (volatility, EMA)
+├── utils/            # Retry logic and rate limiting
+└── docs/             # Documentation
+```
+
+## Strategy Overview
+
+The bot implements a **Martingale averaging strategy**:
+
+1. **Entry**: Opens positions when price is trending (EMA filter)
+2. **Averaging**: Adds to losing positions with increasing size
+3. **Profit Taking**: Systematically closes profitable positions
+4. **Volatility Protection**: Pauses during high volatility
+5. **Risk Management**: Maintains safe margin levels
+
+See [STRATEGY.md](docs/STRATEGY.md) for detailed explanation.
 
 ## Configuration
-Before running the bot, make sure to update the `Config map inside the code` file with your prefferred trading parameters.
 
-## Usage
-1. Setup environment variables
-- API_KEY, API_SECRET, SYMBOL
-2. Start script
-To start the bot with standard installation:
+Key parameters in `strategies/MartingaleTradingStrategy.py`:
+
+```python
+CONFIG = {
+    'leverage': 6,                    # Trading leverage
+    'begin_size_of_balance': 0.006,   # Initial position: 0.6% of balance
+    'buy_until_limit': 0.02,          # Max position: 2% of balance
+    'profit_threshold': 0.003,        # Min profit: 0.3% of balance
+    'profit_pnl': 0.1,                # Target: 10% PnL on position
+}
 ```
-python /Users/jasperoudejans/Documents/repos/private/diptrader/MartingaleTradingStrategy.py 
+
+## Requirements
+
+- Python 3.8+
+- Phemex account with API access
+- (Optional) Telegram bot for notifications
+
+## Deployment
+
+### Render.com (Recommended)
+
+1. Push code to GitHub
+2. Create Cron Job on Render.com
+3. Set environment variables
+4. Deploy
+
+See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for details.
+
+### Docker
+
+```bash
+docker build -t martingale-bot .
+docker run -d \
+  -e API_KEY=your_key \
+  -e API_SECRET=your_secret \
+  -e SYMBOL=BTCUSDT:Long:True \
+  martingale-bot
 ```
 
-# Deployment
-1. Render
+## Monitoring
 
-I currently use render.com to build and run a docker container as cron job. It watches my github repo and on commits it will rebuild etc.
-As described on https://render.com/docs/infrastructure-as-code we will use a render.yaml "Blueprint".
-You may fork and use this approach yourselves. Fill in the environment vars in Render environment.
+- **Telegram**: Real-time notifications for all bot actions
+- **Logs**: Structured JSON logging for easy parsing
+- **Phemex Dashboard**: Monitor positions and PnL
 
-## Features
-- Automated trading based on predefined strategies
-- Configurable trading parameters
-- Detailed logging for monitoring and analysis
+## Safety Features
+
+- ✅ Testnet support for safe testing
+- ✅ Rate limiting to prevent API bans
+- ✅ Retry logic for failed requests
+- ✅ Margin level monitoring
+- ✅ Volatility detection and pausing
+- ✅ Position size limits
+- ✅ Emergency liquidation protection
+
+## Risk Warning
+
+⚠️ **WARNING**: Martingale strategies carry significant risk of large losses. This bot:
+- Can experience extended drawdowns
+- Requires sufficient capital for averaging
+- Uses leverage (amplifies both gains and losses)
+- May lose your entire trading account in extreme conditions
+
+**Only use funds you can afford to lose completely.**
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: See `docs/` directory
+- **Issues**: Report bugs via GitHub Issues
+- **Strategy Questions**: See [STRATEGY.md](docs/STRATEGY.md)
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+## Disclaimer
+
+This software is provided for educational purposes. Cryptocurrency trading carries significant risk. Past performance does not guarantee future results. The authors are not responsible for any financial losses incurred using this bot.
+
+**Trade responsibly. Start small. Test thoroughly.**

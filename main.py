@@ -2,15 +2,24 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 
 from pythonjsonlogger import json
+from dotenv import load_dotenv
 
 from strategies.MartingaleTradingStrategy import MartingaleTradingStrategy
 from workflows.MartingaleTradingWorkflow import MartingaleTradingWorkflow
 from clients.PhemexClient import PhemexClient
+from notifications.TelegramNotifier import TelegramNotifier
 
 
 async def main():
+    # Load .env file if it exists (for local development)
+    # Docker/Render will inject env vars directly
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        logging.info("Loaded environment variables from .env file")
     # Remove all existing handlers to prevent duplicate logging
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
@@ -51,10 +60,17 @@ async def main():
     # Initialize Phemex client
     client = PhemexClient(api_key, api_secret, logger, testnet)
 
+    # Initialize Telegram notifier
+    notifier = TelegramNotifier(logger=logger)
+
+    # Send bot started notification
+    notifier.notify_bot_started(symbol_side_map, testnet)
+
     # Initialize trading strategy with configuration parameters
     strategy = MartingaleTradingStrategy(
         client=client,
-        logger=logger
+        logger=logger,
+        notifier=notifier
     )
 
     workflow = MartingaleTradingWorkflow(strategy, logger)
@@ -69,7 +85,7 @@ async def parse_symbols(symbol_sides):
         try:
             for item in symbol_sides.split(','):
                 if ':' in item:
-                    symbol, side, automatic = item.split(':', 3)
+                    symbol, side, automatic = item.split(':', 2)
                     automatic_bool = automatic.strip().lower() in ["true", "1", "yes"]  # Convert to Boolean
                     symbol_side_map.append((symbol.strip(), side.strip(), automatic_bool))
         except Exception as e:

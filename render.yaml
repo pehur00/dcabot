@@ -1,4 +1,5 @@
-# Exported from Render on 2025-01-23T21:22:46Z
+# Render.com Blueprint Configuration
+# Update env vars in Render dashboard for security
 services:
 - type: cron
   name: dcabot
@@ -6,16 +7,28 @@ services:
   repo: https://github.com/pehur00/dcabot
   plan: starter
   envVars:
-  - key: EMA_INTERVAL
-    sync: false
-  - key: SYMBOL
+  # Required: Phemex API credentials
+  - key: API_KEY
     sync: false
   - key: API_SECRET
     sync: false
-  - key: API_KEY
+
+  # Required: Trading configuration
+  - key: SYMBOL
     sync: false
+  - key: EMA_INTERVAL
+    sync: false
+  - key: TESTNET
+    sync: false
+
+  # Optional: Telegram notifications
+  - key: TELEGRAM_BOT_TOKEN
+    sync: false
+  - key: TELEGRAM_CHAT_ID
+    sync: false
+
   region: frankfurt
-  schedule: '*/1 * * * *'
+  schedule: '*/5 * * * *'  # Every 5 minutes (recommended)
   dockerContext: .
   dockerfilePath: ./Dockerfile
 version: "1"

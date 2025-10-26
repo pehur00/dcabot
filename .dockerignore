@@ -1,0 +1,43 @@
+# Don't copy these into Docker image
+
+# Environment files (secrets)
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+dcabot-env/
+venv/
+env/
+ENV/
+*.egg-info/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Documentation (not needed in container)
+docs/
+*.md
+!requirements.txt
+
+# Logs
+*.log
+bot.log
+
+# Backtest data
+backtest/
+
+# Scripts (not needed in container)
+run_bot.sh

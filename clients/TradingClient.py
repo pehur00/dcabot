@@ -22,7 +22,7 @@ class TradingClient(ABC):
         pass
 
     @abstractmethod
-    def calculate_ema(self, symbol, interval, period):
+    def get_ema(self, symbol, interval, period):
         pass
 
     @abstractmethod

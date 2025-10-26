@@ -9,9 +9,11 @@ import pandas as pd
 import requests
 
 from clients.TradingClient import TradingClient
+from utils.retry import retry_on_exception, RateLimiter
+from indicators.volatility import VolatilityIndicators
 
 
-class PhemexAPIException(TradingClient, Exception):
+class PhemexAPIException(Exception):
     def __init__(self, response):
         self.code = 0
         try:
@@ -33,9 +35,12 @@ class PhemexAPIException(TradingClient, Exception):
         return f'HTTP(code={self.status_code}), API(errorcode={self.code}): {self.message}'
 
 
-class PhemexClient():
+class PhemexClient(TradingClient):
     MAIN_NET_API_URL = 'https://api.phemex.com'
     TEST_NET_API_URL = 'https://testnet-api.phemex.com'
+
+    # Rate limiter: 10 requests per second (conservative for Phemex)
+    rate_limiter = RateLimiter(max_calls=10, period=1.0)
 
     def __init__(self, api_key, api_secret, logger, testnet=False):
         self.api_key = api_key
@@ -44,6 +49,13 @@ class PhemexClient():
         self.api_URL = self.TEST_NET_API_URL if testnet else self.MAIN_NET_API_URL
         self.session = requests.session()
 
+    @rate_limiter
+    @retry_on_exception(
+        max_retries=3,
+        delay=1.0,
+        backoff=2.0,
+        exceptions=(requests.exceptions.RequestException, PhemexAPIException)
+    )
     def _send_request(self, method, endpoint, params=None, body=None):
         if params is None:
             params = {}
@@ -366,6 +378,42 @@ class PhemexClient():
             return ema.iloc[-1]
         else:
             return None
+
+    def check_volatility(self, symbol, interval=5, period=100):
+        """
+        Check if the market is experiencing high volatility.
+
+        Args:
+            symbol: Trading pair symbol
+            interval: Interval in minutes for historical data
+            period: Number of data points to analyze
+
+        Returns:
+            Tuple of (is_high_volatility: bool, metrics: dict)
+        """
+        historical_data = self.fetch_historical_data(symbol, interval, period)
+
+        if historical_data.empty:
+            self.logger.warning(
+                "Unable to check volatility: insufficient data",
+                extra={"symbol": symbol}
+            )
+            return False, {}
+
+        is_high_vol, metrics = VolatilityIndicators.is_high_volatility(historical_data)
+
+        self.logger.info(
+            "Volatility check completed",
+            extra={
+                "symbol": symbol,
+                "json": {
+                    "is_high_volatility": is_high_vol,
+                    "metrics": metrics
+                }
+            }
+        )
+
+        return is_high_vol, metrics
 
     def place_order(self, symbol, qty, price=None, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
                     pos_side="Long", reduce_only=False):
