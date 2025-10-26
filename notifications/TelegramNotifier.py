@@ -66,36 +66,103 @@ class TelegramNotifier:
             self.logger.error(f"Error sending Telegram notification: {e}")
             return False
 
+    def notify_position_update(self, action: str, symbol: str, side: str, pos_side: str,
+                               qty: float, price: float, balance: float,
+                               position_size: float = None, position_value: float = None,
+                               position_pct: float = None, pnl: float = None,
+                               pnl_pct: float = None, reason: str = None):
+        """
+        Unified notification for all position updates.
+
+        Args:
+            action: Action type - "OPENED", "ADDED", "REDUCED", "CLOSED"
+            symbol: Trading symbol
+            side: Buy/Sell
+            pos_side: Long/Short
+            qty: Quantity of this action
+            price: Execution price
+            balance: Total account balance
+            position_size: Total position size after action (in coins/tokens)
+            position_value: Total position value after action (in USD)
+            position_pct: Position as % of total balance
+            pnl: Profit/Loss (for REDUCED/CLOSED)
+            pnl_pct: PnL percentage (for REDUCED/CLOSED)
+            reason: Reason for action (for REDUCED/CLOSED)
+        """
+        # Emoji and color based on action
+        action_emojis = {
+            "OPENED": "🟢",
+            "ADDED": "🔵",
+            "REDUCED": "🟡",
+            "CLOSED": "🔴" if (pnl is not None and pnl < 0) else "🟢"
+        }
+        emoji = action_emojis.get(action, "⚪")
+
+        # Build message header
+        message = f"{emoji} <b>Position {action}</b>\n\n"
+        message += f"Symbol: <code>{symbol}</code>\n"
+        message += f"Side: <b>{side}</b> ({pos_side})\n"
+        message += f"Action Qty: <code>{qty:.4f}</code>\n"
+        message += f"Price: <code>${price:.4f}</code>\n"
+
+        # Add position details if available
+        if position_size is not None:
+            message += f"\n<b>Position Status:</b>\n"
+            message += f"Total Size: <code>{position_size:.4f}</code> {symbol.replace('USDT', '')}\n"
+
+        if position_value is not None:
+            message += f"Position Value: <code>${position_value:.2f}</code>\n"
+
+        if position_pct is not None:
+            message += f"% of Balance: <code>{position_pct:.2f}%</code>\n"
+
+        # Add PnL for REDUCED/CLOSED actions
+        if pnl is not None and action in ["REDUCED", "CLOSED"]:
+            pnl_sign = "+" if pnl > 0 else ""
+            message += f"\n<b>PnL:</b> <code>{pnl_sign}${pnl:.2f}</code>"
+            if pnl_pct is not None:
+                message += f" ({pnl_sign}{pnl_pct:.2f}%)"
+            message += "\n"
+
+        # Add reason if provided
+        if reason:
+            message += f"\nReason: {reason}"
+
+        # Add balance
+        message += f"\n<b>Balance:</b> <code>${balance:.2f}</code>"
+
+        return self._send_message(message)
+
     def notify_position_opened(self, symbol: str, side: str, pos_side: str, qty: float, price: float,
                                balance: float, position_size_pct: float):
-        """Send notification when a new position is opened or added to."""
-        message = (
-            f"🟢 <b>Position Opened/Added</b>\n\n"
-            f"Symbol: <code>{symbol}</code>\n"
-            f"Side: <b>{side}</b> ({pos_side})\n"
-            f"Quantity: <code>{qty}</code>\n"
-            f"Price: <code>{price}</code>\n"
-            f"Position Size: <code>{position_size_pct:.2f}%</code> of balance\n"
-            f"Total Balance: <code>${balance:.2f}</code>"
+        """Deprecated: Use notify_position_update() instead. Kept for backwards compatibility."""
+        return self.notify_position_update(
+            action="OPENED",
+            symbol=symbol,
+            side=side,
+            pos_side=pos_side,
+            qty=qty,
+            price=price,
+            balance=balance,
+            position_pct=position_size_pct
         )
-        return self._send_message(message)
 
     def notify_position_closed(self, symbol: str, pos_side: str, qty: float, price: float,
                                pnl: float, pnl_pct: float, reason: str):
-        """Send notification when a position is closed."""
-        emoji = "🟢" if pnl > 0 else "🔴"
-        pnl_sign = "+" if pnl > 0 else ""
-
-        message = (
-            f"{emoji} <b>Position Closed</b>\n\n"
-            f"Symbol: <code>{symbol}</code>\n"
-            f"Side: <b>{pos_side}</b>\n"
-            f"Quantity: <code>{qty}</code>\n"
-            f"Price: <code>{price}</code>\n"
-            f"PnL: <code>{pnl_sign}${pnl:.2f}</code> ({pnl_sign}{pnl_pct:.2f}%)\n"
-            f"Reason: {reason}"
+        """Deprecated: Use notify_position_update() instead. Kept for backwards compatibility."""
+        side = "Buy" if pos_side == "Long" else "Sell"
+        return self.notify_position_update(
+            action="CLOSED",
+            symbol=symbol,
+            side=side,
+            pos_side=pos_side,
+            qty=qty,
+            price=price,
+            balance=0,  # Not available in old method
+            pnl=pnl,
+            pnl_pct=pnl_pct,
+            reason=reason
         )
-        return self._send_message(message)
 
     def notify_high_volatility(self, symbol: str, volatility_metric: str, value: float,
                                threshold: float, action: str):

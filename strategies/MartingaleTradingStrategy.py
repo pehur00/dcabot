@@ -43,7 +43,7 @@ class MartingaleTradingStrategy(TradingStrategy):
             or (pos_side == 'Long' and current_price > ema_200) \
             or (pos_side == 'Short' and current_price < ema_200)
 
-    def manage_position(self, symbol, current_price, ema_200_1h, ema_200, ema_50, position, total_balance, pos_side, automatic_mode):
+    def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance, pos_side, automatic_mode):
         """
         Manage the current position based on profit, margin level, EMA conditions, and volatility.
         """
@@ -120,8 +120,8 @@ class MartingaleTradingStrategy(TradingStrategy):
         # ✅ 3. Open a new position in automatic mode if conditions match
         # Don't open new positions during high volatility
         elif automatic_mode and not is_high_volatility and (
-                (pos_side == "Long" and current_price > ema_200_1h) or
-                (pos_side == "Short" and current_price < ema_200_1h)
+                (pos_side == "Long" and current_price > ema_200) or
+                (pos_side == "Short" and current_price < ema_200)
         ):
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
@@ -151,15 +151,36 @@ class MartingaleTradingStrategy(TradingStrategy):
                 min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
                 qty = self.custom_round(size * close_fraction, min_qty, max_qty, qty_step)
                 _, ask_price = self.client.get_ticker_info(symbol)
+
+                # Get balance before closing
+                balance_info = self.client.get_account_balance()
+                total_balance = balance_info[0] if balance_info else 0
+
                 self.client.close_position(symbol, qty, pos_side)
+
+                # Get remaining position after partial close
+                remaining_position = self.client.get_position_for_symbol(symbol, pos_side)
 
                 # Send Telegram notification
                 if self.notifier:
-                    self.notifier.notify_position_closed(
+                    side = "Buy" if pos_side == "Long" else "Sell"
+
+                    # Calculate remaining position details
+                    remaining_size = float(remaining_position['size']) if remaining_position else 0
+                    remaining_value = float(remaining_position['positionValue']) if remaining_position else 0
+                    remaining_pct = (remaining_value / total_balance * 100) if total_balance > 0 else 0
+
+                    self.notifier.notify_position_update(
+                        action="REDUCED",
                         symbol=symbol,
+                        side=side,
                         pos_side=pos_side,
                         qty=float(qty),
                         price=ask_price,
+                        balance=total_balance,
+                        position_size=remaining_size,
+                        position_value=remaining_value,
+                        position_pct=remaining_pct,
                         pnl=unrealised_pnl * close_fraction,
                         pnl_pct=pnl_percentage * 100,
                         reason=message
@@ -170,15 +191,28 @@ class MartingaleTradingStrategy(TradingStrategy):
         # Leave only min amount if profit target is reached
         if pnl_percentage > self.profit_pnl:
             _, ask_price = self.client.get_ticker_info(symbol)
+
+            # Get balance before closing
+            balance_info = self.client.get_account_balance()
+            total_balance = balance_info[0] if balance_info else 0
+
             self.client.close_position(symbol, size, pos_side)
 
             # Send Telegram notification
             if self.notifier:
-                self.notifier.notify_position_closed(
+                side = "Buy" if pos_side == "Long" else "Sell"
+
+                self.notifier.notify_position_update(
+                    action="CLOSED",
                     symbol=symbol,
+                    side=side,
                     pos_side=pos_side,
                     qty=size,
                     price=ask_price,
+                    balance=total_balance,
+                    position_size=0,  # Position fully closed
+                    position_value=0,
+                    position_pct=0,
                     pnl=unrealised_pnl,
                     pnl_pct=pnl_percentage * 100,
                     reason="Target profit reached"
@@ -197,17 +231,26 @@ class MartingaleTradingStrategy(TradingStrategy):
         order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price, pnl_percentage)
         self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, pos_side=pos_side, side=side)
 
+        # Get updated position after adding
+        updated_position = self.client.get_position_for_symbol(symbol, pos_side)
+
         # Send Telegram notification
-        if self.notifier:
-            position_size_pct = (position_value / total_balance) * 100 if total_balance > 0 else 0
-            self.notifier.notify_position_opened(
+        if self.notifier and updated_position:
+            new_position_value = float(updated_position['positionValue'])
+            position_size = float(updated_position['size'])
+            position_pct = (new_position_value / total_balance) * 100 if total_balance > 0 else 0
+
+            self.notifier.notify_position_update(
+                action="ADDED",
                 symbol=symbol,
                 side=side,
                 pos_side=pos_side,
                 qty=float(order_qty),
                 price=current_price,
                 balance=total_balance,
-                position_size_pct=position_size_pct
+                position_size=position_size,
+                position_value=new_position_value,
+                position_pct=position_pct
             )
 
         return "Added to position"
@@ -217,17 +260,26 @@ class MartingaleTradingStrategy(TradingStrategy):
         order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
         self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, pos_side=pos_side, side=side)
 
+        # Get newly opened position
+        new_position = self.client.get_position_for_symbol(symbol, pos_side)
+
         # Send Telegram notification
-        if self.notifier:
-            position_size_pct = (self.proportion_of_balance * 100)
-            self.notifier.notify_position_opened(
+        if self.notifier and new_position:
+            position_value = float(new_position['positionValue'])
+            position_size = float(new_position['size'])
+            position_pct = (position_value / total_balance) * 100 if total_balance > 0 else 0
+
+            self.notifier.notify_position_update(
+                action="OPENED",
                 symbol=symbol,
                 side=side,
                 pos_side=pos_side,
                 qty=float(order_qty),
                 price=current_price,
                 balance=total_balance,
-                position_size_pct=position_size_pct
+                position_size=position_size,
+                position_value=position_value,
+                position_pct=position_pct
             )
 
         return "Opened new position"
@@ -256,10 +308,9 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
-        ema_200_1h = self.client.get_ema(symbol=symbol, interval=60, period=200)  # 1H EMA is leading to identify Long or Short Bias
 
         # Validate EMAs - if any are None, there's an API or data issue
-        if ema_50 is None or ema_200 is None or ema_200_1h is None:
+        if ema_50 is None or ema_200 is None:
             raise ValueError(f"Failed to calculate EMAs for {symbol}. Missing historical data or API error.")
 
         self.logger.info(
@@ -269,8 +320,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                 "json": {
                     "ema_interval": ema_interval,
                     "ema_50": ema_50,
-                    "ema_200": ema_200,
-                    "ema_200_1h": ema_200_1h
+                    "ema_200": ema_200
                 }
             })
 
@@ -290,7 +340,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                     }
                 })
 
-        return current_price, ema_200_1h, ema_200, ema_50, position, total_balance
+        return current_price, ema_200, ema_50, position, total_balance
 
     def prepare_strategy(self, symbol, pos_side):
         self.client.cancel_all_open_orders(symbol, pos_side)
