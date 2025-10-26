@@ -1,5 +1,8 @@
 bot.log
-/backtest/my_backtest.csv
+
+# Backtest outputs
+/backtest/*.csv
+
 /.idea/
 
 # Environment variables (contains secrets)
