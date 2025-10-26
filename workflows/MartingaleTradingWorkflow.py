@@ -46,16 +46,32 @@ class MartingaleTradingWorkflow(Workflow):
                         }
                     })
             else:
-                margin_level = position.get('margin_level', None) if position else None
+                # Determine the specific reason for skipping
+                if not position:
+                    if pos_side == "Long":
+                        reason = f"No position - waiting for price > EMA200 (current: {current_price}, EMA200: {ema_200})"
+                    else:
+                        reason = f"No position - waiting for price < EMA200 (current: {current_price}, EMA200: {ema_200})"
+                    margin_level = None
+                else:
+                    margin_level = position.get('margin_level', 0)
+                    if pos_side == "Long" and current_price <= ema_200:
+                        reason = f"Long position with price <= EMA200 (margin level: {margin_level:.2f}, safe - no action needed)"
+                    elif pos_side == "Short" and current_price >= ema_200:
+                        reason = f"Short position with price >= EMA200 (margin level: {margin_level:.2f}, safe - no action needed)"
+                    else:
+                        reason = f"Position exists with safe margin level ({margin_level:.2f} >= 2.0)"
 
                 self.logger.info(
-                    "Skipping due to wrong EMA side and margin level >= 200%",
+                    "Skipping position management",
                     extra={
                         "symbol": symbol,
                         "json": {
+                            "reason": reason,
                             "current_price": current_price,
-                            "ema": ema_200,
-                            "margin_level": margin_level
+                            "ema_200": ema_200,
+                            "margin_level": margin_level,
+                            "pos_side": pos_side
                         }
                     }
                 )
