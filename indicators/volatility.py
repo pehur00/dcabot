@@ -168,6 +168,104 @@ class VolatilityIndicators:
         return float(price_change_pct)
 
     @staticmethod
+    def calculate_decline_velocity(df: pd.DataFrame) -> Optional[dict]:
+        """
+        Calculate decline velocity metrics to distinguish between healthy pullbacks and crashes.
+
+        A slow, controlled decline is GOOD for Martingale (safe to average down).
+        A fast crash is DANGEROUS (risk of getting stuck in bad position).
+
+        Args:
+            df: DataFrame with OHLC and volume data
+
+        Returns:
+            Dict with decline velocity metrics, or None if insufficient data
+        """
+        if df.empty or len(df) < 30:
+            return None
+
+        metrics = {}
+
+        # 1. Short-term rate of change (last 5 periods) - detects crashes
+        if len(df) >= 6:
+            short_term_roc = ((df['close'].iloc[-1] - df['close'].iloc[-6]) / df['close'].iloc[-6]) * 100
+            metrics['roc_5'] = float(short_term_roc)
+
+        # 2. Medium-term rate of change (last 15 periods) - detects trend
+        if len(df) >= 16:
+            medium_term_roc = ((df['close'].iloc[-1] - df['close'].iloc[-16]) / df['close'].iloc[-16]) * 100
+            metrics['roc_15'] = float(medium_term_roc)
+
+        # 3. Long-term rate of change (last 30 periods) - detects overall direction
+        if len(df) >= 31:
+            long_term_roc = ((df['close'].iloc[-1] - df['close'].iloc[-31]) / df['close'].iloc[-31]) * 100
+            metrics['roc_30'] = float(long_term_roc)
+
+        # 4. Decline smoothness - compare short vs medium term
+        # If short-term drop is much worse than medium-term = crash
+        # If they're similar = smooth controlled decline
+        if 'roc_5' in metrics and 'roc_15' in metrics:
+            if metrics['roc_15'] != 0:
+                smoothness_ratio = abs(metrics['roc_5'] / metrics['roc_15'])
+                metrics['smoothness_ratio'] = float(smoothness_ratio)
+                # Ratio > 2.0 means short-term drop is 2x worse = jerky/crash
+                # Ratio ~1.0 means steady decline = smooth
+            else:
+                metrics['smoothness_ratio'] = 1.0
+
+        # 5. Volume spike detection (if volume data available)
+        if 'volume' in df.columns and len(df) >= 21:
+            recent_volume = df['volume'].iloc[-5:].mean()
+            avg_volume = df['volume'].iloc[-21:-5].mean()
+
+            if avg_volume > 0:
+                volume_ratio = recent_volume / avg_volume
+                metrics['volume_ratio'] = float(volume_ratio)
+                # Ratio > 2.0 = volume spike (potential panic selling)
+
+        # 6. Calculate decline velocity score (0-100)
+        # Lower score = safer to add to position
+        # Higher score = dangerous, avoid adding
+        velocity_score = 0
+
+        # Check short-term ROC (most important)
+        if 'roc_5' in metrics:
+            if metrics['roc_5'] < -5:  # Dropped >5% in 5 periods
+                velocity_score += 40
+            elif metrics['roc_5'] < -3:  # Dropped 3-5%
+                velocity_score += 25
+            elif metrics['roc_5'] < -1:  # Dropped 1-3% (healthy pullback)
+                velocity_score += 10
+
+        # Check smoothness
+        if 'smoothness_ratio' in metrics:
+            if metrics['smoothness_ratio'] > 2.5:  # Very jerky
+                velocity_score += 30
+            elif metrics['smoothness_ratio'] > 1.5:  # Somewhat jerky
+                velocity_score += 15
+
+        # Check volume spike
+        if 'volume_ratio' in metrics:
+            if metrics['volume_ratio'] > 3.0:  # Major volume spike
+                velocity_score += 30
+            elif metrics['volume_ratio'] > 2.0:  # Moderate spike
+                velocity_score += 15
+
+        metrics['velocity_score'] = min(100, velocity_score)
+
+        # Determine decline type
+        if velocity_score >= 70:
+            metrics['decline_type'] = 'CRASH'  # Dangerous - avoid adding
+        elif velocity_score >= 40:
+            metrics['decline_type'] = 'FAST_DECLINE'  # Risky - be cautious
+        elif velocity_score >= 20:
+            metrics['decline_type'] = 'MODERATE_DECLINE'  # Acceptable
+        else:
+            metrics['decline_type'] = 'SLOW_DECLINE'  # Good for averaging down
+
+        return metrics
+
+    @staticmethod
     def is_high_volatility(df: pd.DataFrame, atr_threshold: float = None,
                           bb_width_threshold: float = 8.0,
                           hist_vol_threshold: float = 5.0) -> Tuple[bool, dict]:

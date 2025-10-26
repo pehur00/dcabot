@@ -381,7 +381,7 @@ class PhemexClient(TradingClient):
 
     def check_volatility(self, symbol, interval=5, period=100):
         """
-        Check if the market is experiencing high volatility.
+        Check if the market is experiencing high volatility and analyze decline quality.
 
         Args:
             symbol: Trading pair symbol
@@ -390,6 +390,7 @@ class PhemexClient(TradingClient):
 
         Returns:
             Tuple of (is_high_volatility: bool, metrics: dict)
+            metrics now includes decline_velocity data
         """
         historical_data = self.fetch_historical_data(symbol, interval, period)
 
@@ -400,7 +401,13 @@ class PhemexClient(TradingClient):
             )
             return False, {}
 
+        # Check traditional volatility indicators
         is_high_vol, metrics = VolatilityIndicators.is_high_volatility(historical_data)
+
+        # Add decline velocity analysis
+        decline_velocity = VolatilityIndicators.calculate_decline_velocity(historical_data)
+        if decline_velocity:
+            metrics['decline_velocity'] = decline_velocity
 
         self.logger.info(
             "Volatility check completed",

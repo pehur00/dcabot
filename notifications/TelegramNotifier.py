@@ -177,6 +177,32 @@ class TelegramNotifier:
         )
         return self._send_message(message)
 
+    def notify_decline_velocity_alert(self, symbol: str, decline_type: str,
+                                      velocity_score: float, roc_5: float,
+                                      smoothness_ratio: float, action: str):
+        """Send notification when dangerous decline velocity is detected."""
+        # Emoji based on severity
+        emoji_map = {
+            'CRASH': '🔴',
+            'FAST_DECLINE': '🟠',
+            'MODERATE_DECLINE': '🟡',
+            'SLOW_DECLINE': '🟢'
+        }
+        emoji = emoji_map.get(decline_type, '⚪')
+
+        message = (
+            f"{emoji} <b>DECLINE VELOCITY ALERT</b>\n\n"
+            f"Symbol: <code>{symbol}</code>\n"
+            f"Type: <b>{decline_type}</b>\n"
+            f"Velocity Score: <code>{velocity_score:.1f}/100</code>\n"
+            f"5-Period ROC: <code>{roc_5:.2f}%</code>\n"
+            f"Smoothness Ratio: <code>{smoothness_ratio:.2f}</code>\n"
+            f"Action: <b>{action}</b>\n\n"
+            f"ℹ️ Slow declines are safer for averaging down.\n"
+            f"Fast crashes are dangerous - avoid adding."
+        )
+        return self._send_message(message)
+
     def notify_margin_warning(self, symbol: str, pos_side: str, margin_level: float,
                              position_value: float, unrealized_pnl: float):
         """Send notification when margin level is concerning."""

@@ -50,8 +50,19 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         conclusion = "Nothing changed"
 
-        # Check volatility
+        # Check volatility and decline velocity
         is_high_volatility, vol_metrics = self.client.check_volatility(symbol)
+
+        # Extract decline velocity metrics
+        decline_velocity = vol_metrics.get('decline_velocity', {})
+        decline_type = decline_velocity.get('decline_type', 'UNKNOWN')
+        velocity_score = decline_velocity.get('velocity_score', 0)
+
+        # Determine if decline is safe for adding to position
+        # SLOW_DECLINE or MODERATE_DECLINE = GOOD for Martingale
+        # FAST_DECLINE or CRASH = BAD, avoid adding
+        is_safe_decline = decline_type in ['SLOW_DECLINE', 'MODERATE_DECLINE']
+        is_dangerous_decline = decline_type in ['FAST_DECLINE', 'CRASH']
 
         if position:
             # Extract position details
@@ -90,6 +101,22 @@ class MartingaleTradingStrategy(TradingStrategy):
                     action=action
                 )
 
+            # Send decline velocity alert if dangerous decline detected
+            if is_dangerous_decline and self.notifier:
+                roc_5 = decline_velocity.get('roc_5', 0)
+                smoothness = decline_velocity.get('smoothness_ratio', 0)
+
+                action = "Pausing additions" if margin_level >= 2 else "Only adding to maintain margin"
+
+                self.notifier.notify_decline_velocity_alert(
+                    symbol=symbol,
+                    decline_type=decline_type,
+                    velocity_score=velocity_score,
+                    roc_5=roc_5,
+                    smoothness_ratio=smoothness,
+                    action=action
+                )
+
             # Validate if adding to position is allowed
             valid_position = self.is_valid_position(position, current_price, ema_50, pos_side)
 
@@ -102,28 +129,42 @@ class MartingaleTradingStrategy(TradingStrategy):
                                                              position_size_percentage, pos_side)
 
             # ✅ 2. Check conditions to add to the position
-            # During high volatility, only add if margin level is critical (< 2)
+            # Enhanced logic with decline velocity analysis
             elif (
-                    margin_level < 2  # Critical: margin level requires maintenance
-                    or (not is_high_volatility and (  # Only add during normal volatility if:
-                        position_factor < self.buy_until_limit  # Position size is within limits
-                        or (unrealised_pnl < 0 and upnl_percentage < -0.05  # Buy at a dip, but only if down more than 5%
-                            and valid_position)  # Only on right side of EMA's
-                    ))
+                    margin_level < 2  # Critical: margin level requires maintenance - always add
+                    or (
+                        # Normal conditions - check both volatility AND decline velocity
+                        not is_dangerous_decline and (  # Only add if NOT a crash/fast decline
+                            # Slow/moderate decline is GOOD for Martingale - safe to add
+                            (is_safe_decline and position_factor < self.buy_until_limit * 1.5) or  # Allow 50% more position size on slow declines
+                            # Normal volatility - standard rules
+                            (not is_high_volatility and (
+                                position_factor < self.buy_until_limit  # Position size is within limits
+                                or (unrealised_pnl < 0 and upnl_percentage < -0.05  # Buy at a dip, but only if down more than 5%
+                                    and valid_position)  # Only on right side of EMA's
+                            ))
+                        )
+                    )
             ):
                 conclusion = self.add_to_position(symbol, current_price, total_balance, position_value,
                                                   upnl_percentage, side, pos_side)
+
+            elif is_dangerous_decline:
+                conclusion = f"Dangerous decline detected ({decline_type}, score: {velocity_score}), pausing additions"
 
             elif is_high_volatility:
                 conclusion = f"High volatility detected ({vol_metrics.get('trigger')}), pausing new entries"
 
         # ✅ 3. Open a new position in automatic mode if conditions match
-        # Don't open new positions during high volatility
-        elif automatic_mode and not is_high_volatility and (
+        # Don't open new positions during high volatility or dangerous declines
+        elif automatic_mode and not is_high_volatility and not is_dangerous_decline and (
                 (pos_side == "Long" and current_price > ema_200) or
                 (pos_side == "Short" and current_price < ema_200)
         ):
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
+
+        elif automatic_mode and is_dangerous_decline:
+            conclusion = f"Dangerous decline detected ({decline_type}), not opening new position"
 
         elif automatic_mode and is_high_volatility:
             conclusion = f"High volatility detected ({vol_metrics.get('trigger')}), not opening new position"
