@@ -18,6 +18,22 @@ Last Updated: 2025-10-26
 - **Profit from mean reversion** when price recovers
 - **Risk management** is critical - can blow up account if not careful
 
+### Volatility Protection Behavior (IMPORTANT!)
+
+**The bot uses NUANCED volatility protection - it doesn't always stop on high volatility:**
+
+1. **High Volatility + CRASH/FAST_DECLINE** → ❌ **STOP** - Dangerous, skip all trades
+2. **High Volatility + SLOW/MODERATE DECLINE** → ✅ **CONTINUE** - Safe for averaging
+
+**Why?** Slow, steady declines are IDEAL for Martingale averaging, even with elevated volatility. The decline velocity check protects against sudden crashes (where you'd average into a freefall), not gradual declines (where averaging works well).
+
+**Expected Telegram Behavior:**
+- You WILL receive "High Volatility Alert" notifications
+- Bot MAY still buy if decline velocity is safe (SLOW_DECLINE)
+- This is CORRECT behavior, not a bug!
+
+**Code Reference:** `strategies/MartingaleTradingStrategy.py:133-148`
+
 ### Key Parameters (strategies/MartingaleTradingStrategy.py)
 ```python
 CONFIG = {
