@@ -76,6 +76,45 @@ The bot implements a **Martingale averaging strategy**:
 
 See [STRATEGY.md](docs/STRATEGY.md) for detailed explanation.
 
+## Backtesting
+
+The bot includes a comprehensive backtesting framework to validate strategy performance on historical data:
+
+```bash
+python backtest/backtest.py --symbol u1000PEPEUSDT --days 180 --interval 60 --source binance --balance 10000
+```
+
+### Example Results (180 days, u1000PEPEUSDT)
+
+![Backtest Results](backtest/example_backtest_180days.png)
+
+**Performance Metrics:**
+- **Total Return**: +8.73%
+- **Win Rate**: 87.50%
+- **Max Drawdown**: 1.19%
+- **Total Trades**: 8 (61 operations)
+
+The visualization includes:
+- **Price Chart**: Shows price action with EMA200/EMA50 and trade markers
+- **Balance History**: Realized balance and total value (including unrealized PnL)
+- **Drawdown Analysis**: Visual representation of portfolio risk
+- **Performance Summary**: Detailed metrics and trade breakdown
+
+### Running Your Own Backtests
+
+```bash
+# Basic backtest
+python backtest/backtest.py --symbol u1000PEPEUSDT --days 30 --interval 60 --source binance
+
+# Test with different initial balance
+python backtest/backtest.py --balance 100 --days 180
+
+# Optimize profit-taking strategy
+python backtest/backtest.py --profit-pnl 0.15 --days 180
+
+# All results saved to backtest/results/ with unique filenames
+```
+
 ## Configuration
 
 Key parameters in `strategies/MartingaleTradingStrategy.py`:

@@ -26,6 +26,9 @@ certifi==2023.11.17
 charset-normalizer==3.3.2
 idna==3.6
 
+# Visualization (for backtesting)
+matplotlib>=3.8.0
+
 # WebSocket support (if needed for streaming)
 websocket-client==1.7.0
 websockets==12.0

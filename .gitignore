@@ -2,6 +2,9 @@ bot.log
 
 # Backtest outputs
 /backtest/*.csv
+/backtest/backtest_chart_*.png
+!/backtest/example_backtest_180days.png
+/backtest/results/
 
 /.idea/
 

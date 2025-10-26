@@ -18,13 +18,15 @@ from pathlib import Path
 from typing import List, Dict, Any
 import pandas as pd
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from clients.PhemexClient import PhemexClient
 from strategies.MartingaleTradingStrategy import MartingaleTradingStrategy
-from backtest.data_fetcher import fetch_historical_data_ccxt, convert_phemex_to_binance_symbol
+from data_fetcher import fetch_historical_data_ccxt, convert_phemex_to_binance_symbol
 
 
 def fetch_extended_historical_data(client: PhemexClient, symbol: str, interval: int,
@@ -110,6 +112,7 @@ class BacktestEngine:
         # Trade history
         self.trades: List[Dict[str, Any]] = []
         self.balance_history: List[Dict[str, Any]] = []
+        self.price_history: List[Dict[str, Any]] = []  # Store price + EMAs for charting
 
         # Performance metrics
         self.total_trades = 0
@@ -151,14 +154,14 @@ class BacktestEngine:
             'entry_price': self.position_entry_price
         }
 
-    def execute_trade(self, symbol: str, qty: float, price: float, side: str, pos_side: str):
+    def execute_trade(self, symbol: str, qty: float, price: float, side: str, pos_side: str, timestamp=None):
         """Simulate trade execution"""
         # Calculate fee (0.075% maker fee on Phemex)
         fee = abs(qty * price * 0.00075)
         self.total_fees += fee
 
         trade = {
-            'timestamp': datetime.now(),
+            'timestamp': timestamp if timestamp else datetime.now(),
             'symbol': symbol,
             'side': side,
             'pos_side': pos_side,
@@ -273,6 +276,14 @@ class BacktestEngine:
                 simulated_position, current_price, ema_200, pos_side
             )
 
+            # Store price data for charting
+            self.price_history.append({
+                'timestamp': timestamp,
+                'price': current_price,
+                'ema_50': ema_50,
+                'ema_200': ema_200
+            })
+
             if not valid_position:
                 # Record balance snapshot
                 self.balance_history.append({
@@ -288,7 +299,7 @@ class BacktestEngine:
             conclusion = self._manage_position_backtest(
                 symbol, current_price, ema_200, ema_50,
                 simulated_position, self.balance, pos_side, automatic_mode,
-                df, i  # Pass historical data for volatility analysis
+                df, i, timestamp  # Pass historical data and timestamp
             )
 
             # Record balance snapshot
@@ -304,16 +315,18 @@ class BacktestEngine:
         # Close any open position at end
         if self.position:
             print(f"\n📊 Closing remaining position at end of backtest")
+            final_timestamp = df.index[-1]
             self.execute_trade(
                 symbol, self.position_size, current_price,
-                'Sell' if pos_side == 'Long' else 'Buy', pos_side
+                'Sell' if pos_side == 'Long' else 'Buy', pos_side, final_timestamp
             )
 
         self._print_results()
+        self.generate_charts(symbol, pos_side)
 
     def _manage_position_backtest(self, symbol, current_price, ema_200, ema_50,
                                    position, total_balance, pos_side, automatic_mode,
-                                   historical_df, current_idx):
+                                   historical_df, current_idx, timestamp):
         """
         Full position management for backtesting with volatility protection.
 
@@ -360,20 +373,20 @@ class BacktestEngine:
                     # Close 50%
                     close_qty = position['size'] * 0.5
                     self.execute_trade(symbol, close_qty, current_price,
-                                     'Sell' if pos_side == 'Long' else 'Buy', pos_side)
+                                     'Sell' if pos_side == 'Long' else 'Buy', pos_side, timestamp)
                     conclusion = "Closed 50% - position > 10%"
 
                 elif position_size_percentage > 7.5:
                     # Close 33%
                     close_qty = position['size'] * 0.33
                     self.execute_trade(symbol, close_qty, current_price,
-                                     'Sell' if pos_side == 'Long' else 'Buy', pos_side)
+                                     'Sell' if pos_side == 'Long' else 'Buy', pos_side, timestamp)
                     conclusion = "Closed 33% - position > 7.5%"
 
                 elif upnl_percentage > self.strategy.profit_pnl:
                     # Close full position
                     self.execute_trade(symbol, position['size'], current_price,
-                                     'Sell' if pos_side == 'Long' else 'Buy', pos_side)
+                                     'Sell' if pos_side == 'Long' else 'Buy', pos_side, timestamp)
                     conclusion = "Closed full position - target profit"
 
             # Check if should add to position (WITH PROTECTIONS)
@@ -401,7 +414,7 @@ class BacktestEngine:
                 else:
                     qty = (position_value * self.strategy.leverage * (-upnl_percentage)) / current_price
 
-                self.execute_trade(symbol, qty, current_price, side, pos_side)
+                self.execute_trade(symbol, qty, current_price, side, pos_side, timestamp)
                 conclusion = "Added to position"
 
             elif is_dangerous_decline:
@@ -417,7 +430,7 @@ class BacktestEngine:
         ):
             side = "Buy" if pos_side == "Long" else "Sell"
             qty = (total_balance * self.strategy.proportion_of_balance) * self.strategy.leverage / current_price
-            self.execute_trade(symbol, qty, current_price, side, pos_side)
+            self.execute_trade(symbol, qty, current_price, side, pos_side, timestamp)
             conclusion = "Opened new position"
 
         elif automatic_mode and is_dangerous_decline:
@@ -468,19 +481,202 @@ class BacktestEngine:
 
         print("\n" + "=" * 80)
 
-        # Save detailed results
-        backtest_dir = Path(__file__).parent
+        # Save detailed results with unique filename
+        backtest_dir = Path(__file__).parent / 'results'
+        backtest_dir.mkdir(exist_ok=True)
+
+        # Create unique filename based on parameters
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        base_name = f"{symbol}_{pos_side}_bal{int(self.initial_balance)}_profit{self.strategy.profit_pnl:.2f}_{timestamp}"
+
         if self.balance_history:
             df_results = pd.DataFrame(self.balance_history)
-            balance_csv = backtest_dir / 'backtest_balance_history.csv'
+            balance_csv = backtest_dir / f'{base_name}_balance.csv'
             df_results.to_csv(balance_csv, index=False)
             print(f"💾 Balance history saved to: {balance_csv}")
 
         if self.trades:
             df_trades = pd.DataFrame(self.trades)
-            trades_csv = backtest_dir / 'backtest_trade_history.csv'
+            trades_csv = backtest_dir / f'{base_name}_trades.csv'
             df_trades.to_csv(trades_csv, index=False)
             print(f"💾 Trade history saved to: {trades_csv}")
+
+    def generate_charts(self, symbol: str, pos_side: str):
+        """Generate visualization charts for backtest results"""
+        if not self.balance_history:
+            print("⚠️  No balance history to plot")
+            return
+
+        backtest_dir = Path(__file__).parent
+
+        # Convert balance history to DataFrame
+        df = pd.DataFrame(self.balance_history)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        # Create figure with subplots (4 panels now)
+        fig, axes = plt.subplots(4, 1, figsize=(14, 16))
+        fig.suptitle(f'Backtest Results: {symbol} ({pos_side})', fontsize=16, fontweight='bold')
+
+        # Get price data
+        price_df = pd.DataFrame(self.price_history)
+        price_df['timestamp'] = pd.to_datetime(price_df['timestamp'])
+
+        # 1. Price Chart with EMAs
+        ax1 = axes[0]
+        ax1.plot(price_df['timestamp'], price_df['price'], label='Price', color='#333333', linewidth=2)
+        ax1.plot(price_df['timestamp'], price_df['ema_200'], label='EMA200', color='#FF6B35', linewidth=1.5, linestyle='--')
+        ax1.plot(price_df['timestamp'], price_df['ema_50'], label='EMA50', color='#004E89', linewidth=1.5, linestyle='-.')
+
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Price (USDT)')
+        ax1.set_title('Price Action & EMAs')
+        ax1.legend(loc='best')
+        ax1.grid(True, alpha=0.3)
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+
+        # 2. Balance History Chart
+        ax2 = axes[1]
+        ax2.plot(df['timestamp'], df['balance'], label='Balance', color='#2E86AB', linewidth=2)
+        ax2.plot(df['timestamp'], df['total_value'], label='Total Value (Balance + Unrealized PnL)',
+                color='#A23B72', linewidth=2, linestyle='--')
+        ax2.axhline(y=self.initial_balance, color='gray', linestyle=':', alpha=0.5, label='Initial Balance')
+
+        # Mark trades on both price and balance charts
+        if self.trades:
+            trades_df = pd.DataFrame(self.trades)
+            trades_df['timestamp'] = pd.to_datetime(trades_df['timestamp'])
+
+            # Different colors for different actions - using high contrast colors
+            for action, color, marker in [
+                ('OPEN', '#00FF00', '^'),      # Bright green
+                ('ADD', '#0000FF', 'v'),       # Bright blue
+                ('REDUCE', '#FFA500', 's'),    # Bright orange
+                ('CLOSE', '#FF0000', 'o')      # Bright red
+            ]:
+                action_trades = trades_df[trades_df['action'] == action]
+                if not action_trades.empty:
+                    # Get balance and price at trade time
+                    trade_balances = []
+                    trade_prices = []
+                    for idx, ts in enumerate(action_trades['timestamp']):
+                        balance_idx = (df['timestamp'] - ts).abs().idxmin()
+                        balance_val = df.loc[balance_idx, 'total_value']
+                        trade_balances.append(balance_val)
+
+                        price_idx = (price_df['timestamp'] - ts).abs().idxmin()
+                        price_val = price_df.loc[price_idx, 'price']
+                        trade_prices.append(price_val)
+
+                    # Plot markers on price chart (no label)
+                    ax1.scatter(action_trades['timestamp'], trade_prices,
+                              color=color, marker=marker, s=200, alpha=1.0,
+                              edgecolors='black', linewidths=2.5, zorder=10)
+
+                    # Plot markers on balance chart (with label)
+                    ax2.scatter(action_trades['timestamp'], trade_balances,
+                              color=color, marker=marker, s=200, alpha=1.0,
+                              edgecolors='black', linewidths=2.5,
+                              label=f'{action} ({len(action_trades)})', zorder=10)
+
+        ax2.set_xlabel('Date')
+        ax2.set_ylabel('Balance (USDT)')
+        ax2.set_title('Balance History Over Time')
+        ax2.legend(loc='best')
+        ax2.grid(True, alpha=0.3)
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+
+        # 3. Drawdown Chart (based on total value including unrealized PnL)
+        ax3 = axes[2]
+        df['peak'] = df['total_value'].expanding().max()
+        df['drawdown'] = ((df['peak'] - df['total_value']) / df['peak']) * 100
+
+        ax3.fill_between(df['timestamp'], 0, df['drawdown'], color='#C73E1D', alpha=0.3)
+        ax3.plot(df['timestamp'], df['drawdown'], color='#C73E1D', linewidth=2)
+        ax3.axhline(y=self.max_drawdown, color='darkred', linestyle='--',
+                   label=f'Max Drawdown: {self.max_drawdown:.2f}%')
+
+        ax3.set_xlabel('Date')
+        ax3.set_ylabel('Drawdown (%)')
+        ax3.set_title('Drawdown Analysis')
+        ax3.legend(loc='best')
+        ax3.grid(True, alpha=0.3)
+        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax3.invert_yaxis()  # Drawdown goes down
+
+        # 4. Performance Metrics Summary
+        ax4 = axes[3]
+        ax4.axis('off')
+
+        # Calculate metrics
+        final_balance = self.balance
+        total_return = ((final_balance - self.initial_balance) / self.initial_balance) * 100
+        win_rate = (self.winning_trades / self.total_trades * 100) if self.total_trades > 0 else 0
+
+        # Calculate average win/loss
+        if self.trades:
+            trades_df = pd.DataFrame(self.trades)
+            closed_trades = trades_df[trades_df['action'].isin(['CLOSE', 'REDUCE'])]
+            if not closed_trades.empty and 'realized_pnl' in closed_trades.columns:
+                wins = closed_trades[closed_trades['realized_pnl'] > 0]['realized_pnl']
+                losses = closed_trades[closed_trades['realized_pnl'] < 0]['realized_pnl']
+                avg_win = wins.mean() if not wins.empty else 0
+                avg_loss = losses.mean() if not losses.empty else 0
+            else:
+                avg_win = avg_loss = 0
+        else:
+            avg_win = avg_loss = 0
+
+        # Count total operations
+        total_operations = len(self.trades) if self.trades else 0
+        open_ops = len([t for t in self.trades if t.get('action') == 'OPEN']) if self.trades else 0
+        add_ops = len([t for t in self.trades if t.get('action') == 'ADD']) if self.trades else 0
+        reduce_ops = len([t for t in self.trades if t.get('action') == 'REDUCE']) if self.trades else 0
+        close_ops = len([t for t in self.trades if t.get('action') == 'CLOSE']) if self.trades else 0
+
+        # Create summary text
+        summary_text = f"""
+        📊 PERFORMANCE SUMMARY
+
+        Initial Balance:        ${self.initial_balance:,.2f}
+        Final Balance:          ${final_balance:,.2f}
+        Total Return:           {total_return:+.2f}%
+        Total Fees Paid:        ${self.total_fees:,.2f}
+
+        Completed Positions:    {self.total_trades} (full round-trips)
+        Winning Positions:      {self.winning_trades}
+        Losing Positions:       {self.losing_trades}
+        Win Rate:               {win_rate:.2f}%
+
+        Total Operations:       {total_operations}
+          - OPEN:  {open_ops}  |  ADD:  {add_ops}
+          - REDUCE: {reduce_ops}  |  CLOSE: {close_ops}
+
+        Average Win:            ${avg_win:+.2f}
+        Average Loss:           ${avg_loss:+.2f}
+
+        Max Drawdown:           {self.max_drawdown:.2f}%
+        Peak Balance:           ${self.peak_balance:,.2f}
+        """
+
+        ax4.text(0.1, 0.5, summary_text, transform=ax4.transAxes,
+                fontsize=12, verticalalignment='center', family='monospace',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+
+        # Adjust layout and save
+        plt.tight_layout()
+
+        # Use same unique filename as CSVs
+        backtest_dir = Path(__file__).parent / 'results'
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        base_name = f"{symbol}_{pos_side}_bal{int(self.initial_balance)}_profit{self.strategy.profit_pnl:.2f}_{timestamp}"
+
+        chart_path = backtest_dir / f'{base_name}_chart.png'
+        plt.savefig(chart_path, dpi=150, bbox_inches='tight')
+        print(f"📈 Backtest chart saved to: {chart_path}")
+
+        plt.close()
 
 
 def main():
@@ -497,6 +693,8 @@ def main():
                        help='Initial balance in USDT (default: 10000)')
     parser.add_argument('--source', type=str, default='binance', choices=['phemex', 'binance'],
                        help='Data source: binance (extended history) or phemex (live API) (default: binance)')
+    parser.add_argument('--profit-pnl', type=float, default=None,
+                       help='Override profit_pnl threshold (e.g., 0.15 for 15%% profit target)')
 
     args = parser.parse_args()
 
@@ -533,6 +731,11 @@ def main():
 
     client = PhemexClient(api_key, api_secret, logger, testnet)
     strategy = MartingaleTradingStrategy(client=client, logger=logger, notifier=None)
+
+    # Override profit_pnl if specified
+    if args.profit_pnl is not None:
+        print(f"  Overriding profit_pnl: {strategy.profit_pnl:.2f} -> {args.profit_pnl:.2f}")
+        strategy.profit_pnl = args.profit_pnl
 
     # Fetch historical data
     if args.source == 'binance':
