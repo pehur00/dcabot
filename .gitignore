@@ -27,3 +27,8 @@ dcabot-env/
 *.swp
 *.swo
 *~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride

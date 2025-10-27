@@ -78,42 +78,84 @@ See [STRATEGY.md](docs/STRATEGY.md) for detailed explanation.
 
 ## Backtesting
 
-The bot includes a comprehensive backtesting framework to validate strategy performance on historical data:
+The bot includes a comprehensive backtesting framework to validate strategy performance on historical data. The backtest simulates the exact bot behavior, checking every 5 minutes using 1-minute candles.
+
+### Basic Usage
 
 ```bash
-python backtest/backtest.py --symbol u1000PEPEUSDT --days 180 --interval 60 --source binance --balance 10000
+# Run backtest with default settings (1 day, $70 balance)
+dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 1 --interval 1 --source binance --balance 70 --side Long
+
+# Run longer backtest (90 days)
+dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 90 --interval 1 --source binance --balance 70 --side Long
+
+# Test different initial balance
+dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --balance 100 --side Long
+
+# Optimize profit-taking threshold
+dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --profit-pnl 0.15 --side Long
 ```
 
-### Example Results (180 days, u1000PEPEUSDT)
+### Parameters
 
-![Backtest Results](backtest/example_backtest_180days.png)
+- `--symbol`: Trading pair (e.g., HBARUSDT, BTCUSDT, u1000PEPEUSDT)
+- `--days`: Number of days to backtest (e.g., 1, 7, 30, 90)
+- `--interval`: Candle interval in minutes (always use `1` for 1-minute candles)
+- `--source`: Data source (`binance` recommended)
+- `--balance`: Initial balance in USDT (default: 100)
+- `--side`: Position side (`Long` or `Short`)
+- `--profit-pnl`: Profit-taking threshold as decimal (default: 0.1 = 10%)
+
+### Example Results (34 days, HBARUSDT)
 
 **Performance Metrics:**
-- **Total Return**: +8.73%
-- **Win Rate**: 87.50%
-- **Max Drawdown**: 1.19%
-- **Total Trades**: 8 (61 operations)
+- **Initial Balance**: $70.00
+- **Final Balance**: $159.52
+- **Total Return**: +127.89%
+- **Win Rate**: 100.00% (30 wins, 0 losses)
+- **Max Drawdown**: 0.58%
+- **Total Operations**: 4,141 (30 opens, 4,020 adds, 61 reduces, 30 closes)
+- **Average Win**: $1.16
 
-The visualization includes:
-- **Price Chart**: Shows price action with EMA200/EMA50 and trade markers
-- **Balance History**: Realized balance and total value (including unrealized PnL)
-- **Drawdown Analysis**: Visual representation of portfolio risk
-- **Performance Summary**: Detailed metrics and trade breakdown
+### Backtest Chart Breakdown
 
-### Running Your Own Backtests
+The backtest generates a comprehensive 5-panel chart:
 
-```bash
-# Basic backtest
-python backtest/backtest.py --symbol u1000PEPEUSDT --days 30 --interval 60 --source binance
+1. **Price Chart**: Shows price action with 1-minute EMA200 and all trade markers
+   - Green triangles = OPEN positions
+   - Blue triangles = ADD to positions
+   - Orange squares = REDUCE positions (profit-taking)
+   - Red circles = CLOSE positions
 
-# Test with different initial balance
-python backtest/backtest.py --balance 100 --days 180
+2. **Account Balance & Total Value**: Clean view of your account performance
+   - Blue line = Realized balance (only changes on close/reduce)
+   - Purple line = Total value (balance + unrealized PnL)
 
-# Optimize profit-taking strategy
-python backtest/backtest.py --profit-pnl 0.15 --days 180
+3. **Position Size Chart**: Shows margin invested over time
+   - Orange filled area = How much margin is actively in positions
+   - Helps visualize when bot is heavily invested vs idle
 
-# All results saved to backtest/results/ with unique filenames
+4. **Drawdown Analysis**: Shows risk metrics and account drawdowns
+
+5. **Performance Summary**: Detailed statistics and trade breakdown
+
+### Output Files
+
+All backtest results are saved to `backtest/results/` with timestamps:
+
 ```
+HBARUSDT_Long_bal70_profit0.10_20251027_154543_chart.png    # Visual charts
+HBARUSDT_Long_bal70_profit0.10_20251027_154541_balance.csv  # Balance history
+HBARUSDT_Long_bal70_profit0.10_20251027_154541_trades.csv   # Trade log
+```
+
+### Important Notes
+
+- Backtest checks every 5 minutes (matching real bot behavior)
+- Uses 1-minute candles for accurate price data
+- Includes all volatility protections and risk management
+- Simulates exact margin calculations and leverage (10x)
+- Fees are included in calculations (0.075% per trade)
 
 ## Configuration
 
@@ -121,13 +163,15 @@ Key parameters in `strategies/MartingaleTradingStrategy.py`:
 
 ```python
 CONFIG = {
-    'leverage': 6,                    # Trading leverage
+    'leverage': 10,                   # Trading leverage (10x)
     'begin_size_of_balance': 0.006,   # Initial position: 0.6% of balance
-    'buy_until_limit': 0.02,          # Max position: 2% of balance
-    'profit_threshold': 0.003,        # Min profit: 0.3% of balance
-    'profit_pnl': 0.1,                # Target: 10% PnL on position
+    'buy_until_limit': 0.05,          # Max position: 5% of balance (in margin)
+    'profit_threshold': 0.003,        # Min profit: 0.3% of balance to consider closing
+    'profit_pnl': 0.1,                # Target: 10% profit on margin invested
 }
 ```
+
+**Note**: `buy_until_limit` refers to margin invested, not notional value. With 10x leverage, 5% margin = 50% notional position.
 
 ## Requirements
 

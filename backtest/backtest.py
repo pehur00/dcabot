@@ -16,6 +16,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any
+from decimal import Decimal, ROUND_DOWN
 import pandas as pd
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
@@ -119,7 +120,33 @@ class BacktestEngine:
         self.winning_trades = 0
         self.losing_trades = 0
         self.max_drawdown = 0
+        self.max_drawdown_absolute = 0
+        self.peak_total_value = initial_balance
         self.total_fees = 0
+
+        # Instrument specs for minimum quantity rounding
+        self.min_qty = 1.0
+        self.max_qty = 1000000.0
+        self.qty_step = 1.0
+
+    def set_instrument_specs(self, min_qty: float, max_qty: float, qty_step: float):
+        """Set instrument specifications for quantity rounding"""
+        self.min_qty = min_qty
+        self.max_qty = max_qty
+        self.qty_step = qty_step
+
+    def custom_round(self, number: float) -> float:
+        """Round quantity to meet exchange requirements (same logic as real bot)"""
+        number = Decimal(str(number))
+        min_qty = Decimal(str(self.min_qty))
+        max_qty = Decimal(str(self.max_qty))
+        qty_step = Decimal(str(self.qty_step))
+
+        # Perform floor rounding to qty_step
+        rounded_qty = (number / qty_step).quantize(Decimal('1'), rounding=ROUND_DOWN) * qty_step
+
+        # Clamp the result within the min and max bounds (FORCES minimum!)
+        return float(max(min(rounded_qty, max_qty), min_qty))
 
     def simulate_position(self, current_price: float) -> Dict[str, Any]:
         """Simulate a position dict like Phemex returns"""
@@ -133,29 +160,51 @@ class BacktestEngine:
             self.unrealized_pnl = (self.position_entry_price - current_price) * self.position_size
 
         self.position_value = current_price * self.position_size
-        upnl_percentage = (self.unrealized_pnl / self.position_value) if self.position_value > 0 else 0
+        # Calculate profit % relative to MARGIN invested, not notional value
+        margin_invested = self.position_value / self.strategy.leverage
+        upnl_percentage = (self.unrealized_pnl / margin_invested) if margin_invested > 0 else 0
 
         # Calculate margin level (simplified)
         used_margin = self.position_value / self.strategy.leverage
         if used_margin > 0:
-            margin_level = (self.balance - self.unrealized_pnl) / used_margin
+            margin_level = (self.balance + self.unrealized_pnl) / used_margin  # Fixed: + not -
         else:
             margin_level = 999
+
+        # IMPORTANT: Phemex returns assignedPosBalanceRv (MARGIN) as positionValue, not notional!
+        # So we need to return margin-based value to match real bot behavior
+        position_value_as_margin = self.position_value / self.strategy.leverage
 
         return {
             'symbol': self.position['symbol'],
             'pos_side': self.position['pos_side'],
             'size': self.position_size,
-            'positionValue': self.position_value,
+            'positionValue': position_value_as_margin,  # Return MARGIN, not notional!
             'unrealisedPnl': self.unrealized_pnl,
             'upnlPercentage': upnl_percentage,
-            'position_size_percentage': (self.position_value / self.balance) * 100,
+            'position_size_percentage': (position_value_as_margin / self.balance) * 100,
             'margin_level': margin_level,
             'entry_price': self.position_entry_price
         }
 
     def execute_trade(self, symbol: str, qty: float, price: float, side: str, pos_side: str, timestamp=None):
-        """Simulate trade execution"""
+        """Simulate trade execution with margin validation"""
+        # Calculate required margin for this trade
+        trade_notional = qty * price
+        required_margin = trade_notional / self.strategy.leverage
+
+        # Check if we have sufficient balance (prevent liquidation)
+        if side in ['Buy', 'Sell'] and (side == 'Buy' if pos_side == 'Long' else side == 'Sell'):
+            # This is opening or adding to position - check margin
+            current_used_margin = (self.position_value / self.strategy.leverage) if self.position else 0
+            total_required_margin = current_used_margin + required_margin
+            available_balance = self.balance + self.unrealized_pnl
+
+            # Require at least 2x margin to avoid liquidation (maintenance margin)
+            if total_required_margin * 2 > available_balance:
+                # print(f"⚠️  Insufficient margin: need ${total_required_margin:.2f}, have ${available_balance:.2f}")
+                return  # Skip this trade to prevent liquidation
+
         # Calculate fee (0.075% maker fee on Phemex)
         fee = abs(qty * price * 0.00075)
         self.total_fees += fee
@@ -181,6 +230,8 @@ class BacktestEngine:
             self.position_entry_price = price
             self.position_value = qty * price
             trade['action'] = 'OPEN'
+            trade['position_size'] = self.position_size
+            trade['position_value'] = self.position_value
 
         elif side == 'Buy' if pos_side == 'Long' else 'Sell':
             # Add to position (average down)
@@ -189,6 +240,8 @@ class BacktestEngine:
             self.position_entry_price = total_value / self.position_size
             self.position_value = self.position_size * price
             trade['action'] = 'ADD'
+            trade['position_size'] = self.position_size
+            trade['position_value'] = self.position_value
 
         else:
             # Close position (partial or full)
@@ -209,6 +262,8 @@ class BacktestEngine:
                 self.position_value = 0
                 self.unrealized_pnl = 0
                 trade['action'] = 'CLOSE'
+                trade['position_size'] = 0
+                trade['position_value'] = 0
 
                 # Track win/loss
                 self.total_trades += 1
@@ -220,18 +275,12 @@ class BacktestEngine:
                 # Partially closed
                 self.position_value = self.position_size * price
                 trade['action'] = 'REDUCE'
+                trade['position_size'] = self.position_size
+                trade['position_value'] = self.position_value
 
             trade['realized_pnl'] = realized_pnl
 
         self.trades.append(trade)
-
-        # Update peak and calculate drawdown
-        if self.balance > self.peak_balance:
-            self.peak_balance = self.balance
-
-        drawdown = ((self.peak_balance - self.balance) / self.peak_balance) * 100
-        if drawdown > self.max_drawdown:
-            self.max_drawdown = drawdown
 
     def run_backtest(self, df: pd.DataFrame, symbol: str, pos_side: str,
                      ema_interval: int, automatic_mode: bool = True):
@@ -260,8 +309,9 @@ class BacktestEngine:
             print("❌ Insufficient data for EMA200 calculation (need 200+ periods)")
             return
 
-        # Run simulation
-        for i in range(200, len(df)):
+        # Run simulation - check every 5 minutes (every 5th candle) to match real bot behavior
+        check_interval = 5  # minutes - matches agent.py sleep(300 seconds)
+        for i in range(200, len(df), check_interval):
             current_candle = df.iloc[i]
             timestamp = current_candle.name
             current_price = float(current_candle['close'])
@@ -286,10 +336,13 @@ class BacktestEngine:
 
             if not valid_position:
                 # Record balance snapshot
+                # Use margin-based position value (like Phemex does!)
+                position_value_for_history = (self.position_value / self.strategy.leverage) if self.position else 0
+
                 self.balance_history.append({
                     'timestamp': timestamp,
                     'balance': self.balance,
-                    'position_value': self.position_value,
+                    'position_value': position_value_for_history,  # Margin, not notional!
                     'unrealized_pnl': self.unrealized_pnl,
                     'total_value': self.balance + self.unrealized_pnl
                 })
@@ -303,14 +356,28 @@ class BacktestEngine:
             )
 
             # Record balance snapshot
+            # Use margin-based position value (like Phemex does!)
+            position_value_for_history = (self.position_value / self.strategy.leverage) if self.position else 0
+            total_value = self.balance + self.unrealized_pnl
+
             self.balance_history.append({
                 'timestamp': timestamp,
                 'balance': self.balance,
-                'position_value': self.position_value,
+                'position_value': position_value_for_history,  # Margin, not notional!
                 'unrealized_pnl': self.unrealized_pnl,
-                'total_value': self.balance + self.unrealized_pnl,
+                'total_value': total_value,
                 'action': conclusion
             })
+
+            # Track drawdown based on total value (including unrealized PnL)
+            if total_value > self.peak_total_value:
+                self.peak_total_value = total_value
+
+            drawdown_pct = ((self.peak_total_value - total_value) / self.peak_total_value) * 100
+            drawdown_abs = self.peak_total_value - total_value
+            if drawdown_pct > self.max_drawdown:
+                self.max_drawdown = drawdown_pct
+                self.max_drawdown_absolute = drawdown_abs
 
         # Close any open position at end
         if self.position:
@@ -321,7 +388,7 @@ class BacktestEngine:
                 'Sell' if pos_side == 'Long' else 'Buy', pos_side, final_timestamp
             )
 
-        self._print_results()
+        self._print_results(symbol, pos_side)
         self.generate_charts(symbol, pos_side)
 
     def _manage_position_backtest(self, symbol, current_price, ema_200, ema_50,
@@ -414,6 +481,9 @@ class BacktestEngine:
                 else:
                     qty = (position_value * self.strategy.leverage * (-upnl_percentage)) / current_price
 
+                # Apply minimum quantity rounding (KEY: matches real bot behavior!)
+                qty = self.custom_round(qty)
+
                 self.execute_trade(symbol, qty, current_price, side, pos_side, timestamp)
                 conclusion = "Added to position"
 
@@ -430,6 +500,10 @@ class BacktestEngine:
         ):
             side = "Buy" if pos_side == "Long" else "Sell"
             qty = (total_balance * self.strategy.proportion_of_balance) * self.strategy.leverage / current_price
+
+            # Apply minimum quantity rounding (KEY: matches real bot behavior!)
+            qty = self.custom_round(qty)
+
             self.execute_trade(symbol, qty, current_price, side, pos_side, timestamp)
             conclusion = "Opened new position"
 
@@ -441,7 +515,7 @@ class BacktestEngine:
 
         return conclusion
 
-    def _print_results(self):
+    def _print_results(self, symbol: str = "UNKNOWN", pos_side: str = "UNKNOWN"):
         """Print backtest results"""
         final_balance = self.balance
         total_return = ((final_balance - self.initial_balance) / self.initial_balance) * 100
@@ -464,8 +538,8 @@ class BacktestEngine:
         print(f"  Win Rate:         {win_rate:.2f}%")
 
         print(f"\n⚠️  Risk Metrics:")
-        print(f"  Max Drawdown:     {self.max_drawdown:.2f}%")
-        print(f"  Peak Balance:     ${self.peak_balance:,.2f}")
+        print(f"  Max Drawdown:     {self.max_drawdown:.2f}% (${self.max_drawdown_absolute:.2f})")
+        print(f"  Peak Value:       ${self.peak_total_value:,.2f}")
 
         if self.trades:
             print(f"\n📋 Trade History (Last 10):")
@@ -477,7 +551,12 @@ class BacktestEngine:
                     pnl = trade['realized_pnl']
                     pnl_str = f" | PnL: ${pnl:+,.2f}"
 
-                print(f"  {action:6} | {trade['side']:4} {trade['qty']:.4f} @ ${trade['price']:.6f}{pnl_str}")
+                # Show position size after operation
+                pos_size = trade.get('position_size', 0)
+                pos_value = trade.get('position_value', 0)
+                position_str = f" → Position: {pos_size:.4f} (${pos_value:.2f})" if pos_size > 0 else ""
+
+                print(f"  {action:6} | {trade['side']:4} {trade['qty']:.4f} @ ${trade['price']:.6f}{pnl_str}{position_str}")
 
         print("\n" + "=" * 80)
 
@@ -514,8 +593,8 @@ class BacktestEngine:
         df = pd.DataFrame(self.balance_history)
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # Create figure with subplots (4 panels now)
-        fig, axes = plt.subplots(4, 1, figsize=(14, 16))
+        # Create figure with subplots (5 panels: price, balance, position, drawdown, summary)
+        fig, axes = plt.subplots(5, 1, figsize=(14, 20))
         fig.suptitle(f'Backtest Results: {symbol} ({pos_side})', fontsize=16, fontweight='bold')
 
         # Get price data
@@ -525,17 +604,16 @@ class BacktestEngine:
         # 1. Price Chart with EMAs
         ax1 = axes[0]
         ax1.plot(price_df['timestamp'], price_df['price'], label='Price', color='#333333', linewidth=2)
-        ax1.plot(price_df['timestamp'], price_df['ema_200'], label='EMA200', color='#FF6B35', linewidth=1.5, linestyle='--')
-        ax1.plot(price_df['timestamp'], price_df['ema_50'], label='EMA50', color='#004E89', linewidth=1.5, linestyle='-.')
+        ax1.plot(price_df['timestamp'], price_df['ema_200'], label='1min EMA200', color='#FF6B35', linewidth=1.5, linestyle='--')
 
         ax1.set_xlabel('Date')
         ax1.set_ylabel('Price (USDT)')
-        ax1.set_title('Price Action & EMAs')
+        ax1.set_title('Price Action & 1-minute EMA200')
         ax1.legend(loc='best')
         ax1.grid(True, alpha=0.3)
         ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
 
-        # 2. Balance History Chart
+        # 2. Balance & Total Value Chart (no trade markers)
         ax2 = axes[1]
         ax2.plot(df['timestamp'], df['balance'], label='Balance', color='#2E86AB', linewidth=2)
         ax2.plot(df['timestamp'], df['total_value'], label='Total Value (Balance + Unrealized PnL)',
@@ -568,45 +646,52 @@ class BacktestEngine:
                         price_val = price_df.loc[price_idx, 'price']
                         trade_prices.append(price_val)
 
-                    # Plot markers on price chart (no label)
+                    # Plot markers on price chart (with label)
                     ax1.scatter(action_trades['timestamp'], trade_prices,
-                              color=color, marker=marker, s=200, alpha=1.0,
-                              edgecolors='black', linewidths=2.5, zorder=10)
-
-                    # Plot markers on balance chart (with label)
-                    ax2.scatter(action_trades['timestamp'], trade_balances,
                               color=color, marker=marker, s=200, alpha=1.0,
                               edgecolors='black', linewidths=2.5,
                               label=f'{action} ({len(action_trades)})', zorder=10)
 
         ax2.set_xlabel('Date')
         ax2.set_ylabel('Balance (USDT)')
-        ax2.set_title('Balance History Over Time')
+        ax2.set_title('Account Balance & Total Value')
         ax2.legend(loc='best')
         ax2.grid(True, alpha=0.3)
         ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
 
-        # 3. Drawdown Chart (based on total value including unrealized PnL)
+        # 3. Position Size Chart (Margin)
         ax3 = axes[2]
-        df['peak'] = df['total_value'].expanding().max()
-        df['drawdown'] = ((df['peak'] - df['total_value']) / df['peak']) * 100
-
-        ax3.fill_between(df['timestamp'], 0, df['drawdown'], color='#C73E1D', alpha=0.3)
-        ax3.plot(df['timestamp'], df['drawdown'], color='#C73E1D', linewidth=2)
-        ax3.axhline(y=self.max_drawdown, color='darkred', linestyle='--',
-                   label=f'Max Drawdown: {self.max_drawdown:.2f}%')
-
+        ax3.plot(df['timestamp'], df['position_value'], label='Position Size (Margin)',
+                color='#F77F00', linewidth=2)
+        ax3.fill_between(df['timestamp'], 0, df['position_value'], color='#F77F00', alpha=0.3)
         ax3.set_xlabel('Date')
-        ax3.set_ylabel('Drawdown (%)')
-        ax3.set_title('Drawdown Analysis')
+        ax3.set_ylabel('Position Size (USDT)')
+        ax3.set_title('Position Size Over Time (Margin Invested)')
         ax3.legend(loc='best')
         ax3.grid(True, alpha=0.3)
         ax3.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-        ax3.invert_yaxis()  # Drawdown goes down
 
-        # 4. Performance Metrics Summary
+        # 4. Drawdown Chart (based on total value including unrealized PnL)
         ax4 = axes[3]
-        ax4.axis('off')
+        df['peak'] = df['total_value'].expanding().max()
+        df['drawdown'] = ((df['peak'] - df['total_value']) / df['peak']) * 100
+
+        ax4.fill_between(df['timestamp'], 0, df['drawdown'], color='#C73E1D', alpha=0.3)
+        ax4.plot(df['timestamp'], df['drawdown'], color='#C73E1D', linewidth=2)
+        ax4.axhline(y=self.max_drawdown, color='darkred', linestyle='--',
+                   label=f'Max Drawdown: {self.max_drawdown:.2f}%')
+
+        ax4.set_xlabel('Date')
+        ax4.set_ylabel('Drawdown (%)')
+        ax4.set_title('Drawdown Analysis')
+        ax4.legend(loc='best')
+        ax4.grid(True, alpha=0.3)
+        ax4.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax4.invert_yaxis()  # Drawdown goes down
+
+        # 5. Performance Metrics Summary
+        ax5 = axes[4]
+        ax5.axis('off')
 
         # Calculate metrics
         final_balance = self.balance
@@ -655,11 +740,11 @@ class BacktestEngine:
         Average Win:            ${avg_win:+.2f}
         Average Loss:           ${avg_loss:+.2f}
 
-        Max Drawdown:           {self.max_drawdown:.2f}%
-        Peak Balance:           ${self.peak_balance:,.2f}
+        Max Drawdown:           {self.max_drawdown:.2f}% (${self.max_drawdown_absolute:.2f})
+        Peak Value:             ${self.peak_total_value:,.2f}
         """
 
-        ax4.text(0.1, 0.5, summary_text, transform=ax4.transAxes,
+        ax5.text(0.1, 0.5, summary_text, transform=ax5.transAxes,
                 fontsize=12, verticalalignment='center', family='monospace',
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
 
@@ -771,6 +856,15 @@ def main():
 
     # Run backtest
     engine = BacktestEngine(client, strategy, args.balance)
+
+    # Get instrument specs for proper quantity rounding (matches real bot!)
+    try:
+        min_qty, max_qty, qty_step = client.define_instrument_info(args.symbol)
+        engine.set_instrument_specs(min_qty, max_qty, qty_step)
+        print(f"\n📏 Instrument Specs: min={min_qty}, max={max_qty}, step={qty_step}")
+    except Exception as e:
+        print(f"⚠️  Could not fetch instrument specs: {e}. Using defaults (min=1.0)")
+
     engine.run_backtest(
         df=df,
         symbol=args.symbol,
