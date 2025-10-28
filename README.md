@@ -178,12 +178,17 @@ CONFIG = {
 
 **Important Notes**:
 - `buy_until_limit` refers to margin invested, not notional value. With 10x leverage, 5% margin = 50% notional position.
-- `max_margin_pct` provides an **optional safety buffer** against early liquidations:
-  - When `None` (default): No pre-emptive protection, relies on exchange liquidation engine
-  - When set (e.g., `0.40`): Bot stops adding to positions when margin usage would exceed 40%
-  - **Example**: With $100 balance and 40% cap, bot won't use more than $40 in margin
-  - This creates a buffer before reaching exchange liquidation threshold (typically ~100% margin usage)
-  - Useful for preventing blow-ups during extreme volatility or fast crashes
+- `max_margin_pct` provides **margin protection with dynamic tapering**:
+  - When `None`: No protection (not recommended for live trading)
+  - When set (e.g., `0.50`): Implements smart tapering system
+  - **Dynamic Tapering**: Order sizes reduce exponentially as margin usage increases
+    - At 0% margin: 100% order size (full adds)
+    - At 25% margin: 56% order size
+    - At 40% margin: 4% order size
+    - At 50% margin: 0% order size (no adds)
+  - **Benefits**: More trades with smaller sizes, better price averaging, maintains volatility buffer
+  - **Example**: With $200 balance and 50% cap, bot gradually reduces order sizes approaching $100 margin
+  - **Result**: Never hits the hard cap, prevents liquidations while staying active
 
 ## Requirements
 
@@ -228,7 +233,8 @@ docker run -d \
 - ✅ Volatility detection and pausing
 - ✅ Position size limits
 - ✅ Emergency liquidation protection
-- ✅ Optional margin usage cap (prevents early liquidations)
+- ✅ **Dynamic position tapering** (reduces order sizes as margin increases)
+- ✅ Optional margin usage cap (50% default with exponential tapering)
 
 ## Risk Warning
 

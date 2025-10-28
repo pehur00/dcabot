@@ -201,7 +201,24 @@ OR
 
 ## Recent Enhancements (Oct 2025)
 
-### 1. 1h EMA100 Dip-Buying Filter + 50% Margin Protection (Commit: 765796e) - **LATEST**
+### 1. Dynamic Position Size Tapering (Commit: 0253ad3) - **LATEST**
+**Why**: Prevent margin exhaustion and liquidations by gradually reducing order sizes as margin usage increases
+**What**: Exponential tapering that scales down order quantities as you approach the margin cap
+**Formula**: `taper_factor = ((max_margin_pct - current_margin_pct) / max_margin_pct) ** 2`
+**Features**:
+- **Exponential reduction**: At 0% margin = 100% size, 25% = 56%, 40% = 4%, 50% = 0%
+- **More trades, smaller sizes**: Instead of 10 large adds, get 20+ smaller ones
+- **Never hits hard cap**: Gradually approaches but never reaches 50% margin
+- **Better price averaging**: More entry points = better average entry price
+- **Volatility buffer**: Maintains room to survive normal price fluctuations
+**Impact**:
+- Solves the "XLM liquidation problem" where bot hit margin cap with no buffer
+- Prevents getting liquidated right before favorable price moves
+- More resilient to slow declines and sideways chop
+- Applied to both live bot and backtest for consistency
+**Files**: MartingaleTradingStrategy.py (calculate_order_quantity), backtest.py
+
+### 2. 1h EMA100 Dip-Buying Filter + 50% Margin Protection (Commit: 765796e)
 **Why**: Prevent liquidations and improve entry timing by buying dips instead of breakouts
 **What**: Reversed entry strategy to buy BELOW 1h EMA100 with 50% margin cap
 **Features**:
@@ -221,18 +238,18 @@ OR
 - Improved charts showing 1h EMA100 and position margin usage
 **Files**: MartingaleTradingStrategy.py, MartingaleTradingWorkflow.py, TradingStrategy.py, backtest.py, README.md
 
-### 2. Removed 1h EMA200 Requirement (Commit: c38a213)
+### 3. Removed 1h EMA200 Requirement (Commit: c38a213)
 **Why**: Strategy now uses configured `EMA_INTERVAL` for all EMAs instead of forcing 1h timeframe
 **Impact**: More flexible and responsive to chosen interval
 **Files**: MartingaleTradingStrategy.py, MartingaleTradingWorkflow.py
 
-### 3. Enhanced Position Notifications (Commit: c38a213)
+### 4. Enhanced Position Notifications (Commit: c38a213)
 **Why**: Users needed complete position details for all actions
 **What**: Unified notification system with action types (OPENED/ADDED/REDUCED/CLOSED)
 **Details**: Shows position size, value, % of balance for all updates
 **Files**: TelegramNotifier.py, MartingaleTradingStrategy.py
 
-### 4. Decline Velocity Detection (Commit: 6079bcd)
+### 5. Decline Velocity Detection (Commit: 6079bcd)
 **Why**: Martingale can blow up during fast crashes; slow declines are better for averaging
 **What**: Multi-factor analysis to distinguish safe pullbacks from dangerous crashes
 **Features**:
@@ -244,13 +261,13 @@ OR
 **Impact**: Prevents adding during crashes, allows more position size during slow declines
 **Files**: volatility.py, PhemexClient.py, MartingaleTradingStrategy.py, TelegramNotifier.py
 
-### 5. Error Propagation Fix (Commit: 46ba5cd)
+### 6. Error Propagation Fix (Commit: 46ba5cd)
 **Why**: Critical errors (invalid symbols, order failures) weren't triggering Telegram notifications
 **What**: Re-raise exceptions after logging in PhemexClient methods
 **Impact**: Users now get Telegram alerts for all critical failures
 **Files**: PhemexClient.py (place_order, close_position, cancel_orders, set_leverage)
 
-### 6. Improved Skip Logging (Commit: 5e81be1)
+### 7. Improved Skip Logging (Commit: 5e81be1)
 **Why**: Log message "wrong EMA side and margin level >= 200%" was confusing
 **What**: Dynamic, context-aware skip reasons that explain exactly why
 **Impact**: Users understand why bot is waiting
