@@ -589,6 +589,23 @@ class BacktestEngine:
                 else:
                     qty = (position_value * self.strategy.leverage * (-upnl_percentage)) / current_price
 
+                # Apply dynamic tapering if margin cap is enabled
+                if self.strategy.max_margin_pct:
+                    # Calculate current margin usage
+                    current_margin_pct = position_value / total_balance if position_value > 0 else 0
+
+                    # Taper factor: 1.0 at 0% margin, 0.0 at max_margin_pct
+                    # Use exponential tapering for smoother reduction
+                    if current_margin_pct < self.strategy.max_margin_pct:
+                        taper_factor = ((self.strategy.max_margin_pct - current_margin_pct) / self.strategy.max_margin_pct) ** 2
+                    else:
+                        taper_factor = 0
+
+                    original_qty = qty
+                    qty = qty * taper_factor
+
+                    # Tapering applied silently (no console output to avoid disrupting progress bar)
+
                 # Apply minimum quantity rounding (KEY: matches real bot behavior!)
                 qty = self.custom_round(qty)
 
@@ -609,6 +626,9 @@ class BacktestEngine:
         ):
             side = "Buy" if pos_side == "Long" else "Sell"
             qty = (total_balance * self.strategy.proportion_of_balance) * self.strategy.leverage / current_price
+
+            # Note: No tapering for opening positions - they start small
+            # Tapering only applies when adding to existing positions
 
             # Apply minimum quantity rounding (KEY: matches real bot behavior!)
             qty = self.custom_round(qty)

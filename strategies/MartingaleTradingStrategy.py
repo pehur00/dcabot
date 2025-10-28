@@ -488,6 +488,39 @@ class MartingaleTradingStrategy(TradingStrategy):
         else:
             qty = (position_value * self.leverage * (-pnl_percentage)) / current_price
 
+        # Apply dynamic tapering if margin cap is enabled
+        taper_factor = 1.0
+        if self.max_margin_pct:
+            # Get current position to calculate margin usage
+            position = self.client.get_position_for_symbol(symbol, None)  # Get any position for this symbol
+            if position:
+                current_margin = float(position['positionValue'])  # This is MARGIN, not notional
+                current_margin_pct = current_margin / total_balance
+            else:
+                current_margin_pct = 0
+
+            # Taper factor: 1.0 at 0% margin, 0.0 at max_margin_pct
+            # Use exponential tapering for smoother reduction
+            if current_margin_pct < self.max_margin_pct:
+                taper_factor = ((self.max_margin_pct - current_margin_pct) / self.max_margin_pct) ** 2
+            else:
+                taper_factor = 0
+
+            qty = qty * taper_factor
+
+            self.logger.info(
+                "Applied dynamic tapering",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "current_margin_pct": f"{current_margin_pct * 100:.2f}%",
+                        "max_margin_pct": f"{self.max_margin_pct * 100:.2f}%",
+                        "taper_factor": f"{taper_factor:.3f}",
+                        "original_qty": qty / taper_factor if taper_factor > 0 else qty,
+                        "tapered_qty": qty
+                    }
+                })
+
         qty = self.custom_round(qty, min_qty, max_qty, qty_step)
 
         self.logger.info(
