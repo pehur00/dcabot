@@ -560,6 +560,11 @@ class MartingaleTradingStrategy(TradingStrategy):
         if not self.max_margin_pct:
             return True, 0
 
+        # Ensure all values are float (API may return Decimal types)
+        order_qty = float(order_qty)
+        current_price = float(current_price)
+        total_balance = float(total_balance)
+
         # Get current position margin
         position = self.client.get_position_for_symbol(symbol, pos_side)
         current_margin = 0
