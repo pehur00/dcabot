@@ -426,6 +426,10 @@ class MartingaleTradingStrategy(TradingStrategy):
             raise ValueError(f"Failed to fetch account balance for {symbol}. API error or connection issue.")
         total_balance, used_balance = balance_info
 
+        # Ensure balance values are float (API may return Decimal types)
+        total_balance = float(total_balance)
+        used_balance = float(used_balance)
+
         self.logger.info(
             "Balance info",
             extra={
@@ -446,6 +450,11 @@ class MartingaleTradingStrategy(TradingStrategy):
         if ema_50 is None or ema_200 is None or ema_100_1h is None:
             raise ValueError(f"Failed to calculate EMAs for {symbol}. Missing historical data or API error.")
 
+        # Ensure EMA values are float (may be Decimal from calculations)
+        ema_50 = float(ema_50)
+        ema_200 = float(ema_200)
+        ema_100_1h = float(ema_100_1h)
+
         self.logger.info(
             "EMA info",
             extra={
@@ -458,6 +467,9 @@ class MartingaleTradingStrategy(TradingStrategy):
                 }
             })
 
+        # Ensure price values are float (API may return Decimal types)
+        current_bid = float(current_bid)
+        current_ask = float(current_ask)
         current_price = current_bid if pos_side == 'Long' else current_ask
 
         if position:
