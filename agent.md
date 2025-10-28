@@ -1,6 +1,6 @@
 # DCABot - Agent Memory Bank
 
-Last Updated: 2025-10-26
+Last Updated: 2025-10-28
 
 ## Project Overview
 
@@ -40,10 +40,11 @@ CONFIG = {
     'buy_until_limit': 0.02,           # Max 2% of balance in position
     'profit_threshold': 0.003,         # Min 0.3% profit to close
     'profit_pnl': 0.1,                 # 10% PnL target for full close
-    'leverage': 6,                     # 6x leverage
+    'leverage': 10,                    # 10x leverage
     'begin_size_of_balance': 0.006,    # Start with 0.6% of balance
     'strategy_filter': 'EMA',          # EMA-based filtering
     'buy_below_percentage': 0.04,      # Buy when down 4%
+    'max_margin_pct': 0.50,            # Max 50% margin usage (liquidation protection)
 }
 ```
 
@@ -200,18 +201,38 @@ OR
 
 ## Recent Enhancements (Oct 2025)
 
-### 1. Removed 1h EMA200 Requirement (Commit: c38a213)
+### 1. 1h EMA100 Dip-Buying Filter + 50% Margin Protection (Commit: 765796e) - **LATEST**
+**Why**: Prevent liquidations and improve entry timing by buying dips instead of breakouts
+**What**: Reversed entry strategy to buy BELOW 1h EMA100 with 50% margin cap
+**Features**:
+- **1h EMA100 Filter**: Long positions only open when price < 1h EMA100 (buy dips, not strength)
+- **Margin Protection**: max_margin_pct = 0.50 prevents using more than 50% of balance as margin
+- **No EMA Conflicts**: Removed 1min EMA200 requirement for new positions (was blocking deep dip entries)
+- **Liquidation Prevention**: Pre-order validation blocks trades that would exceed margin cap
+- **Telegram Alerts**: Notifies when orders are skipped due to margin protection
+**Impact**:
+- Buys genuine dips with upside potential (mean reversion advantage)
+- Prevents early liquidations during crashes
+- Better entry prices for Martingale averaging
+- Allows entries during deep dips below both 1min EMA200 and 1h EMA100
+**Backtest**:
+- Added liquidation simulation (tracks when margin_level ≤ 1.0)
+- Support for testing margin cap with --max-margin-pct flag
+- Improved charts showing 1h EMA100 and position margin usage
+**Files**: MartingaleTradingStrategy.py, MartingaleTradingWorkflow.py, TradingStrategy.py, backtest.py, README.md
+
+### 2. Removed 1h EMA200 Requirement (Commit: c38a213)
 **Why**: Strategy now uses configured `EMA_INTERVAL` for all EMAs instead of forcing 1h timeframe
 **Impact**: More flexible and responsive to chosen interval
 **Files**: MartingaleTradingStrategy.py, MartingaleTradingWorkflow.py
 
-### 2. Enhanced Position Notifications (Commit: c38a213)
+### 3. Enhanced Position Notifications (Commit: c38a213)
 **Why**: Users needed complete position details for all actions
 **What**: Unified notification system with action types (OPENED/ADDED/REDUCED/CLOSED)
 **Details**: Shows position size, value, % of balance for all updates
 **Files**: TelegramNotifier.py, MartingaleTradingStrategy.py
 
-### 3. Decline Velocity Detection (Commit: 6079bcd)
+### 4. Decline Velocity Detection (Commit: 6079bcd)
 **Why**: Martingale can blow up during fast crashes; slow declines are better for averaging
 **What**: Multi-factor analysis to distinguish safe pullbacks from dangerous crashes
 **Features**:
@@ -223,13 +244,13 @@ OR
 **Impact**: Prevents adding during crashes, allows more position size during slow declines
 **Files**: volatility.py, PhemexClient.py, MartingaleTradingStrategy.py, TelegramNotifier.py
 
-### 4. Error Propagation Fix (Commit: 46ba5cd)
+### 5. Error Propagation Fix (Commit: 46ba5cd)
 **Why**: Critical errors (invalid symbols, order failures) weren't triggering Telegram notifications
 **What**: Re-raise exceptions after logging in PhemexClient methods
 **Impact**: Users now get Telegram alerts for all critical failures
 **Files**: PhemexClient.py (place_order, close_position, cancel_orders, set_leverage)
 
-### 5. Improved Skip Logging (Commit: 5e81be1)
+### 6. Improved Skip Logging (Commit: 5e81be1)
 **Why**: Log message "wrong EMA side and margin level >= 200%" was confusing
 **What**: Dynamic, context-aware skip reasons that explain exactly why
 **Impact**: Users understand why bot is waiting
