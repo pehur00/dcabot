@@ -483,6 +483,12 @@ class MartingaleTradingStrategy(TradingStrategy):
     def calculate_order_quantity(self, symbol, total_balance, position_value, current_price, pnl_percentage):
         min_qty, max_qty, qty_step = self.client.define_instrument_info(symbol)
 
+        # Ensure all values are float (API may return Decimal types)
+        total_balance = float(total_balance)
+        position_value = float(position_value)
+        current_price = float(current_price)
+        pnl_percentage = float(pnl_percentage) if pnl_percentage else 0
+
         if position_value == 0:
             qty = (total_balance * self.proportion_of_balance) * self.leverage / current_price
         else:
