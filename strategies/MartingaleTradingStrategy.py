@@ -12,6 +12,7 @@ CONFIG = {
     'begin_size_of_balance': 0.006,
     'strategy_filter': 'EMA',  # Currently, only 'EMA' is supported
     'buy_below_percentage': 0.04,
+    'max_margin_pct': 0.50,  # Max margin usage: 50% of balance (prevents early liquidations)
 }
 
 
@@ -24,6 +25,7 @@ class MartingaleTradingStrategy(TradingStrategy):
         self.profit_pnl = CONFIG['profit_pnl']
         self.proportion_of_balance = CONFIG['begin_size_of_balance']
         self.buy_until_limit = CONFIG['buy_until_limit']
+        self.max_margin_pct = CONFIG.get('max_margin_pct')  # Optional max margin percentage
         self.notifier = notifier
 
     def custom_round(self, number, min_qty, max_qty, qty_step):
@@ -39,13 +41,27 @@ class MartingaleTradingStrategy(TradingStrategy):
         return max(min(rounded_qty, max_qty), min_qty)
 
     def is_valid_position(self, position, current_price, ema_200, pos_side):
-        return (position and position['margin_level'] < 2) \
-            or (pos_side == 'Long' and current_price > ema_200) \
-            or (pos_side == 'Short' and current_price < ema_200)
+        """
+        Check if position management should run.
 
-    def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance, pos_side, automatic_mode):
+        For EXISTING positions: Always manage if margin level is critical (< 2)
+        For EXISTING positions: Otherwise check EMA alignment (Long > EMA200, Short < EMA200)
+        For NEW positions: Always return True (let manage_position() handle entry filter with 1h EMA100)
+        """
+        # If we have a position, check margin level and EMA alignment
+        if position:
+            return (position['margin_level'] < 2) \
+                or (pos_side == 'Long' and current_price > ema_200) \
+                or (pos_side == 'Short' and current_price < ema_200)
+
+        # No position: always allow manage_position() to run (it has its own 1h EMA100 filter)
+        return True
+
+    def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance, pos_side, automatic_mode, ema_100_1h):
         """
         Manage the current position based on profit, margin level, EMA conditions, and volatility.
+
+        Entry Strategy: Buy BELOW 1h EMA100 to catch dips with upside potential (counter-trend Martingale)
         """
 
         conclusion = "Nothing changed"
@@ -157,9 +173,10 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         # ✅ 3. Open a new position in automatic mode if conditions match
         # Don't open new positions during high volatility or dangerous declines
+        # STRATEGY: Buy BELOW 1h EMA100 to catch dips (Martingale works best on pullbacks)
         elif automatic_mode and not is_high_volatility and not is_dangerous_decline and (
-                (pos_side == "Long" and current_price > ema_200) or
-                (pos_side == "Short" and current_price < ema_200)
+                (pos_side == "Long" and current_price < ema_100_1h) or
+                (pos_side == "Short" and current_price > ema_100_1h)
         ):
             conclusion = self.open_new_position(symbol, current_price, total_balance, pos_side)
 
@@ -168,6 +185,13 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         elif automatic_mode and is_high_volatility:
             conclusion = f"High volatility detected ({vol_metrics.get('trigger')}), not opening new position"
+
+        elif automatic_mode:
+            # If we get here, it's because price is on wrong side of 1h EMA100
+            if pos_side == "Long":
+                conclusion = f"Not opening position - price ${current_price:.2f} above 1h EMA100 ${ema_100_1h:.2f} (waiting for dip)"
+            else:
+                conclusion = f"Not opening position - price ${current_price:.2f} below 1h EMA100 ${ema_100_1h:.2f} (waiting for dip)"
 
         return conclusion
 
@@ -270,6 +294,38 @@ class MartingaleTradingStrategy(TradingStrategy):
 
     def add_to_position(self, symbol, current_price, total_balance, position_value, pnl_percentage, side, pos_side):
         order_qty = self.calculate_order_quantity(symbol, total_balance, position_value, current_price, pnl_percentage)
+
+        # Check if order would exceed max margin percentage limit
+        is_allowed, margin_usage_pct = self.check_margin_limit(symbol, pos_side, order_qty, current_price, total_balance)
+
+        if not is_allowed:
+            # Log the skipped order
+            self.logger.warning(
+                "Order skipped - would exceed max margin percentage",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "margin_usage_pct": f"{margin_usage_pct * 100:.2f}%",
+                        "max_margin_pct": f"{self.max_margin_pct * 100:.2f}%",
+                        "order_qty": float(order_qty),
+                        "current_price": current_price,
+                        "reason": "MAX_MARGIN_EXCEEDED"
+                    }
+                })
+
+            # Send Telegram notification if configured
+            if self.notifier:
+                self.notifier.notify(
+                    f"⚠️ Order Skipped - Max Margin Protection\n"
+                    f"Symbol: {symbol} ({pos_side})\n"
+                    f"Margin usage would be: {margin_usage_pct * 100:.2f}%\n"
+                    f"Max allowed: {self.max_margin_pct * 100:.2f}%\n"
+                    f"Order: {float(order_qty):.4f} @ ${current_price:.6f}"
+                )
+
+            return f"Skipped order - margin usage would be {margin_usage_pct * 100:.1f}% (max: {self.max_margin_pct * 100:.0f}%)"
+
+        # Margin check passed, place the order
         self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, pos_side=pos_side, side=side)
 
         # Get updated position after adding
@@ -299,6 +355,38 @@ class MartingaleTradingStrategy(TradingStrategy):
     def open_new_position(self, symbol, current_price, total_balance, pos_side):
         side = "Buy" if pos_side == "Long" else "Sell"
         order_qty = self.calculate_order_quantity(symbol, total_balance, 0, current_price, 0)
+
+        # Check if order would exceed max margin percentage limit
+        is_allowed, margin_usage_pct = self.check_margin_limit(symbol, pos_side, order_qty, current_price, total_balance)
+
+        if not is_allowed:
+            # Log the skipped order
+            self.logger.warning(
+                "Order skipped - would exceed max margin percentage",
+                extra={
+                    "symbol": symbol,
+                    "json": {
+                        "margin_usage_pct": f"{margin_usage_pct * 100:.2f}%",
+                        "max_margin_pct": f"{self.max_margin_pct * 100:.2f}%",
+                        "order_qty": float(order_qty),
+                        "current_price": current_price,
+                        "reason": "MAX_MARGIN_EXCEEDED"
+                    }
+                })
+
+            # Send Telegram notification if configured
+            if self.notifier:
+                self.notifier.notify(
+                    f"⚠️ Order Skipped - Max Margin Protection\n"
+                    f"Symbol: {symbol} ({pos_side})\n"
+                    f"Margin usage would be: {margin_usage_pct * 100:.2f}%\n"
+                    f"Max allowed: {self.max_margin_pct * 100:.2f}%\n"
+                    f"Order: {float(order_qty):.4f} @ ${current_price:.6f}"
+                )
+
+            return f"Skipped order - margin usage would be {margin_usage_pct * 100:.1f}% (max: {self.max_margin_pct * 100:.0f}%)"
+
+        # Margin check passed, place the order
         self.client.place_order(symbol=symbol, qty=order_qty, price=current_price, pos_side=pos_side, side=side)
 
         # Get newly opened position
@@ -350,8 +438,12 @@ class MartingaleTradingStrategy(TradingStrategy):
         ema_50 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=50)
         ema_200 = self.client.get_ema(symbol=symbol, interval=ema_interval, period=200)
 
+        # Always fetch 1h EMA100 for dip-buying filter (regardless of configured interval)
+        # STRATEGY: Buy BELOW 1h EMA100 to catch dips with upside potential
+        ema_100_1h = self.client.get_ema(symbol=symbol, interval=60, period=100)
+
         # Validate EMAs - if any are None, there's an API or data issue
-        if ema_50 is None or ema_200 is None:
+        if ema_50 is None or ema_200 is None or ema_100_1h is None:
             raise ValueError(f"Failed to calculate EMAs for {symbol}. Missing historical data or API error.")
 
         self.logger.info(
@@ -361,7 +453,8 @@ class MartingaleTradingStrategy(TradingStrategy):
                 "json": {
                     "ema_interval": ema_interval,
                     "ema_50": ema_50,
-                    "ema_200": ema_200
+                    "ema_200": ema_200,
+                    "ema_100_1h": ema_100_1h
                 }
             })
 
@@ -381,7 +474,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                     }
                 })
 
-        return current_price, ema_200, ema_50, position, total_balance
+        return current_price, ema_200, ema_50, position, total_balance, ema_100_1h
 
     def prepare_strategy(self, symbol, pos_side):
         self.client.cancel_all_open_orders(symbol, pos_side)
@@ -409,3 +502,41 @@ class MartingaleTradingStrategy(TradingStrategy):
             })
 
         return qty
+
+    def check_margin_limit(self, symbol, pos_side, order_qty, current_price, total_balance):
+        """
+        Check if placing this order would exceed the max margin percentage limit.
+
+        Args:
+            symbol: Trading pair symbol
+            pos_side: Position side ('Long' or 'Short')
+            order_qty: Quantity of the order to be placed
+            current_price: Current market price
+            total_balance: Total account balance
+
+        Returns:
+            Tuple (is_allowed: bool, margin_usage_pct: float)
+        """
+        # If no limit is configured, allow all orders
+        if not self.max_margin_pct:
+            return True, 0
+
+        # Get current position margin
+        position = self.client.get_position_for_symbol(symbol, pos_side)
+        current_margin = 0
+        if position:
+            position_value = float(position['positionValue'])
+            current_margin = position_value / self.leverage
+
+        # Calculate required margin for new order
+        order_value = order_qty * current_price
+        required_margin = order_value / self.leverage
+
+        # Calculate total margin usage percentage
+        total_margin = current_margin + required_margin
+        margin_usage_pct = total_margin / total_balance if total_balance > 0 else 0
+
+        # Check if within limit
+        is_allowed = margin_usage_pct <= self.max_margin_pct
+
+        return is_allowed, margin_usage_pct

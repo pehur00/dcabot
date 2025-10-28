@@ -21,6 +21,7 @@ import pandas as pd
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from tqdm import tqdm
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -96,12 +97,13 @@ def fetch_extended_historical_data(client: PhemexClient, symbol: str, interval: 
 
 class BacktestEngine:
     def __init__(self, client: PhemexClient, strategy: MartingaleTradingStrategy,
-                 initial_balance: float = 10000.0):
+                 initial_balance: float = 10000.0, max_margin_pct: float = None):
         self.client = client
         self.strategy = strategy
         self.initial_balance = initial_balance
         self.balance = initial_balance
         self.peak_balance = initial_balance
+        self.max_margin_pct = max_margin_pct  # Optional margin cap
 
         # Position tracking
         self.position = None
@@ -119,6 +121,7 @@ class BacktestEngine:
         self.total_trades = 0
         self.winning_trades = 0
         self.losing_trades = 0
+        self.liquidations = 0  # Track liquidation events
         self.max_drawdown = 0
         self.max_drawdown_absolute = 0
         self.peak_total_value = initial_balance
@@ -128,6 +131,9 @@ class BacktestEngine:
         self.min_qty = 1.0
         self.max_qty = 1000000.0
         self.qty_step = 1.0
+
+        # Configuration settings (for display in results)
+        self.config_settings = {}
 
     def set_instrument_specs(self, min_qty: float, max_qty: float, qty_step: float):
         """Set instrument specifications for quantity rounding"""
@@ -188,22 +194,40 @@ class BacktestEngine:
         }
 
     def execute_trade(self, symbol: str, qty: float, price: float, side: str, pos_side: str, timestamp=None):
-        """Simulate trade execution with margin validation"""
+        """Simulate trade execution with exchange-side validations"""
         # Calculate required margin for this trade
         trade_notional = qty * price
         required_margin = trade_notional / self.strategy.leverage
 
-        # Check if we have sufficient balance (prevent liquidation)
+        # === USER-CONFIGURED PROTECTIONS (optional) ===
+        # ONLY apply max_margin_pct if explicitly set (optional protection)
         if side in ['Buy', 'Sell'] and (side == 'Buy' if pos_side == 'Long' else side == 'Sell'):
-            # This is opening or adding to position - check margin
-            current_used_margin = (self.position_value / self.strategy.leverage) if self.position else 0
-            total_required_margin = current_used_margin + required_margin
-            available_balance = self.balance + self.unrealized_pnl
+            if self.max_margin_pct is not None:
+                # This is opening or adding to position - check margin cap
+                current_used_margin = (self.position_value / self.strategy.leverage) if self.position else 0
+                total_required_margin = current_used_margin + required_margin
+                margin_usage = total_required_margin / self.balance
 
-            # Require at least 2x margin to avoid liquidation (maintenance margin)
-            if total_required_margin * 2 > available_balance:
-                # print(f"⚠️  Insufficient margin: need ${total_required_margin:.2f}, have ${available_balance:.2f}")
-                return  # Skip this trade to prevent liquidation
+                if margin_usage > self.max_margin_pct:
+                    return  # Skip this trade
+
+        # === EXCHANGE-SIDE VALIDATIONS (always enforced) ===
+        if side in ['Buy', 'Sell'] and (side == 'Buy' if pos_side == 'Long' else side == 'Sell'):
+            # Calculate current used margin
+            current_used_margin = (self.position_value / self.strategy.leverage) if self.position else 0
+
+            # Calculate available balance (total balance - used margin)
+            # Note: unrealized PnL is included in balance, so we need to account for it
+            available_balance = self.balance - current_used_margin
+
+            # Exchange would reject if not enough available balance for required margin
+            if required_margin > available_balance:
+                # print(f"  ⚠️  Order REJECTED by exchange: Required margin ${required_margin:.2f} > Available ${available_balance:.2f}")
+                return  # Exchange rejects this order
+
+        # NOTE: Real bot has NO pre-execution checks!
+        # It relies on exchange liquidation engine
+        # The checks above simulate EXCHANGE behavior, not bot behavior
 
         # Calculate fee (0.075% maker fee on Phemex)
         fee = abs(qty * price * 0.00075)
@@ -304,6 +328,15 @@ class BacktestEngine:
         df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
         df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
 
+        # Calculate 1h EMA100 for dip-buying filter (resample 1m data to 1h, then map back)
+        # STRATEGY: Buy BELOW 1h EMA100 to catch dips with upside potential
+        df_1h = df.resample('1H').agg({'close': 'last', 'high': 'max', 'low': 'min', 'open': 'first', 'volume': 'sum'})
+        df_1h['ema_100_1h'] = df_1h['close'].ewm(span=100, adjust=False).mean()
+
+        # Forward-fill 1h EMA100 to 1-minute timeframe
+        df = df.join(df_1h[['ema_100_1h']], how='left')
+        df['ema_100_1h'] = df['ema_100_1h'].fillna(method='ffill')
+
         # Need at least 200 periods for EMA200
         if len(df) < 200:
             print("❌ Insufficient data for EMA200 calculation (need 200+ periods)")
@@ -311,17 +344,27 @@ class BacktestEngine:
 
         # Run simulation - check every 5 minutes (every 5th candle) to match real bot behavior
         check_interval = 5  # minutes - matches agent.py sleep(300 seconds)
-        for i in range(200, len(df), check_interval):
+
+        # Setup progress tracking
+        use_tqdm = sys.stdout.isatty()
+        iterations = range(200, len(df), check_interval)
+        total_iterations = len(list(iterations))
+
+        for idx, i in enumerate(tqdm(iterations, desc="Simulating", unit=" checks",
+                     bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]',
+                     disable=not use_tqdm, mininterval=1.0, leave=True)):
             current_candle = df.iloc[i]
             timestamp = current_candle.name
             current_price = float(current_candle['close'])
             ema_50 = float(current_candle['ema_50'])
             ema_200 = float(current_candle['ema_200'])
+            ema_100_1h = float(current_candle['ema_100_1h'])
 
             # Simulate position
             simulated_position = self.simulate_position(current_price)
 
             # Check if position management is valid
+            # Note: is_valid_position() now returns True for new positions (no conflict with 1h EMA100 filter)
             valid_position = self.strategy.is_valid_position(
                 simulated_position, current_price, ema_200, pos_side
             )
@@ -331,7 +374,8 @@ class BacktestEngine:
                 'timestamp': timestamp,
                 'price': current_price,
                 'ema_50': ema_50,
-                'ema_200': ema_200
+                'ema_200': ema_200,
+                'ema_100_1h': ema_100_1h
             })
 
             if not valid_position:
@@ -350,10 +394,68 @@ class BacktestEngine:
 
             # Get strategy decision WITH FULL VOLATILITY PROTECTION
             conclusion = self._manage_position_backtest(
-                symbol, current_price, ema_200, ema_50,
+                symbol, current_price, ema_200, ema_50, ema_100_1h,
                 simulated_position, self.balance, pos_side, automatic_mode,
                 df, i, timestamp  # Pass historical data and timestamp
             )
+
+            # === EXCHANGE AUTO-LIQUIDATION ===
+            # Check if margin_level dropped to liquidation threshold
+            if self.position and simulated_position:
+                margin_level = simulated_position.get('margin_level', 999)
+
+                # Phemex liquidates when margin_level <= 1.0
+                if margin_level <= 1.0:
+                    print(f"\n💀 LIQUIDATED at {timestamp}")
+                    print(f"   Price: ${current_price:.6f}")
+                    print(f"   Margin Level: {margin_level:.4f}")
+                    print(f"   Position Size: {self.position_size:.2f}")
+                    print(f"   Position Value: ${self.position_value:.2f}")
+                    print(f"   Unrealized PnL: ${self.unrealized_pnl:.2f}")
+                    print(f"   Balance before liquidation: ${self.balance:.2f}")
+
+                    # Liquidation: Close position at market (assume small slippage)
+                    liquidation_price = current_price * 0.995  # 0.5% slippage
+                    realized_pnl = 0
+                    if pos_side == 'Long':
+                        realized_pnl = (liquidation_price - self.position_entry_price) * self.position_size
+                    else:
+                        realized_pnl = (self.position_entry_price - liquidation_price) * self.position_size
+
+                    # Update balance with realized PnL
+                    self.balance += realized_pnl
+
+                    # Record liquidation as trade
+                    self.trades.append({
+                        'timestamp': timestamp,
+                        'symbol': symbol,
+                        'side': 'Sell' if pos_side == 'Long' else 'Buy',
+                        'pos_side': pos_side,
+                        'qty': self.position_size,
+                        'price': liquidation_price,
+                        'value': self.position_size * liquidation_price,
+                        'fee': 0,  # Liquidation fees already accounted in slippage
+                        'action': 'LIQUIDATED',
+                        'position_size': 0,
+                        'position_value': 0,
+                        'pnl': realized_pnl
+                    })
+
+                    # Clear position
+                    self.position = None
+                    self.position_size = 0
+                    self.position_entry_price = 0
+                    self.position_value = 0
+                    self.unrealized_pnl = 0
+
+                    # Track liquidation
+                    self.liquidations += 1
+
+                    print(f"   Realized PnL: ${realized_pnl:.2f}")
+                    print(f"   Balance after liquidation: ${self.balance:.2f}")
+                    print(f"   Remaining balance: ${self.balance:.2f} ({(self.balance/self.initial_balance)*100:.1f}% of initial)")
+
+                    conclusion = "LIQUIDATED - Account wiped"
 
             # Record balance snapshot
             # Use margin-based position value (like Phemex does!)
@@ -379,6 +481,11 @@ class BacktestEngine:
                 self.max_drawdown = drawdown_pct
                 self.max_drawdown_absolute = drawdown_abs
 
+            # Print progress every 10% if not using tqdm
+            if not use_tqdm and idx % max(1, total_iterations // 10) == 0 and idx > 0:
+                progress_pct = (idx / total_iterations) * 100
+                print(f"  Progress: {progress_pct:.0f}% ({idx}/{total_iterations} checks)")
+
         # Close any open position at end
         if self.position:
             print(f"\n📊 Closing remaining position at end of backtest")
@@ -391,13 +498,14 @@ class BacktestEngine:
         self._print_results(symbol, pos_side)
         self.generate_charts(symbol, pos_side)
 
-    def _manage_position_backtest(self, symbol, current_price, ema_200, ema_50,
+    def _manage_position_backtest(self, symbol, current_price, ema_200, ema_50, ema_100_1h,
                                    position, total_balance, pos_side, automatic_mode,
                                    historical_df, current_idx, timestamp):
         """
         Full position management for backtesting with volatility protection.
 
         Simulates check_volatility() and decline_velocity using historical data.
+        Uses 1h EMA100 for dip-buying filter: Only opens when price is BELOW 1h EMA100.
         """
 
         conclusion = "Nothing changed"
@@ -494,9 +602,10 @@ class BacktestEngine:
                 conclusion = f"Skipped add - high volatility ({vol_metrics.get('trigger', 'unknown')})"
 
         # Open new position if automatic mode (WITH PROTECTIONS)
+        # STRATEGY: Buy BELOW 1h EMA100 to catch dips (Martingale works best on pullbacks)
         elif automatic_mode and not is_high_volatility and not is_dangerous_decline and (
-            (pos_side == "Long" and current_price > ema_200) or
-            (pos_side == "Short" and current_price < ema_200)
+            (pos_side == "Long" and current_price < ema_100_1h) or
+            (pos_side == "Short" and current_price > ema_100_1h)
         ):
             side = "Buy" if pos_side == "Long" else "Sell"
             qty = (total_balance * self.strategy.proportion_of_balance) * self.strategy.leverage / current_price
@@ -513,6 +622,13 @@ class BacktestEngine:
         elif automatic_mode and is_high_volatility:
             conclusion = f"Skipped open - high volatility"
 
+        elif automatic_mode:
+            # If we get here, it's because price is on wrong side of 1h EMA100
+            if pos_side == "Long":
+                conclusion = f"Skipped open - price above 1h EMA100 ({current_price:.2f} > {ema_100_1h:.2f}, waiting for dip)"
+            else:
+                conclusion = f"Skipped open - price below 1h EMA100 ({current_price:.2f} < {ema_100_1h:.2f}, waiting for dip)"
+
         return conclusion
 
     def _print_results(self, symbol: str = "UNKNOWN", pos_side: str = "UNKNOWN"):
@@ -524,6 +640,14 @@ class BacktestEngine:
         print("\n" + "=" * 80)
         print("📊 BACKTEST RESULTS")
         print("=" * 80)
+
+        # Display configuration settings
+        if self.config_settings:
+            print(f"\n⚙️  Configuration:")
+            print(f"  {'Parameter':<25} {'Value':<20}")
+            print(f"  {'-'*25} {'-'*20}")
+            for key, value in self.config_settings.items():
+                print(f"  {key:<25} {value:<20}")
 
         print(f"\n💰 Balance Summary:")
         print(f"  Initial Balance:  ${self.initial_balance:,.2f}")
@@ -540,6 +664,8 @@ class BacktestEngine:
         print(f"\n⚠️  Risk Metrics:")
         print(f"  Max Drawdown:     {self.max_drawdown:.2f}% (${self.max_drawdown_absolute:.2f})")
         print(f"  Peak Value:       ${self.peak_total_value:,.2f}")
+        if self.liquidations > 0:
+            print(f"  ⚠️  LIQUIDATIONS:  {self.liquidations} 💀")
 
         if self.trades:
             print(f"\n📋 Trade History (Last 10):")
@@ -605,13 +731,14 @@ class BacktestEngine:
         ax1 = axes[0]
         ax1.plot(price_df['timestamp'], price_df['price'], label='Price', color='#333333', linewidth=2)
         ax1.plot(price_df['timestamp'], price_df['ema_200'], label='1min EMA200', color='#FF6B35', linewidth=1.5, linestyle='--')
+        ax1.plot(price_df['timestamp'], price_df['ema_100_1h'], label='1h EMA100 (Dip-Buy Filter)', color='#9B59B6', linewidth=2, linestyle='-', alpha=0.8)
 
         ax1.set_xlabel('Date')
         ax1.set_ylabel('Price (USDT)')
         ax1.set_title('Price Action & 1-minute EMA200')
         ax1.legend(loc='best')
         ax1.grid(True, alpha=0.3)
-        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
         # 2. Balance & Total Value Chart (no trade markers)
         ax2 = axes[1]
@@ -657,7 +784,7 @@ class BacktestEngine:
         ax2.set_title('Account Balance & Total Value')
         ax2.legend(loc='best')
         ax2.grid(True, alpha=0.3)
-        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
         # 3. Position Size Chart (Margin)
         ax3 = axes[2]
@@ -669,7 +796,7 @@ class BacktestEngine:
         ax3.set_title('Position Size Over Time (Margin Invested)')
         ax3.legend(loc='best')
         ax3.grid(True, alpha=0.3)
-        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
         # 4. Drawdown Chart (based on total value including unrealized PnL)
         ax4 = axes[3]
@@ -686,7 +813,7 @@ class BacktestEngine:
         ax4.set_title('Drawdown Analysis')
         ax4.legend(loc='best')
         ax4.grid(True, alpha=0.3)
-        ax4.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+        ax4.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
         ax4.invert_yaxis()  # Drawdown goes down
 
         # 5. Performance Metrics Summary
@@ -744,9 +871,20 @@ class BacktestEngine:
         Peak Value:             ${self.peak_total_value:,.2f}
         """
 
-        ax5.text(0.1, 0.5, summary_text, transform=ax5.transAxes,
-                fontsize=12, verticalalignment='center', family='monospace',
+        ax5.text(0.05, 0.5, summary_text, transform=ax5.transAxes,
+                fontsize=11, verticalalignment='center', family='monospace',
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+
+        # Create configuration text (right side)
+        if self.config_settings:
+            config_lines = ["        ⚙️  CONFIGURATION\n"]
+            for key, value in self.config_settings.items():
+                config_lines.append(f"        {key:<20} {value}")
+            config_text = "\n".join(config_lines)
+
+            ax5.text(0.55, 0.5, config_text, transform=ax5.transAxes,
+                    fontsize=11, verticalalignment='center', family='monospace',
+                    bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.3))
 
         # Adjust layout and save
         plt.tight_layout()
@@ -780,6 +918,8 @@ def main():
                        help='Data source: binance (extended history) or phemex (live API) (default: binance)')
     parser.add_argument('--profit-pnl', type=float, default=None,
                        help='Override profit_pnl threshold (e.g., 0.15 for 15%% profit target)')
+    parser.add_argument('--max-margin-pct', type=float, default=None,
+                       help='Optional maximum margin usage as percentage (e.g., 0.40 = 40%% cap). When absent, no margin cap is applied.')
 
     args = parser.parse_args()
 
@@ -854,8 +994,26 @@ def main():
         print(f"❌ Failed to fetch historical data for {args.symbol}")
         return
 
+    # Display protection status
+    if args.max_margin_pct is not None:
+        print(f"  Protections: Max Margin: {args.max_margin_pct:.0%}")
+    else:
+        print(f"  Protections: None (matches real bot)")
+
     # Run backtest
-    engine = BacktestEngine(client, strategy, args.balance)
+    engine = BacktestEngine(client, strategy, args.balance, max_margin_pct=args.max_margin_pct)
+
+    # Set configuration settings for display in results
+    engine.config_settings = {
+        'Symbol': args.symbol,
+        'Side': args.side,
+        'Initial Balance': f"${args.balance:,.2f}",
+        'Leverage': f"{strategy.leverage}x",
+        'Profit Target': f"{strategy.profit_pnl:.0%}",
+        'Max Margin Cap': f"{args.max_margin_pct:.0%}" if args.max_margin_pct else "None",
+        'Period': f"{args.days} days",
+        'Data Source': args.source.upper()
+    }
 
     # Get instrument specs for proper quantity rounding (matches real bot!)
     try:

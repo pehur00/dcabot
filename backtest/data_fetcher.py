@@ -11,6 +11,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional
 import time
+import sys
+from tqdm import tqdm
 
 
 def fetch_historical_data_ccxt(
@@ -56,8 +58,22 @@ def fetch_historical_data_ccxt(
     }
     minutes = timeframe_minutes.get(timeframe, 60)
 
+    # Calculate required batches dynamically based on requested days
+    # Each batch fetches ~1000 candles, add 20% buffer for safety
+    candles_per_day = (24 * 60) / minutes
+    total_candles_needed = int(days * candles_per_day)
+    max_batches = int((total_candles_needed / 1000) * 1.2) + 10  # 20% buffer + 10 extra batches
+
+    print(f"\n📡 Fetching {days} days of {timeframe} data for {symbol} from {exchange_name.upper()}...")
+    print(f"   Estimated batches needed: ~{int(total_candles_needed / 1000)} (max: {max_batches})")
+
     batch_num = 0
-    max_batches = 50  # Safety limit
+
+    # Setup progress tracking
+    use_tqdm = sys.stdout.isatty()
+    pbar = tqdm(total=max_batches, desc="Fetching data", unit=" batch",
+                bar_format='{desc}: {n_fmt}/{total_fmt} batches |{bar}| {elapsed}',
+                disable=not use_tqdm, leave=True) if use_tqdm else None
 
     while current_since < int(now.timestamp() * 1000) and batch_num < max_batches:
         try:
@@ -78,7 +94,14 @@ def fetch_historical_data_ccxt(
             # Update since to last candle timestamp + 1 period
             current_since = candles[-1][0] + (minutes * 60 * 1000)
 
-            print(f"  Batch {batch_num}: Fetched {len(candles)} candles (total: {len(all_candles)})")
+            # Update progress bar or print message
+            if pbar:
+                pbar.update(1)
+                pbar.set_postfix({'total_candles': len(all_candles)})
+            else:
+                # Fallback for non-TTY: print every 5 batches
+                if batch_num % 5 == 0 or batch_num == 1:
+                    print(f"  Batch {batch_num}: Fetched {len(candles)} candles (total: {len(all_candles)})")
 
             # Small delay to respect rate limits
             time.sleep(exchange.rateLimit / 1000)
@@ -86,6 +109,9 @@ def fetch_historical_data_ccxt(
         except Exception as e:
             print(f"  ⚠️ Error fetching batch {batch_num}: {e}")
             break
+
+    if pbar:
+        pbar.close()
 
     if not all_candles:
         print("❌ No data fetched")

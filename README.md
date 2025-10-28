@@ -94,6 +94,9 @@ dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --balance 
 
 # Optimize profit-taking threshold
 dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --profit-pnl 0.15 --side Long
+
+# Test with margin protection (40% max margin cap to prevent early liquidations)
+dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --max-margin-pct 0.40 --side Long
 ```
 
 ### Parameters
@@ -105,6 +108,7 @@ dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --profit-
 - `--balance`: Initial balance in USDT (default: 100)
 - `--side`: Position side (`Long` or `Short`)
 - `--profit-pnl`: Profit-taking threshold as decimal (default: 0.1 = 10%)
+- `--max-margin-pct`: Optional maximum margin usage cap (e.g., 0.40 = 40% max). When absent, no cap is applied
 
 ### Example Results (34 days, HBARUSDT)
 
@@ -168,10 +172,18 @@ CONFIG = {
     'buy_until_limit': 0.05,          # Max position: 5% of balance (in margin)
     'profit_threshold': 0.003,        # Min profit: 0.3% of balance to consider closing
     'profit_pnl': 0.1,                # Target: 10% profit on margin invested
+    'max_margin_pct': None,           # Optional: Max margin cap (e.g., 0.40 = 40%). None = no limit
 }
 ```
 
-**Note**: `buy_until_limit` refers to margin invested, not notional value. With 10x leverage, 5% margin = 50% notional position.
+**Important Notes**:
+- `buy_until_limit` refers to margin invested, not notional value. With 10x leverage, 5% margin = 50% notional position.
+- `max_margin_pct` provides an **optional safety buffer** against early liquidations:
+  - When `None` (default): No pre-emptive protection, relies on exchange liquidation engine
+  - When set (e.g., `0.40`): Bot stops adding to positions when margin usage would exceed 40%
+  - **Example**: With $100 balance and 40% cap, bot won't use more than $40 in margin
+  - This creates a buffer before reaching exchange liquidation threshold (typically ~100% margin usage)
+  - Useful for preventing blow-ups during extreme volatility or fast crashes
 
 ## Requirements
 
@@ -216,6 +228,7 @@ docker run -d \
 - ✅ Volatility detection and pausing
 - ✅ Position size limits
 - ✅ Emergency liquidation protection
+- ✅ Optional margin usage cap (prevents early liquidations)
 
 ## Risk Warning
 

@@ -21,7 +21,7 @@ class TradingStrategy(ABC):
         pass
 
     @abstractmethod
-    def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance, buy_below_percentage, pos_side):
+    def manage_position(self, symbol, current_price, ema_200, ema_50, position, total_balance, pos_side, automatic_mode, ema_100_1h):
         """
         Evaluate and manage the current position.
         """
