@@ -36,13 +36,44 @@ TESTNET=True
 # Optional: Telegram notifications
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
+
+# Optional: Fee optimization (default: True)
+USE_POSTONLY=True
 ```
 
-### 3. Run
+### 3. Run Locally
 
 ```bash
+# Option 1: Using virtual environment (recommended)
+dcabot-env/bin/python main.py
+
+# Option 2: If virtual env is activated
 python main.py
 ```
+
+**What happens when you run:**
+- Bot loads environment variables from `.env`
+- Connects to Phemex API (TESTNET=True uses testnet, TESTNET=False uses mainnet)
+- Executes strategy once for each symbol in SYMBOL env var
+- Places orders if strategy conditions are met
+- Exits (simulates one cron job cycle)
+
+**Testing PostOnly orders:**
+```bash
+# Set in .env file (recommended):
+USE_POSTONLY=True    # Uses maker fees (0.075%)
+USE_POSTONLY=False   # Uses taker fees (0.15%)
+
+# Or export temporarily:
+export USE_POSTONLY=false
+dcabot-env/bin/python main.py
+```
+
+**Safety tips for local testing:**
+- Start with `TESTNET=True` for risk-free testing
+- Use small position sizes initially
+- Check current positions before running
+- Monitor logs for "Order timeInForce: PostOnly" (entry orders) or "GoodTillCancel" (exit orders)
 
 ## Documentation
 

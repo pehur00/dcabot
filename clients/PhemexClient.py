@@ -49,6 +49,11 @@ class PhemexClient(TradingClient):
         self.api_URL = self.TEST_NET_API_URL if testnet else self.MAIN_NET_API_URL
         self.session = requests.session()
 
+        # PostOnly feature flag - defaults to True for maker fees optimization
+        # Set USE_POSTONLY=false in env to disable if issues occur
+        import os
+        self.use_postonly = os.getenv('USE_POSTONLY', 'true').lower() in ('true', '1', 't', 'yes')
+
     @rate_limiter
     @retry_on_exception(
         max_retries=3,
@@ -424,8 +429,39 @@ class PhemexClient(TradingClient):
 
         return is_high_vol, metrics
 
-    def place_order(self, symbol, qty, price=None, side="Buy", order_type="Limit", time_in_force="GoodTillCancel",
+    def place_order(self, symbol, qty, price=None, side="Buy", order_type="Limit", time_in_force=None,
                     pos_side="Long", reduce_only=False):
+        """
+        Place an order on Phemex.
+
+        By default uses PostOnly to ensure maker fees (0.075% vs 0.15% taker).
+        For risk management exits (reduce_only), uses GoodTillCancel for faster fills.
+        Can be controlled via USE_POSTONLY env var (defaults to true).
+        """
+        # Determine timeInForce based on settings and order type
+        if time_in_force is None:
+            if reduce_only:
+                # Always use GoodTillCancel for exits (fast execution priority)
+                time_in_force = "GoodTillCancel"
+            elif self.use_postonly:
+                # Use PostOnly for entry orders (maker fee optimization)
+                time_in_force = "PostOnly"
+            else:
+                # Fallback to GoodTillCancel if PostOnly disabled
+                time_in_force = "GoodTillCancel"
+
+        # Log the timeInForce decision for monitoring
+        self.logger.debug(
+            f"Order timeInForce: {time_in_force}",
+            extra={
+                "symbol": symbol,
+                "json": {
+                    "time_in_force": time_in_force,
+                    "reduce_only": reduce_only,
+                    "use_postonly_enabled": self.use_postonly
+                }
+            }
+        )
 
         self.logger.debug(
             "Placing order",
@@ -437,6 +473,7 @@ class PhemexClient(TradingClient):
                     "side": side,
                     "pos_side": pos_side,
                     "order_type": order_type,
+                    "time_in_force": time_in_force,
                     "reduce_only": reduce_only
                 }
             })
