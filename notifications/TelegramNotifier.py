@@ -70,7 +70,8 @@ class TelegramNotifier:
                                qty: float, price: float, balance: float,
                                position_size: float = None, position_value: float = None,
                                position_pct: float = None, pnl: float = None,
-                               pnl_pct: float = None, reason: str = None):
+                               pnl_pct: float = None, reason: str = None,
+                               unrealized_pnl: float = None, unrealized_pnl_pct: float = None):
         """
         Unified notification for all position updates.
 
@@ -88,6 +89,8 @@ class TelegramNotifier:
             pnl: Profit/Loss (for REDUCED/CLOSED)
             pnl_pct: PnL percentage (for REDUCED/CLOSED)
             reason: Reason for action (for REDUCED/CLOSED)
+            unrealized_pnl: Unrealized PnL for open positions
+            unrealized_pnl_pct: Unrealized PnL percentage for open positions
         """
         # Emoji and color based on action
         action_emojis = {
@@ -116,10 +119,18 @@ class TelegramNotifier:
         if position_pct is not None:
             message += f"% of Balance: <code>{position_pct:.2f}%</code>\n"
 
-        # Add PnL for REDUCED/CLOSED actions
+        # Add unrealized PnL for open positions (OPENED/ADDED/REDUCED)
+        if unrealized_pnl is not None and action in ["OPENED", "ADDED", "REDUCED"]:
+            upnl_sign = "+" if unrealized_pnl >= 0 else ""
+            message += f"Unrealized PnL: <code>{upnl_sign}${unrealized_pnl:.2f}</code>"
+            if unrealized_pnl_pct is not None:
+                message += f" ({upnl_sign}{unrealized_pnl_pct:.2f}%)"
+            message += "\n"
+
+        # Add realized PnL for REDUCED/CLOSED actions
         if pnl is not None and action in ["REDUCED", "CLOSED"]:
             pnl_sign = "+" if pnl > 0 else ""
-            message += f"\n<b>PnL:</b> <code>{pnl_sign}${pnl:.2f}</code>"
+            message += f"\n<b>Realized PnL:</b> <code>{pnl_sign}${pnl:.2f}</code>"
             if pnl_pct is not None:
                 message += f" ({pnl_sign}{pnl_pct:.2f}%)"
             message += "\n"

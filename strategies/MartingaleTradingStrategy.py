@@ -234,6 +234,8 @@ class MartingaleTradingStrategy(TradingStrategy):
                     remaining_size = float(remaining_position['size']) if remaining_position else 0
                     remaining_value = float(remaining_position['positionValue']) if remaining_position else 0
                     remaining_pct = (remaining_value / total_balance * 100) if total_balance > 0 else 0
+                    remaining_unrealized_pnl = float(remaining_position['unrealisedPnl']) if remaining_position else 0
+                    remaining_unrealized_pnl_pct = float(remaining_position['upnlPercentage']) if remaining_position else 0
 
                     self.notifier.notify_position_update(
                         action="REDUCED",
@@ -248,7 +250,9 @@ class MartingaleTradingStrategy(TradingStrategy):
                         position_pct=remaining_pct,
                         pnl=unrealised_pnl * close_fraction,
                         pnl_pct=pnl_percentage * 100,
-                        reason=message
+                        reason=message,
+                        unrealized_pnl=remaining_unrealized_pnl,
+                        unrealized_pnl_pct=remaining_unrealized_pnl_pct
                     )
 
                 return f"{message} (Current: {position_value_percentage_of_total_balance}%)"
@@ -336,6 +340,8 @@ class MartingaleTradingStrategy(TradingStrategy):
             new_position_value = float(updated_position['positionValue'])
             position_size = float(updated_position['size'])
             position_pct = (new_position_value / total_balance) * 100 if total_balance > 0 else 0
+            unrealized_pnl = float(updated_position['unrealisedPnl'])
+            unrealized_pnl_pct = float(updated_position['upnlPercentage'])
 
             self.notifier.notify_position_update(
                 action="ADDED",
@@ -347,7 +353,9 @@ class MartingaleTradingStrategy(TradingStrategy):
                 balance=total_balance,
                 position_size=position_size,
                 position_value=new_position_value,
-                position_pct=position_pct
+                position_pct=position_pct,
+                unrealized_pnl=unrealized_pnl,
+                unrealized_pnl_pct=unrealized_pnl_pct
             )
 
         return "Added to position"
@@ -397,6 +405,8 @@ class MartingaleTradingStrategy(TradingStrategy):
             position_value = float(new_position['positionValue'])
             position_size = float(new_position['size'])
             position_pct = (position_value / total_balance) * 100 if total_balance > 0 else 0
+            unrealized_pnl = float(new_position['unrealisedPnl'])
+            unrealized_pnl_pct = float(new_position['upnlPercentage'])
 
             self.notifier.notify_position_update(
                 action="OPENED",
@@ -408,7 +418,9 @@ class MartingaleTradingStrategy(TradingStrategy):
                 balance=total_balance,
                 position_size=position_size,
                 position_value=position_value,
-                position_pct=position_pct
+                position_pct=position_pct,
+                unrealized_pnl=unrealized_pnl,
+                unrealized_pnl_pct=unrealized_pnl_pct
             )
 
         return "Opened new position"
