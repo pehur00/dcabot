@@ -1,6 +1,6 @@
 # DCABot - Agent Memory Bank
 
-Last Updated: 2025-10-28
+Last Updated: 2025-10-29
 
 ## Project Overview
 
@@ -201,7 +201,20 @@ OR
 
 ## Recent Enhancements (Oct 2025)
 
-### 1. Dynamic Position Size Tapering (Commit: 0253ad3) - **LATEST**
+### 1. Decimal/Float Type Compatibility Fixes (Commits: 75b38d8, d722553, e899745) - **LATEST**
+**Why**: Phemex API returns `Decimal` types for numeric values (balances, prices, positions), causing TypeErrors when used with Python `float` arithmetic
+**What**: Comprehensive type conversion in all calculation functions
+**Fixes**:
+- `calculate_order_quantity()`: Convert all input parameters to float before calculations and tapering
+- `check_margin_limit()`: Convert order_qty, current_price, total_balance to float
+- `retrieve_information()`: Convert all API values to float immediately after retrieval (balances, prices, EMAs)
+**Impact**:
+- Bot no longer crashes with "unsupported operand type(s) for *: 'decimal.Decimal' and 'float'" errors
+- All arithmetic operations work correctly throughout the strategy
+- Type consistency maintained across entire calculation chain
+**Files**: MartingaleTradingStrategy.py
+
+### 2. Dynamic Position Size Tapering (Commit: 0253ad3)
 **Why**: Prevent margin exhaustion and liquidations by gradually reducing order sizes as margin usage increases
 **What**: Exponential tapering that scales down order quantities as you approach the margin cap
 **Formula**: `taper_factor = ((max_margin_pct - current_margin_pct) / max_margin_pct) ** 2`
@@ -424,6 +437,70 @@ export TESTNET=True
 python main.py
 ```
 
+### Backtesting Framework ✅
+Complete backtesting system with 1-minute candle accuracy, testing every 5 minutes (matching live bot behavior).
+
+**Basic Backtest**:
+```bash
+dcabot-env/bin/python backtest/backtest.py \
+  --symbol HBARUSDT \
+  --days 30 \
+  --balance 200 \
+  --side Long \
+  --leverage 10 \
+  --max-margin-pct 0.50 \
+  --interval 1 \
+  --source binance
+```
+
+**Parameters**:
+- `--symbol`: Trading pair (e.g., HBARUSDT, BTCUSDT)
+- `--days`: Number of days to backtest (e.g., 7, 30, 90, 180)
+- `--balance`: Initial balance in USDT
+- `--side`: Long or Short
+- `--leverage`: Leverage multiplier (e.g., 5, 10, 15, 20)
+- `--max-margin-pct`: Max margin usage cap (e.g., 0.50 = 50%)
+- `--interval`: Candle interval (always use 1 for 1-minute)
+- `--source`: Data source (binance recommended for history)
+
+**Test Multiple Leverages** (`test_leverages.sh`):
+```bash
+./test_leverages.sh HBARUSDT 30 200 Long
+# Tests 5x, 10x, 15x, 20x leverage
+```
+
+**Test Top Volume Coins** (`test_top_coins.py`):
+```bash
+# Test top 10 volume coins
+dcabot-env/bin/python test_top_coins.py --leverage 10 --days 7
+
+# Test specific coins
+dcabot-env/bin/python test_top_coins.py --coins BTCUSDT ETHUSDT SOLUSDT --days 30
+
+# Test top 5 with different settings
+dcabot-env/bin/python test_top_coins.py --num-coins 5 --leverage 5 --days 60 --balance 500
+```
+
+**Features**:
+- Fetches top volume coins from Binance (excludes stablecoins/fiat pairs)
+- Runs backtests in sequence for all coins
+- Saves individual results + summary CSV
+- Filenames include: `{SYMBOL}_lev{X}x_{DAYS}d_{TIMESTAMP}_chart.png`
+
+**Output Files** (saved to `backtest/results/`):
+- `*_chart.png`: 5-panel visualization (price, balance, position size, drawdown, summary)
+- `*_balance.csv`: Balance history over time
+- `*_trades.csv`: Complete trade log
+- `summary_lev{X}x_{DAYS}d_*.csv`: Performance comparison across all tested coins
+
+**Backtest Accuracy**:
+- Uses 1-minute candles for precise price action
+- Checks every 5 minutes (matches live bot frequency)
+- Includes all volatility protections and risk management
+- Simulates exact margin calculations with configurable leverage
+- Includes trading fees (0.075% per trade)
+- Liquidation simulation (tracks margin_level ≤ 1.0)
+
 ### Testing Notifications
 Set `BOT_STARTUP=True` to test Telegram bot startup notification
 
@@ -454,12 +531,7 @@ Use invalid symbol like `1000PEPEUSDT` to test error notifications
    - Strategy parameter adjustment
    - Performance charts
 
-5. **Backtesting Framework**
-   - Historical data replay
-   - Strategy optimization
-   - Risk analysis
-
-6. **Additional Exchanges**
+5. **Additional Exchanges**
    - Bybit support (code exists but not used)
    - Binance integration
    - Multi-exchange arbitrage

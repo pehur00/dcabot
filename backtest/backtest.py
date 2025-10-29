@@ -940,6 +940,8 @@ def main():
                        help='Override profit_pnl threshold (e.g., 0.15 for 15%% profit target)')
     parser.add_argument('--max-margin-pct', type=float, default=None,
                        help='Optional maximum margin usage as percentage (e.g., 0.40 = 40%% cap). When absent, no margin cap is applied.')
+    parser.add_argument('--leverage', type=int, default=None,
+                       help='Override leverage (e.g., 5, 10, 20). Default: 10x')
 
     args = parser.parse_args()
 
@@ -981,6 +983,11 @@ def main():
     if args.profit_pnl is not None:
         print(f"  Overriding profit_pnl: {strategy.profit_pnl:.2f} -> {args.profit_pnl:.2f}")
         strategy.profit_pnl = args.profit_pnl
+
+    # Override leverage if specified
+    if args.leverage is not None:
+        print(f"  Overriding leverage: {strategy.leverage}x -> {args.leverage}x")
+        strategy.leverage = args.leverage
 
     # Fetch historical data
     if args.source == 'binance':

@@ -97,6 +97,10 @@ dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --profit-
 
 # Test with margin protection (40% max margin cap to prevent early liquidations)
 dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --max-margin-pct 0.40 --side Long
+
+# Test with different leverage (default is 10x)
+dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --leverage 5 --side Long
+dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --leverage 20 --side Long
 ```
 
 ### Parameters
@@ -109,6 +113,7 @@ dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --max-mar
 - `--side`: Position side (`Long` or `Short`)
 - `--profit-pnl`: Profit-taking threshold as decimal (default: 0.1 = 10%)
 - `--max-margin-pct`: Optional maximum margin usage cap (e.g., 0.40 = 40% max). When absent, no cap is applied
+- `--leverage`: Leverage multiplier (default: 10). Test different leverages like 5, 10, 15, 20
 
 ### Example Results (34 days, HBARUSDT)
 
@@ -158,8 +163,35 @@ HBARUSDT_Long_bal70_profit0.10_20251027_154541_trades.csv   # Trade log
 - Backtest checks every 5 minutes (matching real bot behavior)
 - Uses 1-minute candles for accurate price data
 - Includes all volatility protections and risk management
-- Simulates exact margin calculations and leverage (10x)
+- Simulates exact margin calculations and leverage (configurable via `--leverage`)
 - Fees are included in calculations (0.075% per trade)
+
+### Automated Testing Tools
+
+**Test Multiple Leverages** (`test_leverages.sh`):
+```bash
+# Test one symbol with 5x, 10x, 15x, 20x leverage
+./test_leverages.sh HBARUSDT 30 200 Long
+# Results saved as: HBARUSDT_lev5x_30d_*, HBARUSDT_lev10x_30d_*, etc.
+```
+
+**Test Top Volume Coins** (`test_top_coins.py`):
+```bash
+# Test top 10 volume coins automatically
+dcabot-env/bin/python test_top_coins.py --leverage 10 --days 7 --balance 200
+
+# Test specific coins
+dcabot-env/bin/python test_top_coins.py --coins BTCUSDT ETHUSDT SOLUSDT --days 30
+
+# Test top 5 coins with custom settings
+dcabot-env/bin/python test_top_coins.py --num-coins 5 --leverage 5 --days 60 --balance 500
+```
+
+**Features**:
+- Automatically fetches top volume coins from Binance (excludes stablecoins/fiat)
+- Runs backtests sequentially for all coins
+- Generates summary CSV comparing performance across all coins
+- Saves individual charts, balance CSVs, and trade logs for each coin
 
 ## Configuration
 
