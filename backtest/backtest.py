@@ -953,8 +953,12 @@ class BacktestEngine:
 
                 # Apply dynamic tapering if margin cap is enabled
                 if self.strategy.max_margin_pct:
-                    # Calculate current margin usage
-                    current_margin_pct = position_value / total_balance if position_value > 0 else 0
+                    # Calculate current margin usage (use TOTAL margin in multi-symbol mode!)
+                    if self.multi_symbol:
+                        current_total_margin = self.get_total_margin()
+                        current_margin_pct = current_total_margin / total_balance if current_total_margin > 0 else 0
+                    else:
+                        current_margin_pct = position_value / total_balance if position_value > 0 else 0
 
                     # Taper factor: 1.0 at 0% margin, 0.0 at max_margin_pct
                     # Use exponential tapering for smoother reduction
