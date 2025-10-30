@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from decimal import Decimal, ROUND_DOWN
 import pandas as pd
+import numpy as np
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
