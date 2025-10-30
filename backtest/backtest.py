@@ -238,18 +238,75 @@ class BacktestEngine:
             'entry_price': self.position_entry_price
         }
 
+    def simulate_position_for_symbol(self, symbol: str, current_price: float):
+        """Simulate position state for a specific symbol in multi-symbol mode"""
+        if not self.positions.get(symbol):
+            return None
+
+        # Calculate unrealized PnL for this symbol
+        if self.positions[symbol]['pos_side'] == 'Long':
+            self.unrealized_pnls[symbol] = (current_price - self.position_entry_prices[symbol]) * self.position_sizes[symbol]
+        else:
+            self.unrealized_pnls[symbol] = (self.position_entry_prices[symbol] - current_price) * self.position_sizes[symbol]
+
+        self.position_values[symbol] = current_price * self.position_sizes[symbol]
+
+        # Calculate profit % relative to MARGIN invested
+        margin_invested = self.position_values[symbol] / self.strategy.leverage
+        upnl_percentage = (self.unrealized_pnls[symbol] / margin_invested) if margin_invested > 0 else 0
+
+        # Calculate total margin level across ALL symbols
+        total_used_margin = self.get_total_margin()
+        total_unrealized_pnl = sum(self.unrealized_pnls.values())
+
+        if total_used_margin > 0:
+            margin_level = (self.balance + total_unrealized_pnl) / total_used_margin
+        else:
+            margin_level = 999
+
+        position_value_as_margin = self.position_values[symbol] / self.strategy.leverage
+
+        return {
+            'symbol': self.positions[symbol]['symbol'],
+            'pos_side': self.positions[symbol]['pos_side'],
+            'size': self.position_sizes[symbol],
+            'positionValue': position_value_as_margin,
+            'unrealisedPnl': self.unrealized_pnls[symbol],
+            'upnlPercentage': upnl_percentage,
+            'position_size_percentage': (position_value_as_margin / self.balance) * 100,
+            'margin_level': margin_level,  # Total margin level across all symbols
+            'entry_price': self.position_entry_prices[symbol]
+        }
+
     def execute_trade(self, symbol: str, qty: float, price: float, side: str, pos_side: str, timestamp=None):
         """Simulate trade execution with exchange-side validations"""
         # Calculate required margin for this trade
         trade_notional = qty * price
         required_margin = trade_notional / self.strategy.leverage
 
+        # Determine current position state (multi-symbol vs single-symbol)
+        if self.multi_symbol:
+            current_position = self.positions.get(symbol)
+            current_position_value = self.position_values.get(symbol, 0)
+            current_position_size = self.position_sizes.get(symbol, 0)
+            current_position_entry_price = self.position_entry_prices.get(symbol, 0)
+        else:
+            current_position = self.position
+            current_position_value = self.position_value
+            current_position_size = self.position_size
+            current_position_entry_price = self.position_entry_price
+
         # === USER-CONFIGURED PROTECTIONS (optional) ===
         # ONLY apply max_margin_pct if explicitly set (optional protection)
         if side in ['Buy', 'Sell'] and (side == 'Buy' if pos_side == 'Long' else side == 'Sell'):
             if self.max_margin_pct is not None:
                 # This is opening or adding to position - check margin cap
-                current_used_margin = (self.position_value / self.strategy.leverage) if self.position else 0
+                if self.multi_symbol:
+                    # Check total margin across ALL symbols
+                    current_used_margin = self.get_total_margin()
+                else:
+                    current_used_margin = (current_position_value / self.strategy.leverage) if current_position else 0
+
                 total_required_margin = current_used_margin + required_margin
                 margin_usage = total_required_margin / self.balance
 
@@ -259,7 +316,10 @@ class BacktestEngine:
         # === EXCHANGE-SIDE VALIDATIONS (always enforced) ===
         if side in ['Buy', 'Sell'] and (side == 'Buy' if pos_side == 'Long' else side == 'Sell'):
             # Calculate current used margin
-            current_used_margin = (self.position_value / self.strategy.leverage) if self.position else 0
+            if self.multi_symbol:
+                current_used_margin = self.get_total_margin()
+            else:
+                current_used_margin = (current_position_value / self.strategy.leverage) if current_position else 0
 
             # Calculate available balance (total balance - used margin)
             # Note: unrealized PnL is included in balance, so we need to account for it
@@ -289,65 +349,111 @@ class BacktestEngine:
             'fee': fee
         }
 
-        if not self.position:
+        if not current_position:
             # Open new position
-            self.position = {
-                'symbol': symbol,
-                'pos_side': pos_side
-            }
-            self.position_size = qty
-            self.position_entry_price = price
-            self.position_value = qty * price
+            if self.multi_symbol:
+                self.positions[symbol] = {'symbol': symbol, 'pos_side': pos_side}
+                self.position_sizes[symbol] = qty
+                self.position_entry_prices[symbol] = price
+                self.position_values[symbol] = qty * price
+                self.symbol_margins[symbol] = required_margin
+            else:
+                self.position = {'symbol': symbol, 'pos_side': pos_side}
+                self.position_size = qty
+                self.position_entry_price = price
+                self.position_value = qty * price
+
             trade['action'] = 'OPEN'
-            trade['position_size'] = self.position_size
-            trade['position_value'] = self.position_value
+            trade['position_size'] = qty
+            trade['position_value'] = qty * price
 
         elif side == 'Buy' if pos_side == 'Long' else 'Sell':
             # Add to position (average down)
-            total_value = (self.position_size * self.position_entry_price) + (qty * price)
-            self.position_size += qty
-            self.position_entry_price = total_value / self.position_size
-            self.position_value = self.position_size * price
+            total_value = (current_position_size * current_position_entry_price) + (qty * price)
+            new_position_size = current_position_size + qty
+            new_entry_price = total_value / new_position_size
+            new_position_value = new_position_size * price
+
+            if self.multi_symbol:
+                self.position_sizes[symbol] = new_position_size
+                self.position_entry_prices[symbol] = new_entry_price
+                self.position_values[symbol] = new_position_value
+                self.symbol_margins[symbol] = new_position_value / self.strategy.leverage
+            else:
+                self.position_size = new_position_size
+                self.position_entry_price = new_entry_price
+                self.position_value = new_position_value
+
             trade['action'] = 'ADD'
-            trade['position_size'] = self.position_size
-            trade['position_value'] = self.position_value
+            trade['position_size'] = new_position_size
+            trade['position_value'] = new_position_value
 
         else:
             # Close position (partial or full)
             realized_pnl = 0
             if pos_side == 'Long':
-                realized_pnl = (price - self.position_entry_price) * qty
+                realized_pnl = (price - current_position_entry_price) * qty
             else:
-                realized_pnl = (self.position_entry_price - price) * qty
+                realized_pnl = (current_position_entry_price - price) * qty
 
             self.balance += realized_pnl - fee
-            self.position_size -= qty
+            new_position_size = current_position_size - qty
 
-            if self.position_size <= 0:
+            if new_position_size <= 0:
                 # Fully closed
-                self.position = None
-                self.position_size = 0
-                self.position_entry_price = 0
-                self.position_value = 0
-                self.unrealized_pnl = 0
+                if self.multi_symbol:
+                    self.positions[symbol] = None
+                    self.position_sizes[symbol] = 0
+                    self.position_entry_prices[symbol] = 0
+                    self.position_values[symbol] = 0
+                    self.unrealized_pnls[symbol] = 0
+                    self.symbol_margins[symbol] = 0
+
+                    # Track win/loss for this symbol
+                    if realized_pnl > 0:
+                        self.symbol_winning_trades[symbol] += 1
+                    else:
+                        self.symbol_losing_trades[symbol] += 1
+                    self.symbol_total_pnl[symbol] += realized_pnl
+                else:
+                    self.position = None
+                    self.position_size = 0
+                    self.position_entry_price = 0
+                    self.position_value = 0
+                    self.unrealized_pnl = 0
+
+                    # Track win/loss
+                    self.total_trades += 1
+                    if realized_pnl > 0:
+                        self.winning_trades += 1
+                    else:
+                        self.losing_trades += 1
+
                 trade['action'] = 'CLOSE'
                 trade['position_size'] = 0
                 trade['position_value'] = 0
-
-                # Track win/loss
-                self.total_trades += 1
-                if realized_pnl > 0:
-                    self.winning_trades += 1
-                else:
-                    self.losing_trades += 1
             else:
                 # Partially closed
-                self.position_value = self.position_size * price
+                new_position_value = new_position_size * price
+
+                if self.multi_symbol:
+                    self.position_sizes[symbol] = new_position_size
+                    self.position_values[symbol] = new_position_value
+                    self.symbol_margins[symbol] = new_position_value / self.strategy.leverage
+                    self.symbol_total_pnl[symbol] += realized_pnl
+                else:
+                    self.position_size = new_position_size
+                    self.position_value = new_position_value
+
                 trade['action'] = 'REDUCE'
-                trade['position_size'] = self.position_size
-                trade['position_value'] = self.position_value
+                trade['position_size'] = new_position_size
+                trade['position_value'] = new_position_value
 
             trade['realized_pnl'] = realized_pnl
+
+        # Track trades
+        if self.multi_symbol:
+            self.symbol_trades[symbol].append(trade)
 
         self.trades.append(trade)
 
@@ -542,6 +648,216 @@ class BacktestEngine:
 
         self._print_results(symbol, pos_side)
         self.generate_charts(symbol, pos_side)
+
+    def run_multi_symbol_backtest(self, df_dict: Dict[str, pd.DataFrame], pos_side: str,
+                                    ema_interval: int, automatic_mode: bool = True):
+        """
+        Run backtest on multiple symbols with shared balance
+
+        Args:
+            df_dict: Dictionary of {symbol: DataFrame} with OHLCV data
+            pos_side: 'Long' or 'Short' (applies to all symbols)
+            ema_interval: EMA interval in minutes
+            automatic_mode: Auto-open positions
+        """
+        print(f"\n🚀 Starting MULTI-SYMBOL backtest ({len(self.symbols)} symbols)")
+        print(f"Symbols: {', '.join(self.symbols)}")
+        print(f"Initial Balance: ${self.initial_balance:,.2f}")
+        print(f"Max Margin Cap: {self.max_margin_pct * 100:.0f}% (${self.max_margin_pct * self.initial_balance:.2f})" if self.max_margin_pct else "No cap")
+        print("=" * 80)
+
+        # Pre-calculate EMAs for each symbol
+        for symbol in self.symbols:
+            df = df_dict[symbol]
+            df['ema_50'] = df['close'].ewm(span=50, adjust=False).mean()
+            df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
+
+            # Calculate 1h EMA100
+            df_1h = df.resample('1H').agg({'close': 'last', 'high': 'max', 'low': 'min', 'open': 'first', 'volume': 'sum'})
+            df_1h['ema_100_1h'] = df_1h['close'].ewm(span=100, adjust=False).mean()
+            df = df.join(df_1h[['ema_100_1h']], how='left')
+            df['ema_100_1h'] = df['ema_100_1h'].fillna(method='ffill')
+            df_dict[symbol] = df
+
+            if len(df) < 200:
+                print(f"❌ Insufficient data for {symbol} (need 200+ periods)")
+                return
+
+        # Find common time range across all symbols
+        start_times = [df.index[200] for df in df_dict.values()]
+        end_times = [df.index[-1] for df in df_dict.values()]
+        start_time = max(start_times)
+        end_time = min(end_times)
+
+        print(f"\nCommon Period: {start_time} to {end_time}")
+
+        # Create unified timeline (every 5 minutes to match real bot)
+        check_interval = 5
+        first_df = df_dict[self.symbols[0]]
+        timeline = first_df.loc[start_time:end_time].index[::check_interval]
+
+        # Setup progress tracking
+        use_tqdm = sys.stdout.isatty()
+        total_iterations = len(timeline)
+
+        # Track per-symbol price history for charts and correlation
+        symbol_price_histories = {symbol: [] for symbol in self.symbols}
+
+        for idx, timestamp in enumerate(tqdm(timeline, desc="Simulating", unit=" checks",
+                     bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]',
+                     disable=not use_tqdm, mininterval=1.0, leave=True)):
+
+            # Check each symbol at this timestamp
+            for symbol in self.symbols:
+                df = df_dict[symbol]
+
+                # Find closest timestamp in this symbol's dataframe
+                if timestamp not in df.index:
+                    closest_idx = df.index.get_indexer([timestamp], method='nearest')[0]
+                    current_candle = df.iloc[closest_idx]
+                else:
+                    current_candle = df.loc[timestamp]
+
+                current_price = float(current_candle['close'])
+                ema_50 = float(current_candle['ema_50'])
+                ema_200 = float(current_candle['ema_200'])
+                ema_100_1h = float(current_candle['ema_100_1h'])
+
+                # Store price history for this symbol
+                symbol_price_histories[symbol].append({
+                    'timestamp': timestamp,
+                    'price': current_price,
+                    'ema_50': ema_50,
+                    'ema_200': ema_200,
+                    'ema_100_1h': ema_100_1h
+                })
+
+                # Simulate position for this symbol
+                simulated_position = self.simulate_position_for_symbol(symbol, current_price)
+
+                # Check if position management is valid
+                valid_position = True
+                if simulated_position:
+                    valid_position = self.strategy.is_valid_position(
+                        simulated_position, current_price, ema_200, pos_side
+                    )
+
+                if not valid_position:
+                    continue
+
+                # Get strategy decision for this symbol
+                conclusion = self._manage_position_backtest(
+                    symbol, current_price, ema_200, ema_50, ema_100_1h,
+                    simulated_position, self.balance, pos_side, automatic_mode,
+                    df, df.index.get_loc(current_candle.name), timestamp
+                )
+
+            # Check for liquidation across ALL symbols
+            total_used_margin = self.get_total_margin()
+            total_unrealized_pnl = sum(self.unrealized_pnls.values())
+
+            if total_used_margin > 0:
+                margin_level = (self.balance + total_unrealized_pnl) / total_used_margin
+
+                # Liquidation if margin level drops to 1.0 or below
+                if margin_level <= 1.0:
+                    print(f"\n💀 LIQUIDATED at {timestamp}")
+                    print(f"   Total Margin Level: {margin_level:.4f}")
+                    print(f"   Total Used Margin: ${total_used_margin:.2f}")
+                    print(f"   Total Unrealized PnL: ${total_unrealized_pnl:.2f}")
+                    print(f"   Balance before liquidation: ${self.balance:.2f}")
+
+                    # Close all positions
+                    for symbol in self.symbols:
+                        if self.positions.get(symbol):
+                            df = df_dict[symbol]
+                            if timestamp not in df.index:
+                                closest_idx = df.index.get_indexer([timestamp], method='nearest')[0]
+                                current_candle = df.iloc[closest_idx]
+                            else:
+                                current_candle = df.loc[timestamp]
+                            current_price = float(current_candle['close'])
+
+                            liquidation_price = current_price * 0.995  # 0.5% slippage
+                            position_size = self.position_sizes[symbol]
+                            entry_price = self.position_entry_prices[symbol]
+
+                            # Calculate realized PnL
+                            if pos_side == 'Long':
+                                realized_pnl = (liquidation_price - entry_price) * position_size
+                            else:
+                                realized_pnl = (entry_price - liquidation_price) * position_size
+
+                            self.balance += realized_pnl
+
+                            # Record liquidation
+                            self.trades.append({
+                                'timestamp': timestamp,
+                                'symbol': symbol,
+                                'side': 'Sell' if pos_side == 'Long' else 'Buy',
+                                'pos_side': pos_side,
+                                'qty': position_size,
+                                'price': liquidation_price,
+                                'value': position_size * liquidation_price,
+                                'fee': 0,
+                                'action': 'LIQUIDATED',
+                                'position_size': 0,
+                                'position_value': 0,
+                                'pnl': realized_pnl
+                            })
+
+                            # Clear position
+                            self.positions[symbol] = None
+                            self.position_sizes[symbol] = 0
+                            self.position_entry_prices[symbol] = 0
+                            self.position_values[symbol] = 0
+                            self.unrealized_pnls[symbol] = 0
+                            self.symbol_margins[symbol] = 0
+
+                    self.liquidations += 1
+                    print(f"   Balance after liquidation: ${self.balance:.2f}")
+                    print(f"   Remaining: ${self.balance:.2f} ({(self.balance/self.initial_balance)*100:.1f}% of initial)")
+                    break  # Stop backtest after liquidation
+
+            # Record balance snapshot with per-symbol margins
+            total_value = self.balance + total_unrealized_pnl
+            self.balance_history.append({
+                'timestamp': timestamp,
+                'balance': self.balance,
+                'total_margin': total_used_margin,
+                'total_unrealized_pnl': total_unrealized_pnl,
+                'total_value': total_value,
+                'symbol_margins': {s: self.symbol_margins[s] for s in self.symbols},
+                'symbol_unrealized_pnls': {s: self.unrealized_pnls[s] for s in self.symbols}
+            })
+
+            # Track drawdown
+            if total_value > self.peak_total_value:
+                self.peak_total_value = total_value
+
+            drawdown_pct = ((self.peak_total_value - total_value) / self.peak_total_value) * 100
+            drawdown_abs = self.peak_total_value - total_value
+            if drawdown_pct > self.max_drawdown:
+                self.max_drawdown = drawdown_pct
+                self.max_drawdown_absolute = drawdown_abs
+
+        # Close any remaining positions
+        for symbol in self.symbols:
+            if self.positions.get(symbol):
+                print(f"\n📊 Closing remaining {symbol} position at end of backtest")
+                df = df_dict[symbol]
+                final_price = float(df.iloc[-1]['close'])
+                position_size = self.position_sizes[symbol]
+                self.execute_trade(
+                    symbol, position_size, final_price,
+                    'Sell' if pos_side == 'Long' else 'Buy', pos_side, timestamp
+                )
+
+        # Store symbol price histories for charting
+        self.symbol_price_histories = symbol_price_histories
+
+        self._print_multi_symbol_results(pos_side)
+        self.generate_multi_symbol_charts(pos_side)
 
     def _manage_position_backtest(self, symbol, current_price, ema_200, ema_50, ema_100_1h,
                                    position, total_balance, pos_side, automatic_mode,
@@ -966,6 +1282,288 @@ class BacktestEngine:
 
         plt.close()
 
+    def _print_multi_symbol_results(self, pos_side: str):
+        """Print multi-symbol backtest results with per-symbol breakdown"""
+        final_balance = self.balance
+        total_return = ((final_balance - self.initial_balance) / self.initial_balance) * 100
+
+        # Calculate per-symbol statistics
+        symbol_stats = {}
+        for symbol in self.symbols:
+            wins = self.symbol_winning_trades.get(symbol, 0)
+            losses = self.symbol_losing_trades.get(symbol, 0)
+            total = wins + losses
+            win_rate = (wins / total * 100) if total > 0 else 0
+            total_pnl = self.symbol_total_pnl.get(symbol, 0)
+            num_trades = len(self.symbol_trades.get(symbol, []))
+
+            symbol_stats[symbol] = {
+                'trades': num_trades,
+                'completed': total,
+                'wins': wins,
+                'losses': losses,
+                'win_rate': win_rate,
+                'total_pnl': total_pnl
+            }
+
+        print("\n" + "=" * 80)
+        print(f"📊 MULTI-SYMBOL BACKTEST RESULTS ({len(self.symbols)} symbols)")
+        print("=" * 80)
+
+        # Display configuration
+        if self.config_settings:
+            print(f"\n⚙️  Configuration:")
+            print(f"  {'Parameter':<25} {'Value':<20}")
+            print(f"  {'-'*25} {'-'*20}")
+            for key, value in self.config_settings.items():
+                print(f"  {key:<25} {value:<20}")
+
+        print(f"\n💰 Balance Summary:")
+        print(f"  Initial Balance:  ${self.initial_balance:,.2f}")
+        print(f"  Final Balance:    ${final_balance:,.2f}")
+        print(f"  Total Return:     {total_return:+.2f}%")
+        print(f"  Total Fees:       ${self.total_fees:,.2f}")
+
+        print(f"\n📈 Per-Symbol Statistics:")
+        print(f"  {'Symbol':<12} {'Trades':<8} {'Completed':<10} {'Wins':<6} {'Losses':<7} {'Win Rate':<10} {'Total PnL':<12}")
+        print(f"  {'-'*12} {'-'*8} {'-'*10} {'-'*6} {'-'*7} {'-'*10} {'-'*12}")
+        for symbol in self.symbols:
+            stats = symbol_stats[symbol]
+            pnl_str = f"${stats['total_pnl']:+,.2f}"
+            print(f"  {symbol:<12} {stats['trades']:<8} {stats['completed']:<10} {stats['wins']:<6} "
+                  f"{stats['losses']:<7} {stats['win_rate']:>7.1f}%   {pnl_str:>10}")
+
+        print(f"\n⚠️  Risk Metrics:")
+        print(f"  Max Drawdown:     {self.max_drawdown:.2f}% (${self.max_drawdown_absolute:.2f})")
+        print(f"  Peak Value:       ${self.peak_total_value:,.2f}")
+        if self.liquidations > 0:
+            print(f"  ⚠️  LIQUIDATIONS:  {self.liquidations} 💀")
+
+        # Calculate correlation
+        if len(self.symbols) == 2 and hasattr(self, 'symbol_price_histories'):
+            print(f"\n🔗 Symbol Correlation:")
+            symbol1, symbol2 = self.symbols[0], self.symbols[1]
+            prices1 = [p['price'] for p in self.symbol_price_histories[symbol1]]
+            prices2 = [p['price'] for p in self.symbol_price_histories[symbol2]]
+
+            if len(prices1) == len(prices2) and len(prices1) > 0:
+                correlation = np.corrcoef(prices1, prices2)[0, 1]
+                print(f"  {symbol1} vs {symbol2}: {correlation:.4f}")
+
+                if correlation > 0.7:
+                    print(f"  ⚠️  High positive correlation - symbols move together (less diversification)")
+                elif correlation < -0.7:
+                    print(f"  ✅ High negative correlation - symbols move opposite (good diversification)")
+                else:
+                    print(f"  ✅ Low correlation - good diversification")
+
+        # Show last 10 trades across all symbols
+        if self.trades:
+            print(f"\n📋 Trade History (Last 10 across all symbols):")
+            print("-" * 90)
+            for trade in self.trades[-10:]:
+                action = trade.get('action', 'TRADE')
+                symbol = trade.get('symbol', '???')
+                pnl_str = ""
+                if 'realized_pnl' in trade:
+                    pnl = trade['realized_pnl']
+                    pnl_str = f" | PnL: ${pnl:+,.2f}"
+
+                pos_size = trade.get('position_size', 0)
+                pos_value = trade.get('position_value', 0)
+                position_str = f" → Pos: {pos_size:.4f} (${pos_value:.2f})" if pos_size > 0 else ""
+
+                print(f"  {symbol:<10} {action:6} | {trade['side']:4} {trade['qty']:.4f} @ "
+                      f"${trade['price']:.6f}{pnl_str}{position_str}")
+
+        print("\n" + "=" * 80)
+
+        # Save results
+        backtest_dir = Path(__file__).parent / 'results'
+        backtest_dir.mkdir(exist_ok=True)
+
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        symbols_str = '_'.join(self.symbols)
+        base_name = f"multi_{symbols_str}_{pos_side}_bal{int(self.initial_balance)}_{timestamp}"
+
+        if self.balance_history:
+            df_results = pd.DataFrame(self.balance_history)
+            balance_csv = backtest_dir / f'{base_name}_balance.csv'
+            df_results.to_csv(balance_csv, index=False)
+            print(f"💾 Balance history saved to: {balance_csv}")
+
+        if self.trades:
+            df_trades = pd.DataFrame(self.trades)
+            trades_csv = backtest_dir / f'{base_name}_trades.csv'
+            df_trades.to_csv(trades_csv, index=False)
+            print(f"💾 Trade history saved to: {trades_csv}")
+
+    def generate_multi_symbol_charts(self, pos_side: str):
+        """Generate visualization charts for multi-symbol backtest"""
+        if not self.balance_history:
+            print("⚠️  No balance history to plot")
+            return
+
+        backtest_dir = Path(__file__).parent / 'results'
+
+        # Convert balance history to DataFrame
+        df = pd.DataFrame(self.balance_history)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        # Create figure with subplots
+        num_symbols = len(self.symbols)
+        fig, axes = plt.subplots(4 + num_symbols, 1, figsize=(14, 6 * (4 + num_symbols)))
+        symbols_str = ' + '.join(self.symbols)
+        fig.suptitle(f'Multi-Symbol Backtest: {symbols_str} ({pos_side})', fontsize=16, fontweight='bold')
+
+        # Panel 1-N: Price charts for each symbol
+        for idx, symbol in enumerate(self.symbols):
+            ax = axes[idx]
+            price_df = pd.DataFrame(self.symbol_price_histories[symbol])
+            price_df['timestamp'] = pd.to_datetime(price_df['timestamp'])
+
+            # Plot price and EMAs
+            ax.plot(price_df['timestamp'], price_df['price'], label='Price', color='black', linewidth=1.5)
+            ax.plot(price_df['timestamp'], price_df['ema_200'], label='EMA200', color='blue', linewidth=1, linestyle='--')
+            ax.plot(price_df['timestamp'], price_df['ema_100_1h'], label='1h EMA100 (Dip Filter)',
+                   color='purple', linewidth=1, linestyle='--')
+
+            # Plot trades for this symbol
+            symbol_trades = self.symbol_trades.get(symbol, [])
+            for trade in symbol_trades:
+                action = trade.get('action', 'TRADE')
+                timestamp = pd.to_datetime(trade['timestamp'])
+                price = trade['price']
+
+                if action == 'OPEN':
+                    ax.scatter(timestamp, price, color='green', marker='^', s=100, zorder=5, label='OPEN' if 'OPEN' not in ax.get_legend_handles_labels()[1] else '')
+                elif action == 'ADD':
+                    ax.scatter(timestamp, price, color='blue', marker='^', s=60, alpha=0.6, zorder=5, label='ADD' if 'ADD' not in ax.get_legend_handles_labels()[1] else '')
+                elif action == 'REDUCE':
+                    ax.scatter(timestamp, price, color='orange', marker='s', s=60, alpha=0.7, zorder=5, label='REDUCE' if 'REDUCE' not in ax.get_legend_handles_labels()[1] else '')
+                elif action == 'CLOSE':
+                    ax.scatter(timestamp, price, color='red', marker='o', s=80, zorder=5, label='CLOSE' if 'CLOSE' not in ax.get_legend_handles_labels()[1] else '')
+                elif action == 'LIQUIDATED':
+                    ax.scatter(timestamp, price, color='black', marker='X', s=150, zorder=5, label='LIQUIDATED' if 'LIQUIDATED' not in ax.get_legend_handles_labels()[1] else '')
+
+            ax.set_title(f'{symbol} Price & Positions', fontweight='bold')
+            ax.set_ylabel('Price (USDT)')
+            ax.legend(loc='upper left', fontsize=8)
+            ax.grid(True, alpha=0.3)
+
+        # Panel N+1: Account Balance & Total Value
+        ax_balance = axes[num_symbols]
+        ax_balance.plot(df['timestamp'], df['balance'], label='Balance (Realized)', color='blue', linewidth=1.5)
+        ax_balance.plot(df['timestamp'], df['total_value'], label='Total Value (Balance + Unrealized PnL)',
+                       color='purple', linewidth=1.5, linestyle='--')
+        ax_balance.axhline(y=self.initial_balance, color='gray', linestyle=':', label='Initial Balance')
+        ax_balance.set_title('Account Balance & Total Value', fontweight='bold')
+        ax_balance.set_ylabel('Balance (USDT)')
+        ax_balance.legend()
+        ax_balance.grid(True, alpha=0.3)
+
+        # Panel N+2: Per-Symbol Margin Usage (Stacked)
+        ax_margin = axes[num_symbols + 1]
+        margins_df = pd.DataFrame([{
+            'timestamp': row['timestamp'],
+            **row['symbol_margins']
+        } for row in self.balance_history])
+        margins_df['timestamp'] = pd.to_datetime(margins_df['timestamp'])
+
+        # Create stacked area chart
+        margin_data = margins_df[self.symbols].values.T
+        ax_margin.stackplot(margins_df['timestamp'], *margin_data, labels=self.symbols, alpha=0.7)
+
+        # Add total margin cap line if configured
+        if self.max_margin_pct:
+            max_margin_line = self.initial_balance * self.max_margin_pct
+            ax_margin.axhline(y=max_margin_line, color='red', linestyle='--', linewidth=2,
+                             label=f'Max Margin Cap ({self.max_margin_pct*100:.0f}%)')
+
+        ax_margin.set_title('Per-Symbol Margin Usage (Stacked)', fontweight='bold')
+        ax_margin.set_ylabel('Margin (USDT)')
+        ax_margin.legend(loc='upper left')
+        ax_margin.grid(True, alpha=0.3)
+
+        # Panel N+3: Drawdown Analysis
+        ax_dd = axes[num_symbols + 2]
+        drawdowns = []
+        peak = self.initial_balance
+        for _, row in df.iterrows():
+            total_val = row['total_value']
+            if total_val > peak:
+                peak = total_val
+            dd_pct = ((peak - total_val) / peak) * 100
+            drawdowns.append(dd_pct)
+
+        ax_dd.fill_between(df['timestamp'], 0, drawdowns, color='red', alpha=0.3, label='Drawdown')
+        ax_dd.axhline(y=self.max_drawdown, color='darkred', linestyle='--',
+                     label=f'Max Drawdown: {self.max_drawdown:.2f}%')
+        ax_dd.set_title('Drawdown Analysis', fontweight='bold')
+        ax_dd.set_ylabel('Drawdown (%)')
+        ax_dd.legend()
+        ax_dd.grid(True, alpha=0.3)
+        ax_dd.invert_yaxis()
+
+        # Panel N+4: Performance Summary
+        ax_summary = axes[num_symbols + 3]
+        ax_summary.axis('off')
+
+        final_balance = self.balance
+        total_return = ((final_balance - self.initial_balance) / self.initial_balance) * 100
+
+        summary_text = f"""
+PERFORMANCE SUMMARY
+
+Initial Balance:  ${self.initial_balance:,.2f}
+Final Balance:    ${final_balance:,.2f}
+Total Return:     {total_return:+.2f}%
+Total Fees Paid:  ${self.total_fees:,.2f}
+
+Max Drawdown:     {self.max_drawdown:.2f}% (${self.max_drawdown_absolute:.2f})
+Peak Value:       ${self.peak_total_value:,.2f}
+"""
+
+        # Add per-symbol statistics
+        summary_text += "\nPER-SYMBOL BREAKDOWN\n"
+        for symbol in self.symbols:
+            wins = self.symbol_winning_trades.get(symbol, 0)
+            losses = self.symbol_losing_trades.get(symbol, 0)
+            total = wins + losses
+            win_rate = (wins / total * 100) if total > 0 else 0
+            total_pnl = self.symbol_total_pnl.get(symbol, 0)
+            num_trades = len(self.symbol_trades.get(symbol, []))
+
+            summary_text += f"{symbol}: {num_trades} trades, {total} completed ({wins}W/{losses}L), "
+            summary_text += f"{win_rate:.1f}% win rate, ${total_pnl:+.2f} PnL\n"
+
+        # Add correlation if 2 symbols
+        if len(self.symbols) == 2:
+            symbol1, symbol2 = self.symbols[0], self.symbols[1]
+            prices1 = [p['price'] for p in self.symbol_price_histories[symbol1]]
+            prices2 = [p['price'] for p in self.symbol_price_histories[symbol2]]
+            if len(prices1) == len(prices2) and len(prices1) > 0:
+                correlation = np.corrcoef(prices1, prices2)[0, 1]
+                summary_text += f"\nCORRELATION\n{symbol1} vs {symbol2}: {correlation:.4f}"
+
+        ax_summary.text(0.1, 0.9, summary_text, transform=ax_summary.transAxes,
+                       fontsize=10, verticalalignment='top', fontfamily='monospace',
+                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+
+        plt.tight_layout()
+
+        # Save chart
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        symbols_str = '_'.join(self.symbols)
+        chart_path = backtest_dir / f'multi_{symbols_str}_{pos_side}_bal{int(self.initial_balance)}_{timestamp}_chart.png'
+
+        plt.savefig(chart_path, dpi=150, bbox_inches='tight')
+        print(f"📈 Multi-symbol backtest chart saved to: {chart_path}")
+
+        plt.close()
+
 
 def main():
     parser = argparse.ArgumentParser(description='Backtest DCABot Martingale Strategy')
@@ -1095,35 +1693,70 @@ def main():
         print(f"  Protections: None (matches real bot)")
 
     # Run backtest
-    engine = BacktestEngine(client, strategy, args.balance, max_margin_pct=args.max_margin_pct)
+    if multi_symbol:
+        # Multi-symbol mode
+        engine = BacktestEngine(client, strategy, args.balance, max_margin_pct=args.max_margin_pct, symbols=symbols)
 
-    # Set configuration settings for display in results
-    engine.config_settings = {
-        'Symbol': args.symbol,
-        'Side': args.side,
-        'Initial Balance': f"${args.balance:,.2f}",
-        'Leverage': f"{strategy.leverage}x",
-        'Profit Target': f"{strategy.profit_pnl:.0%}",
-        'Max Margin Cap': f"{args.max_margin_pct:.0%}" if args.max_margin_pct else "None",
-        'Period': f"{args.days} days",
-        'Data Source': args.source.upper()
-    }
+        # Set configuration settings for display
+        engine.config_settings = {
+            'Symbols': ', '.join(symbols),
+            'Side': args.side,
+            'Initial Balance': f"${args.balance:,.2f}",
+            'Leverage': f"{strategy.leverage}x",
+            'Profit Target': f"{strategy.profit_pnl:.0%}",
+            'Max Margin Cap': f"{args.max_margin_pct:.0%}" if args.max_margin_pct else "None",
+            'Period': f"{args.days} days",
+            'Data Source': args.source.upper()
+        }
 
-    # Get instrument specs for proper quantity rounding (matches real bot!)
-    try:
-        min_qty, max_qty, qty_step = client.define_instrument_info(args.symbol)
-        engine.set_instrument_specs(min_qty, max_qty, qty_step)
-        print(f"\n📏 Instrument Specs: min={min_qty}, max={max_qty}, step={qty_step}")
-    except Exception as e:
-        print(f"⚠️  Could not fetch instrument specs: {e}. Using defaults (min=1.0)")
+        # Get instrument specs for each symbol
+        for symbol in symbols:
+            try:
+                min_qty, max_qty, qty_step = client.define_instrument_info(symbol)
+                engine.set_instrument_specs(min_qty, max_qty, qty_step, symbol=symbol)
+                print(f"📏 {symbol} Specs: min={min_qty}, max={max_qty}, step={qty_step}")
+            except Exception as e:
+                print(f"⚠️  Could not fetch instrument specs for {symbol}: {e}. Using defaults")
 
-    engine.run_backtest(
-        df=df,
-        symbol=args.symbol,
-        pos_side=args.side,
-        ema_interval=args.interval,
-        automatic_mode=True
-    )
+        engine.run_multi_symbol_backtest(
+            df_dict=df_dict,
+            pos_side=args.side,
+            ema_interval=args.interval,
+            automatic_mode=True
+        )
+    else:
+        # Single symbol mode (backward compatible)
+        engine = BacktestEngine(client, strategy, args.balance, max_margin_pct=args.max_margin_pct)
+
+        # Set configuration settings for display in results
+        engine.config_settings = {
+            'Symbol': args.symbol,
+            'Side': args.side,
+            'Initial Balance': f"${args.balance:,.2f}",
+            'Leverage': f"{strategy.leverage}x",
+            'Profit Target': f"{strategy.profit_pnl:.0%}",
+            'Max Margin Cap': f"{args.max_margin_pct:.0%}" if args.max_margin_pct else "None",
+            'Period': f"{args.days} days",
+            'Data Source': args.source.upper()
+        }
+
+        # Get instrument specs for proper quantity rounding (matches real bot!)
+        try:
+            min_qty, max_qty, qty_step = client.define_instrument_info(args.symbol)
+            engine.set_instrument_specs(min_qty, max_qty, qty_step)
+            print(f"\n📏 Instrument Specs: min={min_qty}, max={max_qty}, step={qty_step}")
+        except Exception as e:
+            print(f"⚠️  Could not fetch instrument specs: {e}. Using defaults (min=1.0)")
+
+        df = df_dict[args.symbol]  # Get the dataframe for single symbol
+
+        engine.run_backtest(
+            df=df,
+            symbol=args.symbol,
+            pos_side=args.side,
+            ema_interval=args.interval,
+            automatic_mode=True
+        )
 
 
 if __name__ == '__main__':
