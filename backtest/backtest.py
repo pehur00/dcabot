@@ -969,7 +969,7 @@ class BacktestEngine:
                     # Tapering applied silently (no console output to avoid disrupting progress bar)
 
                 # Apply minimum quantity rounding (KEY: matches real bot behavior!)
-                qty = self.custom_round(qty)
+                qty = self.custom_round(qty, symbol)
 
                 self.execute_trade(symbol, qty, current_price, side, pos_side, timestamp)
                 conclusion = "Added to position"
@@ -993,7 +993,7 @@ class BacktestEngine:
             # Tapering only applies when adding to existing positions
 
             # Apply minimum quantity rounding (KEY: matches real bot behavior!)
-            qty = self.custom_round(qty)
+            qty = self.custom_round(qty, symbol)
 
             self.execute_trade(symbol, qty, current_price, side, pos_side, timestamp)
             conclusion = "Opened new position"
