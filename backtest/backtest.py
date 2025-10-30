@@ -1726,6 +1726,7 @@ Peak Value:       ${self.peak_total_value:,.2f}
             summary_text += f"{win_rate:.1f}% win rate, ${total_pnl:+.2f} PnL\n"
 
         # Add correlation if 2 symbols
+        correlation = None
         if len(self.symbols) == 2:
             symbol1, symbol2 = self.symbols[0], self.symbols[1]
             prices1 = [p['price'] for p in self.symbol_price_histories[symbol1]]
@@ -1734,8 +1735,54 @@ Peak Value:       ${self.peak_total_value:,.2f}
                 correlation = np.corrcoef(prices1, prices2)[0, 1]
                 summary_text += f"\nCORRELATION\n{symbol1} vs {symbol2}: {correlation:.4f}"
 
+        # Add margin usage statistics
+        total_margins_list = [row.get('total_margin', 0) for row in self.balance_history if 'total_margin' in row]
+        max_total_margin = max(total_margins_list) if total_margins_list else 0
+        max_total_margin_pct = (max_total_margin / self.initial_balance) * 100
+
+        summary_text += f"\n\nMARGIN USAGE\n"
+        summary_text += f"Peak Total Margin: ${max_total_margin:.2f} ({max_total_margin_pct:.1f}%)\n"
+        if self.max_margin_pct:
+            margin_cap = self.initial_balance * self.max_margin_pct
+            margin_buffer = margin_cap - max_total_margin
+            summary_text += f"Margin Cap: ${margin_cap:.2f}, Buffer: ${margin_buffer:.2f}"
+
+        # Calculate conclusion
+        is_profitable = total_return > 0
+        has_good_diversification = True
+        if correlation is not None:
+            has_good_diversification = abs(correlation) < 0.7
+
+        margin_is_safe = True
+        if self.max_margin_pct:
+            margin_is_safe = max_total_margin_pct < (self.max_margin_pct * 100 * 0.85)
+
+        winning_symbols = [s for s in self.symbols if self.symbol_total_pnl.get(s, 0) > 0]
+        multiple_winners = len(winning_symbols) > 0
+
+        # Add conclusion to chart
+        summary_text += f"\n\nCONCLUSION\n"
+
+        if is_profitable and has_good_diversification and margin_is_safe and multiple_winners:
+            summary_text += "✅ GOOD SETUP\n"
+            summary_text += f"Profitable ({total_return:+.2f}%), good diversification,\n"
+            summary_text += f"safe margins. {len(winning_symbols)}/{len(self.symbols)} symbols profitable."
+        elif has_good_diversification and margin_is_safe:
+            summary_text += "⚠️ ACCEPTABLE SETUP\n"
+            if not is_profitable:
+                summary_text += f"Unprofitable ({total_return:+.2f}%), may be timing.\n"
+            summary_text += "Good diversification, safe margin usage."
+        else:
+            summary_text += "❌ POOR SETUP\n"
+            if not has_good_diversification:
+                summary_text += "High correlation, limited diversification.\n"
+            if not margin_is_safe:
+                summary_text += f"Margin too high ({max_total_margin_pct:.1f}%), risky.\n"
+            if not multiple_winners:
+                summary_text += "No consistently profitable symbols."
+
         ax_summary.text(0.1, 0.9, summary_text, transform=ax_summary.transAxes,
-                       fontsize=10, verticalalignment='top', fontfamily='monospace',
+                       fontsize=9, verticalalignment='top', fontfamily='monospace',
                        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
 
         plt.tight_layout()
