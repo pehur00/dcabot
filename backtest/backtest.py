@@ -1700,8 +1700,19 @@ class BacktestEngine:
         final_balance = self.balance
         total_return = ((final_balance - self.initial_balance) / self.initial_balance) * 100
 
+        # Build configuration info
+        symbols_str = ' + '.join(self.symbols)
+        max_cap_str = f"{self.max_margin_pct*100:.0f}% (${self.max_margin_pct*self.initial_balance:.2f})" if self.max_margin_pct else "None"
+
         summary_text = f"""
 PERFORMANCE SUMMARY
+
+• CONFIGURATION
+Symbol:    {symbols_str}
+Side:      Long
+Leverage:  {self.strategy.leverage}x
+Profit:    {self.strategy.profit_pnl*100:.0f}%
+Max Cap:   {max_cap_str}
 
 Initial Balance:  ${self.initial_balance:,.2f}
 Final Balance:    ${final_balance:,.2f}
