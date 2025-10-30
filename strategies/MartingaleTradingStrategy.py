@@ -521,13 +521,10 @@ class MartingaleTradingStrategy(TradingStrategy):
         # Apply dynamic tapering if margin cap is enabled
         taper_factor = 1.0
         if self.max_margin_pct:
-            # Get current position to calculate margin usage
-            position = self.client.get_position_for_symbol(symbol, None)  # Get any position for this symbol
-            if position:
-                current_margin = float(position['positionValue'])  # This is MARGIN, not notional
-                current_margin_pct = current_margin / total_balance
-            else:
-                current_margin_pct = 0
+            # Get TOTAL margin across ALL open positions (not just this symbol!)
+            # This ensures multiple symbols don't independently exceed the cap
+            total_margin = self.get_total_margin_usage()
+            current_margin_pct = total_margin / total_balance if total_margin > 0 else 0
 
             # Taper factor: 1.0 at 0% margin, 0.0 at max_margin_pct
             # Use exponential tapering for smoother reduction
@@ -566,6 +563,35 @@ class MartingaleTradingStrategy(TradingStrategy):
 
         return qty
 
+    def get_total_margin_usage(self):
+        """
+        Calculate total margin usage across ALL open positions.
+        This is critical for multi-symbol trading to prevent exceeding the margin cap.
+
+        Returns:
+            float: Total margin used across all positions
+        """
+        try:
+            # Get all positions from the exchange
+            response = self.client._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
+            positions = response['data']['positions']
+
+            # Sum up margin (positionValue) for all open positions
+            total_margin = 0.0
+            for pos in positions:
+                size = float(pos.get('sizeRq', 0))
+                if size > 0:  # Only count open positions
+                    position_value = float(pos.get('assignedPosBalanceRv', 0))
+                    total_margin += position_value
+
+            return total_margin
+        except Exception as e:
+            self.logger.warning(
+                "Failed to get total margin usage, returning 0",
+                extra={"json": {"error": str(e)}}
+            )
+            return 0.0
+
     def check_margin_limit(self, symbol, pos_side, order_qty, current_price, total_balance):
         """
         Check if placing this order would exceed the max margin percentage limit.
@@ -589,20 +615,17 @@ class MartingaleTradingStrategy(TradingStrategy):
         current_price = float(current_price)
         total_balance = float(total_balance)
 
-        # Get current position margin
-        position = self.client.get_position_for_symbol(symbol, pos_side)
-        current_margin = 0
-        if position:
-            position_value = float(position['positionValue'])
-            current_margin = position_value / self.leverage
+        # Get TOTAL current margin across ALL positions (not just this symbol!)
+        # This ensures multiple symbols don't independently exceed the cap
+        current_total_margin = self.get_total_margin_usage()
 
         # Calculate required margin for new order
         order_value = order_qty * current_price
         required_margin = order_value / self.leverage
 
-        # Calculate total margin usage percentage
-        total_margin = current_margin + required_margin
-        margin_usage_pct = total_margin / total_balance if total_balance > 0 else 0
+        # Calculate total margin usage percentage AFTER adding this order
+        total_margin_after_order = current_total_margin + required_margin
+        margin_usage_pct = total_margin_after_order / total_balance if total_balance > 0 else 0
 
         # Check if within limit
         is_allowed = margin_usage_pct <= self.max_margin_pct
