@@ -97,7 +97,7 @@ def fetch_extended_historical_data(client: PhemexClient, symbol: str, interval: 
 
 class BacktestEngine:
     def __init__(self, client: PhemexClient, strategy: MartingaleTradingStrategy,
-                 initial_balance: float = 10000.0, max_margin_pct: float = None):
+                 initial_balance: float = 10000.0, max_margin_pct: float = None, symbols: List[str] = None):
         self.client = client
         self.strategy = strategy
         self.initial_balance = initial_balance
@@ -105,12 +105,25 @@ class BacktestEngine:
         self.peak_balance = initial_balance
         self.max_margin_pct = max_margin_pct  # Optional margin cap
 
-        # Position tracking
-        self.position = None
-        self.position_entry_price = 0
-        self.position_size = 0
-        self.position_value = 0
-        self.unrealized_pnl = 0
+        # Multi-symbol support
+        self.symbols = symbols or []
+        self.multi_symbol = len(self.symbols) > 1
+
+        # Position tracking (per-symbol for multi-symbol mode)
+        if self.multi_symbol:
+            self.positions = {symbol: None for symbol in self.symbols}
+            self.position_entry_prices = {symbol: 0 for symbol in self.symbols}
+            self.position_sizes = {symbol: 0 for symbol in self.symbols}
+            self.position_values = {symbol: 0 for symbol in self.symbols}
+            self.unrealized_pnls = {symbol: 0 for symbol in self.symbols}
+            self.symbol_margins = {symbol: 0 for symbol in self.symbols}  # Track margin per symbol
+        else:
+            # Single symbol mode (backward compatible)
+            self.position = None
+            self.position_entry_price = 0
+            self.position_size = 0
+            self.position_value = 0
+            self.unrealized_pnl = 0
 
         # Trade history
         self.trades: List[Dict[str, Any]] = []
@@ -127,26 +140,58 @@ class BacktestEngine:
         self.peak_total_value = initial_balance
         self.total_fees = 0
 
-        # Instrument specs for minimum quantity rounding
-        self.min_qty = 1.0
+        # Per-symbol metrics (for multi-symbol mode)
+        if self.multi_symbol:
+            self.symbol_trades = {symbol: [] for symbol in self.symbols}
+            self.symbol_winning_trades = {symbol: 0 for symbol in self.symbols}
+            self.symbol_losing_trades = {symbol: 0 for symbol in self.symbols}
+            self.symbol_total_pnl = {symbol: 0 for symbol in self.symbols}
+
+        # Instrument specs for minimum quantity rounding (per symbol)
+        self.instrument_specs = {}  # {symbol: {min_qty, max_qty, qty_step}}
+        self.min_qty = 1.0  # Default for single symbol mode
         self.max_qty = 1000000.0
         self.qty_step = 1.0
 
         # Configuration settings (for display in results)
         self.config_settings = {}
 
-    def set_instrument_specs(self, min_qty: float, max_qty: float, qty_step: float):
+    def set_instrument_specs(self, min_qty: float, max_qty: float, qty_step: float, symbol: str = None):
         """Set instrument specifications for quantity rounding"""
-        self.min_qty = min_qty
-        self.max_qty = max_qty
-        self.qty_step = qty_step
+        if symbol and self.multi_symbol:
+            # Multi-symbol mode: store per symbol
+            self.instrument_specs[symbol] = {
+                'min_qty': min_qty,
+                'max_qty': max_qty,
+                'qty_step': qty_step
+            }
+        else:
+            # Single symbol mode
+            self.min_qty = min_qty
+            self.max_qty = max_qty
+            self.qty_step = qty_step
 
-    def custom_round(self, number: float) -> float:
+    def get_total_margin(self) -> float:
+        """Get total margin usage across all symbols"""
+        if self.multi_symbol:
+            return sum(self.symbol_margins.values())
+        else:
+            return self.position_value / self.strategy.leverage if self.position_value > 0 else 0
+
+    def custom_round(self, number: float, symbol: str = None) -> float:
         """Round quantity to meet exchange requirements (same logic as real bot)"""
+        # Get specs for this symbol (multi-symbol mode) or use defaults (single symbol mode)
+        if symbol and self.multi_symbol and symbol in self.instrument_specs:
+            specs = self.instrument_specs[symbol]
+            min_qty = Decimal(str(specs['min_qty']))
+            max_qty = Decimal(str(specs['max_qty']))
+            qty_step = Decimal(str(specs['qty_step']))
+        else:
+            min_qty = Decimal(str(self.min_qty))
+            max_qty = Decimal(str(self.max_qty))
+            qty_step = Decimal(str(self.qty_step))
+
         number = Decimal(str(number))
-        min_qty = Decimal(str(self.min_qty))
-        max_qty = Decimal(str(self.max_qty))
-        qty_step = Decimal(str(self.qty_step))
 
         # Perform floor rounding to qty_step
         rounded_qty = (number / qty_step).quantize(Decimal('1'), rounding=ROUND_DOWN) * qty_step
@@ -924,8 +969,14 @@ class BacktestEngine:
 
 def main():
     parser = argparse.ArgumentParser(description='Backtest DCABot Martingale Strategy')
-    parser.add_argument('--symbol', type=str, default='u1000PEPEUSDT',
-                       help='Trading symbol (default: u1000PEPEUSDT)')
+
+    # Symbol arguments - either --symbol OR --symbols, but not both
+    symbol_group = parser.add_mutually_exclusive_group(required=True)
+    symbol_group.add_argument('--symbol', type=str,
+                       help='Single trading symbol (e.g., BTCUSDT)')
+    symbol_group.add_argument('--symbols', type=str, nargs='+',
+                       help='Multiple trading symbols (e.g., BTCUSDT TRXUSDT SOLUSDT)')
+
     parser.add_argument('--side', type=str, default='Long', choices=['Long', 'Short'],
                        help='Position side (default: Long)')
     parser.add_argument('--days', type=int, default=7,
@@ -944,6 +995,14 @@ def main():
                        help='Override leverage (e.g., 5, 10, 20). Default: 10x')
 
     args = parser.parse_args()
+
+    # Determine if multi-symbol mode
+    if args.symbols:
+        symbols = args.symbols
+        multi_symbol = True
+    else:
+        symbols = [args.symbol]
+        multi_symbol = False
 
     # Load environment from parent directory
     env_path = Path(__file__).parent.parent / '.env'
@@ -967,7 +1026,10 @@ def main():
         return
 
     print(f"🔧 Initializing backtest...")
-    print(f"  Symbol: {args.symbol}")
+    if multi_symbol:
+        print(f"  Symbols: {', '.join(symbols)} (Multi-Symbol Mode)")
+    else:
+        print(f"  Symbol: {symbols[0]}")
     print(f"  Side: {args.side}")
     print(f"  Period: {args.days} days")
     print(f"  Interval: {args.interval} minutes")
@@ -989,37 +1051,42 @@ def main():
         print(f"  Overriding leverage: {strategy.leverage}x -> {args.leverage}x")
         strategy.leverage = args.leverage
 
-    # Fetch historical data
-    if args.source == 'binance':
-        # Use CCXT to fetch from Binance (much more history available)
-        binance_symbol = convert_phemex_to_binance_symbol(args.symbol)
+    # Fetch historical data for all symbols
+    df_dict = {}  # {symbol: dataframe}
 
-        # Convert interval minutes to timeframe string
-        timeframe_map = {
-            1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m',
-            60: '1h', 120: '2h', 240: '4h', 360: '6h', 720: '12h',
-            1440: '1d'
-        }
-        timeframe = timeframe_map.get(args.interval, '1h')
+    timeframe_map = {
+        1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m',
+        60: '1h', 120: '2h', 240: '4h', 360: '6h', 720: '12h',
+        1440: '1d'
+    }
+    timeframe = timeframe_map.get(args.interval, '1h')
 
-        df = fetch_historical_data_ccxt(
-            symbol=binance_symbol,
-            timeframe=timeframe,
-            days=args.days,
-            exchange_name='binance'
-        )
-    else:
-        # Use Phemex API (limited to ~1000 candles)
-        print(f"\n📡 Fetching historical data from Phemex...")
-        periods_needed = (args.days * 24 * 60) // args.interval + 200
+    for symbol in symbols:
+        print(f"\n📡 Fetching data for {symbol}...")
 
-        print(f"📊 Requesting {periods_needed} candles ({args.days} days @ {args.interval}min interval)")
+        if args.source == 'binance':
+            # Use CCXT to fetch from Binance (much more history available)
+            binance_symbol = convert_phemex_to_binance_symbol(symbol)
 
-        df = fetch_extended_historical_data(client, args.symbol, args.interval, periods_needed)
+            df = fetch_historical_data_ccxt(
+                symbol=binance_symbol,
+                timeframe=timeframe,
+                days=args.days,
+                exchange_name='binance'
+            )
+        else:
+            # Use Phemex API (limited to ~1000 candles)
+            periods_needed = (args.days * 24 * 60) // args.interval + 200
+            print(f"📊 Requesting {periods_needed} candles ({args.days} days @ {args.interval}min interval)")
 
-    if df.empty:
-        print(f"❌ Failed to fetch historical data for {args.symbol}")
-        return
+            df = fetch_extended_historical_data(client, symbol, args.interval, periods_needed)
+
+        if df.empty:
+            print(f"❌ Failed to fetch historical data for {symbol}")
+            return
+
+        df_dict[symbol] = df
+        print(f"✅ Fetched {len(df)} candles for {symbol}")
 
     # Display protection status
     if args.max_margin_pct is not None:
