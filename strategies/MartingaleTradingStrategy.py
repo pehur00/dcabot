@@ -526,11 +526,19 @@ class MartingaleTradingStrategy(TradingStrategy):
             total_margin = self.get_total_margin_usage()
             current_margin_pct = total_margin / total_balance if total_margin > 0 else 0
 
-            # Taper factor: 1.0 at 0% margin, 0.0 at max_margin_pct
-            # Use exponential tapering for smoother reduction
-            if current_margin_pct < self.max_margin_pct:
-                taper_factor = ((self.max_margin_pct - current_margin_pct) / self.max_margin_pct) ** 2
+            # Dynamic tapering: start at 70% of cap, full taper at 100% of cap
+            # This allows higher caps to be utilized more effectively
+            taper_start_pct = self.max_margin_pct * 0.70  # Start tapering at 70% of cap
+
+            if current_margin_pct < taper_start_pct:
+                # Below taper threshold - full size orders
+                taper_factor = 1.0
+            elif current_margin_pct < self.max_margin_pct:
+                # In taper zone - linear reduction from 100% to 0%
+                taper_range = self.max_margin_pct - taper_start_pct
+                taper_factor = (self.max_margin_pct - current_margin_pct) / taper_range
             else:
+                # At or above cap - no more orders
                 taper_factor = 0
 
             qty = qty * taper_factor
