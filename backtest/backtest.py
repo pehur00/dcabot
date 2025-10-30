@@ -953,12 +953,16 @@ class BacktestEngine:
 
                 # Apply dynamic tapering if margin cap is enabled
                 if self.strategy.max_margin_pct:
-                    # In multi-symbol mode: divide cap equally among symbols
-                    # Each symbol gets its own independent cap for fair allocation
+                    # In multi-symbol mode: divide cap dynamically among ACTIVE symbols
+                    # Each symbol gets fair share based on how many are actually trading
                     if self.multi_symbol:
-                        per_symbol_cap = self.strategy.max_margin_pct / len(self.symbols)
+                        # Count symbols with active positions OR the symbol we're currently trading
+                        # This ensures we account for the order we're about to place
+                        active_symbols = sum(1 for s in self.symbols if self.symbol_margins.get(s, 0) > 0 or s == symbol)
+
+                        per_symbol_cap = self.strategy.max_margin_pct / active_symbols
                         symbol_margin = self.symbol_margins.get(symbol, 0)
-                        current_margin_pct = symbol_margin / total_balance if symbol_margin > 0 else 0
+                        current_margin_pct = symbol_margin / total_balance
                         effective_cap = per_symbol_cap
                     else:
                         current_margin_pct = position_value / total_balance if position_value > 0 else 0

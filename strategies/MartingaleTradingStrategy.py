@@ -525,7 +525,8 @@ class MartingaleTradingStrategy(TradingStrategy):
             response = self.client._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
             positions = response['data']['positions']
 
-            # Count symbols with open positions
+            # Count symbols with open positions OR the symbol we're currently trading
+            # This ensures we account for the order we're about to place
             active_symbols = set()
             symbol_margins = {}
             for pos in positions:
@@ -535,19 +536,20 @@ class MartingaleTradingStrategy(TradingStrategy):
                     active_symbols.add(sym)
                     symbol_margins[sym] = float(pos.get('assignedPosBalanceRv', 0))
 
-            num_active_symbols = max(len(active_symbols), 1)  # At least 1
+            # Always count the symbol we're trading, even if it doesn't have margin yet
+            active_symbols.add(symbol)
 
             # In multi-symbol mode: divide cap equally among active symbols
             # Each symbol gets its own independent cap for fair allocation
-            if num_active_symbols > 1:
-                per_symbol_cap = self.max_margin_pct / num_active_symbols
+            if len(active_symbols) > 1:
+                per_symbol_cap = self.max_margin_pct / len(active_symbols)
                 symbol_margin = symbol_margins.get(symbol, 0)
-                current_margin_pct = symbol_margin / total_balance if symbol_margin > 0 else 0
+                current_margin_pct = symbol_margin / total_balance
                 effective_cap = per_symbol_cap
             else:
                 # Single symbol mode: use full cap
                 symbol_margin = symbol_margins.get(symbol, 0)
-                current_margin_pct = symbol_margin / total_balance if symbol_margin > 0 else 0
+                current_margin_pct = symbol_margin / total_balance
                 effective_cap = self.max_margin_pct
 
             # Dynamic tapering: start at 70% of cap, full taper at 100% of cap
@@ -651,7 +653,8 @@ class MartingaleTradingStrategy(TradingStrategy):
         response = self.client._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
         positions = response['data']['positions']
 
-        # Count symbols with open positions
+        # Count symbols with open positions OR the symbol we're currently checking
+        # This ensures we account for the order we're about to place
         active_symbols = set()
         symbol_margins = {}
         for pos in positions:
@@ -661,12 +664,13 @@ class MartingaleTradingStrategy(TradingStrategy):
                 active_symbols.add(sym)
                 symbol_margins[sym] = float(pos.get('assignedPosBalanceRv', 0))
 
-        num_active_symbols = max(len(active_symbols), 1)  # At least 1
+        # Always count the symbol we're checking, even if it doesn't have margin yet
+        active_symbols.add(symbol)
 
         # In multi-symbol mode: divide cap equally among active symbols
         # Each symbol gets its own independent cap for fair allocation
-        if num_active_symbols > 1:
-            per_symbol_cap = self.max_margin_pct / num_active_symbols
+        if len(active_symbols) > 1:
+            per_symbol_cap = self.max_margin_pct / len(active_symbols)
             symbol_margin = symbol_margins.get(symbol, 0)
             effective_cap = per_symbol_cap
         else:
