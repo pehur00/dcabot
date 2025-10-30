@@ -482,12 +482,12 @@ class BacktestEngine:
 
         # Calculate 1h EMA100 for dip-buying filter (resample 1m data to 1h, then map back)
         # STRATEGY: Buy BELOW 1h EMA100 to catch dips with upside potential
-        df_1h = df.resample('1H').agg({'close': 'last', 'high': 'max', 'low': 'min', 'open': 'first', 'volume': 'sum'})
+        df_1h = df.resample('1h').agg({'close': 'last', 'high': 'max', 'low': 'min', 'open': 'first', 'volume': 'sum'})
         df_1h['ema_100_1h'] = df_1h['close'].ewm(span=100, adjust=False).mean()
 
         # Forward-fill 1h EMA100 to 1-minute timeframe
         df = df.join(df_1h[['ema_100_1h']], how='left')
-        df['ema_100_1h'] = df['ema_100_1h'].fillna(method='ffill')
+        df['ema_100_1h'] = df['ema_100_1h'].ffill()
 
         # Need at least 200 periods for EMA200
         if len(df) < 200:
@@ -674,10 +674,10 @@ class BacktestEngine:
             df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
 
             # Calculate 1h EMA100
-            df_1h = df.resample('1H').agg({'close': 'last', 'high': 'max', 'low': 'min', 'open': 'first', 'volume': 'sum'})
+            df_1h = df.resample('1h').agg({'close': 'last', 'high': 'max', 'low': 'min', 'open': 'first', 'volume': 'sum'})
             df_1h['ema_100_1h'] = df_1h['close'].ewm(span=100, adjust=False).mean()
             df = df.join(df_1h[['ema_100_1h']], how='left')
-            df['ema_100_1h'] = df['ema_100_1h'].fillna(method='ffill')
+            df['ema_100_1h'] = df['ema_100_1h'].ffill()
             df_dict[symbol] = df
 
             if len(df) < 200:
@@ -1376,6 +1376,192 @@ class BacktestEngine:
 
                 print(f"  {symbol:<10} {action:6} | {trade['side']:4} {trade['qty']:.4f} @ "
                       f"${trade['price']:.6f}{pnl_str}{position_str}")
+
+        # Analysis and Conclusion Section
+        print(f"\n{'='*80}")
+        print(f"📊 ANALYSIS & CONCLUSION")
+        print(f"{'='*80}")
+
+        # Calculate margin usage statistics per symbol
+        max_margins = {}
+        avg_margins = {}
+        margin_utilization = {}
+
+        for symbol in self.symbols:
+            symbol_margins_list = [row['symbol_margins'].get(symbol, 0) for row in self.balance_history if 'symbol_margins' in row]
+            if symbol_margins_list:
+                max_margins[symbol] = max(symbol_margins_list)
+                avg_margins[symbol] = sum(symbol_margins_list) / len(symbol_margins_list)
+                margin_utilization[symbol] = (max_margins[symbol] / self.initial_balance) * 100
+            else:
+                max_margins[symbol] = 0
+                avg_margins[symbol] = 0
+                margin_utilization[symbol] = 0
+
+        # Calculate total margin statistics
+        total_margins_list = [row.get('total_margin', 0) for row in self.balance_history if 'total_margin' in row]
+        max_total_margin = max(total_margins_list) if total_margins_list else 0
+        avg_total_margin = sum(total_margins_list) / len(total_margins_list) if total_margins_list else 0
+        max_total_margin_pct = (max_total_margin / self.initial_balance) * 100
+        avg_total_margin_pct = (avg_total_margin / self.initial_balance) * 100
+
+        print(f"\n💼 Margin Usage Analysis:")
+        print(f"  {'Symbol':<12} {'Max Margin':<15} {'Avg Margin':<15} {'Peak Usage':<12}")
+        print(f"  {'-'*12} {'-'*15} {'-'*15} {'-'*12}")
+        for symbol in self.symbols:
+            print(f"  {symbol:<12} ${max_margins[symbol]:>8.2f}      ${avg_margins[symbol]:>8.2f}      {margin_utilization[symbol]:>6.1f}%")
+
+        print(f"\n  {'Total (All)':<12} ${max_total_margin:>8.2f}      ${avg_total_margin:>8.2f}      {max_total_margin_pct:>6.1f}%")
+
+        if self.max_margin_pct:
+            margin_cap = self.initial_balance * self.max_margin_pct
+            margin_buffer = margin_cap - max_total_margin
+            buffer_pct = (margin_buffer / margin_cap) * 100
+            print(f"  {'Margin Cap':<12} ${margin_cap:>8.2f}      Remaining: ${margin_buffer:>6.2f} ({buffer_pct:.1f}%)")
+
+        # Correlation analysis (if 2 symbols)
+        if len(self.symbols) == 2 and hasattr(self, 'symbol_price_histories'):
+            symbol1, symbol2 = self.symbols[0], self.symbols[1]
+            prices1 = [p['price'] for p in self.symbol_price_histories[symbol1]]
+            prices2 = [p['price'] for p in self.symbol_price_histories[symbol2]]
+
+            if len(prices1) == len(prices2) and len(prices1) > 0:
+                correlation = np.corrcoef(prices1, prices2)[0, 1]
+
+                print(f"\n🔗 Correlation Analysis:")
+                print(f"  {symbol1} vs {symbol2}: {correlation:.4f}")
+
+                if abs(correlation) > 0.7:
+                    if correlation > 0:
+                        print(f"  ⚠️  HIGH POSITIVE CORRELATION ({correlation:.2f})")
+                        print(f"     → Symbols move together, offering LIMITED diversification")
+                        print(f"     → Both positions likely to be in drawdown simultaneously")
+                        print(f"     → Margin competition without risk reduction benefits")
+                    else:
+                        print(f"  ✅ HIGH NEGATIVE CORRELATION ({correlation:.2f})")
+                        print(f"     → Symbols move opposite, offering EXCELLENT diversification")
+                        print(f"     → One position often profits while other is in drawdown")
+                        print(f"     → Natural hedging effect reduces overall risk")
+                elif abs(correlation) < 0.3:
+                    print(f"  ✅ VERY LOW CORRELATION ({correlation:.2f})")
+                    print(f"     → Symbols move independently")
+                    print(f"     → Good diversification, uncorrelated risk exposure")
+                else:
+                    print(f"  ✅ MODERATE CORRELATION ({correlation:.2f})")
+                    print(f"     → Some correlation but still beneficial diversification")
+
+        # Performance assessment
+        print(f"\n📈 Performance Assessment:")
+
+        # Calculate actual returns per symbol
+        winning_symbols = [s for s in self.symbols if self.symbol_total_pnl.get(s, 0) > 0]
+        losing_symbols = [s for s in self.symbols if self.symbol_total_pnl.get(s, 0) <= 0]
+
+        print(f"  Profitable symbols: {len(winning_symbols)}/{len(self.symbols)}")
+        if winning_symbols:
+            print(f"    Winners: {', '.join([f'{s} (${self.symbol_total_pnl[s]:+.2f})' for s in winning_symbols])}")
+        if losing_symbols:
+            print(f"    Losers:  {', '.join([f'{s} (${self.symbol_total_pnl[s]:+.2f})' for s in losing_symbols])}")
+
+        # Risk metrics
+        risk_score = 0
+        risk_factors = []
+
+        if self.max_drawdown > 10:
+            risk_factors.append(f"High drawdown ({self.max_drawdown:.1f}%)")
+            risk_score += 2
+        elif self.max_drawdown > 5:
+            risk_factors.append(f"Moderate drawdown ({self.max_drawdown:.1f}%)")
+            risk_score += 1
+
+        if self.max_margin_pct and max_total_margin_pct > (self.max_margin_pct * 100 * 0.9):
+            risk_factors.append(f"Margin cap nearly reached ({max_total_margin_pct:.1f}%)")
+            risk_score += 2
+
+        if len(self.symbols) == 2 and hasattr(self, 'symbol_price_histories'):
+            prices1 = [p['price'] for p in self.symbol_price_histories[self.symbols[0]]]
+            prices2 = [p['price'] for p in self.symbol_price_histories[self.symbols[1]]]
+            if len(prices1) > 0:
+                correlation = np.corrcoef(prices1, prices2)[0, 1]
+                if correlation > 0.7:
+                    risk_factors.append(f"High positive correlation ({correlation:.2f})")
+                    risk_score += 2
+
+        print(f"\n  Risk Level: ", end="")
+        if risk_score >= 4:
+            print(f"🔴 HIGH RISK")
+        elif risk_score >= 2:
+            print(f"🟡 MODERATE RISK")
+        else:
+            print(f"🟢 LOW RISK")
+
+        if risk_factors:
+            print(f"  Risk Factors:")
+            for factor in risk_factors:
+                print(f"    • {factor}")
+
+        # Overall conclusion
+        print(f"\n🎯 Conclusion:")
+
+        # Assess overall quality
+        is_profitable = total_return > 0
+        has_good_diversification = True
+        if len(self.symbols) == 2 and hasattr(self, 'symbol_price_histories'):
+            prices1 = [p['price'] for p in self.symbol_price_histories[self.symbols[0]]]
+            prices2 = [p['price'] for p in self.symbol_price_histories[self.symbols[1]]]
+            if len(prices1) > 0:
+                correlation = np.corrcoef(prices1, prices2)[0, 1]
+                has_good_diversification = abs(correlation) < 0.7
+
+        margin_is_safe = True
+        if self.max_margin_pct:
+            margin_is_safe = max_total_margin_pct < (self.max_margin_pct * 100 * 0.85)
+
+        multiple_winners = len(winning_symbols) > 0
+
+        # Overall verdict
+        if is_profitable and has_good_diversification and margin_is_safe and multiple_winners:
+            print(f"  ✅ GOOD SETUP - This symbol combination shows promise")
+            print(f"     • Profitable with {total_return:+.2f}% return")
+            if has_good_diversification:
+                print(f"     • Good diversification reduces risk")
+            if margin_is_safe:
+                print(f"     • Safe margin usage with buffer remaining")
+            print(f"     • {len(winning_symbols)} of {len(self.symbols)} symbols contributed positively")
+        elif has_good_diversification and margin_is_safe:
+            print(f"  ⚠️  ACCEPTABLE SETUP - Mixed results but manageable risk")
+            if not is_profitable:
+                print(f"     • Unprofitable this period ({total_return:+.2f}%), but may be timing")
+            if has_good_diversification:
+                print(f"     • Good diversification provides risk protection")
+            if margin_is_safe:
+                print(f"     • Margin usage is safe with room for more drawdown")
+        else:
+            print(f"  ❌ POOR SETUP - Consider alternative symbol combinations")
+            if not has_good_diversification:
+                print(f"     • High correlation means limited diversification benefit")
+            if not margin_is_safe:
+                print(f"     • Margin usage too high ({max_total_margin_pct:.1f}%), risky for liquidation")
+            if not multiple_winners:
+                print(f"     • No symbols showing consistent profitability")
+
+        # Recommendations
+        print(f"\n💡 Recommendations:")
+        if not has_good_diversification and len(self.symbols) == 2:
+            print(f"     • Choose symbols with lower correlation (< 0.5) for better diversification")
+            print(f"     • Consider pairing coins from different sectors (e.g., L1 + meme, DeFi + L1)")
+
+        if not margin_is_safe:
+            print(f"     • Increase initial balance or reduce position sizes")
+            print(f"     • Consider reducing max_margin_pct to maintain larger safety buffer")
+
+        if len(losing_symbols) == len(self.symbols):
+            print(f"     • All symbols unprofitable - reconsider strategy parameters or market conditions")
+            print(f"     • Test different leverage, profit targets, or EMA intervals")
+
+        if self.max_drawdown > 10:
+            print(f"     • High drawdown indicates excessive risk - consider lower leverage")
+            print(f"     • Add more capital or reduce position sizes to weather drawdowns")
 
         print("\n" + "=" * 80)
 
