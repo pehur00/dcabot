@@ -953,24 +953,28 @@ class BacktestEngine:
 
                 # Apply dynamic tapering if margin cap is enabled
                 if self.strategy.max_margin_pct:
-                    # Calculate current margin usage (use TOTAL margin in multi-symbol mode!)
+                    # In multi-symbol mode: divide cap equally among symbols
+                    # Each symbol gets its own independent cap for fair allocation
                     if self.multi_symbol:
-                        current_total_margin = self.get_total_margin()
-                        current_margin_pct = current_total_margin / total_balance if current_total_margin > 0 else 0
+                        per_symbol_cap = self.strategy.max_margin_pct / len(self.symbols)
+                        symbol_margin = self.symbol_margins.get(symbol, 0)
+                        current_margin_pct = symbol_margin / total_balance if symbol_margin > 0 else 0
+                        effective_cap = per_symbol_cap
                     else:
                         current_margin_pct = position_value / total_balance if position_value > 0 else 0
+                        effective_cap = self.strategy.max_margin_pct
 
                     # Dynamic tapering: start at 70% of cap, full taper at 100% of cap
                     # This allows higher caps to be utilized more effectively
-                    taper_start_pct = self.strategy.max_margin_pct * 0.70  # Start tapering at 70% of cap
+                    taper_start_pct = effective_cap * 0.70  # Start tapering at 70% of cap
 
                     if current_margin_pct < taper_start_pct:
                         # Below taper threshold - full size orders
                         taper_factor = 1.0
-                    elif current_margin_pct < self.strategy.max_margin_pct:
+                    elif current_margin_pct < effective_cap:
                         # In taper zone - linear reduction from 100% to 0%
-                        taper_range = self.strategy.max_margin_pct - taper_start_pct
-                        taper_factor = (self.strategy.max_margin_pct - current_margin_pct) / taper_range
+                        taper_range = effective_cap - taper_start_pct
+                        taper_factor = (effective_cap - current_margin_pct) / taper_range
                     else:
                         # At or above cap - no more orders
                         taper_factor = 0

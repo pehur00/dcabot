@@ -521,22 +521,46 @@ class MartingaleTradingStrategy(TradingStrategy):
         # Apply dynamic tapering if margin cap is enabled
         taper_factor = 1.0
         if self.max_margin_pct:
-            # Get TOTAL margin across ALL open positions (not just this symbol!)
-            # This ensures multiple symbols don't independently exceed the cap
-            total_margin = self.get_total_margin_usage()
-            current_margin_pct = total_margin / total_balance if total_margin > 0 else 0
+            # Get all positions to determine multi-symbol mode
+            response = self.client._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
+            positions = response['data']['positions']
+
+            # Count symbols with open positions
+            active_symbols = set()
+            symbol_margins = {}
+            for pos in positions:
+                size = float(pos.get('sizeRq', 0))
+                if size > 0:
+                    sym = pos['symbol']
+                    active_symbols.add(sym)
+                    symbol_margins[sym] = float(pos.get('assignedPosBalanceRv', 0))
+
+            num_active_symbols = max(len(active_symbols), 1)  # At least 1
+
+            # In multi-symbol mode: divide cap equally among active symbols
+            # Each symbol gets its own independent cap for fair allocation
+            if num_active_symbols > 1:
+                per_symbol_cap = self.max_margin_pct / num_active_symbols
+                symbol_margin = symbol_margins.get(symbol, 0)
+                current_margin_pct = symbol_margin / total_balance if symbol_margin > 0 else 0
+                effective_cap = per_symbol_cap
+            else:
+                # Single symbol mode: use full cap
+                symbol_margin = symbol_margins.get(symbol, 0)
+                current_margin_pct = symbol_margin / total_balance if symbol_margin > 0 else 0
+                effective_cap = self.max_margin_pct
 
             # Dynamic tapering: start at 70% of cap, full taper at 100% of cap
             # This allows higher caps to be utilized more effectively
-            taper_start_pct = self.max_margin_pct * 0.70  # Start tapering at 70% of cap
+            taper_start_pct = effective_cap * 0.70  # Start tapering at 70% of cap
 
             if current_margin_pct < taper_start_pct:
                 # Below taper threshold - full size orders
                 taper_factor = 1.0
-            elif current_margin_pct < self.max_margin_pct:
+            elif current_margin_pct < effective_cap:
                 # In taper zone - linear reduction from 100% to 0%
-                taper_range = self.max_margin_pct - taper_start_pct
-                taper_factor = (self.max_margin_pct - current_margin_pct) / taper_range
+                taper_range = effective_cap - taper_start_pct
+                taper_factor = (effective_cap - current_margin_pct) / taper_range
             else:
                 # At or above cap - no more orders
                 taper_factor = 0
@@ -623,19 +647,42 @@ class MartingaleTradingStrategy(TradingStrategy):
         current_price = float(current_price)
         total_balance = float(total_balance)
 
-        # Get TOTAL current margin across ALL positions (not just this symbol!)
-        # This ensures multiple symbols don't independently exceed the cap
-        current_total_margin = self.get_total_margin_usage()
+        # Get all positions to determine multi-symbol mode and per-symbol margins
+        response = self.client._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
+        positions = response['data']['positions']
+
+        # Count symbols with open positions
+        active_symbols = set()
+        symbol_margins = {}
+        for pos in positions:
+            size = float(pos.get('sizeRq', 0))
+            if size > 0:
+                sym = pos['symbol']
+                active_symbols.add(sym)
+                symbol_margins[sym] = float(pos.get('assignedPosBalanceRv', 0))
+
+        num_active_symbols = max(len(active_symbols), 1)  # At least 1
+
+        # In multi-symbol mode: divide cap equally among active symbols
+        # Each symbol gets its own independent cap for fair allocation
+        if num_active_symbols > 1:
+            per_symbol_cap = self.max_margin_pct / num_active_symbols
+            symbol_margin = symbol_margins.get(symbol, 0)
+            effective_cap = per_symbol_cap
+        else:
+            # Single symbol mode: use full cap
+            symbol_margin = symbol_margins.get(symbol, 0)
+            effective_cap = self.max_margin_pct
 
         # Calculate required margin for new order
         order_value = order_qty * current_price
         required_margin = order_value / self.leverage
 
-        # Calculate total margin usage percentage AFTER adding this order
-        total_margin_after_order = current_total_margin + required_margin
-        margin_usage_pct = total_margin_after_order / total_balance if total_balance > 0 else 0
+        # Calculate THIS SYMBOL's margin usage percentage AFTER adding this order
+        symbol_margin_after_order = symbol_margin + required_margin
+        margin_usage_pct = symbol_margin_after_order / total_balance if total_balance > 0 else 0
 
-        # Check if within limit
-        is_allowed = margin_usage_pct <= self.max_margin_pct
+        # Check if within THIS SYMBOL's cap
+        is_allowed = margin_usage_pct <= effective_cap
 
         return is_allowed, margin_usage_pct
