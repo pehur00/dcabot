@@ -44,6 +44,7 @@ Migrations must be named with a 3-digit prefix and descriptive name:
 | Version | Description | Date |
 |---------|-------------|------|
 | 001 | Complete initial schema with OAuth, metrics, and admin features | 2025-11-01 |
+| 002 | Add OAuth support columns | 2025-11-01 |
 
 ## Checking Migration Status
 
