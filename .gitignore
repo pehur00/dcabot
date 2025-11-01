@@ -10,6 +10,10 @@ bot.log
 
 # Environment variables (contains secrets)
 .env
+.env.*
+.env.local
+.env.production
+.env.render
 
 # Python
 __pycache__/
