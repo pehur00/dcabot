@@ -20,9 +20,12 @@ Multi-user web platform with dashboard and bot management UI.
 - **Multiple Bots**: Each user can run multiple bots
 - **Performance Charts**: Real-time metrics visualization
 - **Admin Panel**: User management and registration control
+- **Google OAuth**: Sign in with Google
+- **Auto-Migrations**: Database schema updates on deploy
 - **Cost**: ~$22/month (Render + Database)
 
 See [🚀 SaaS Platform](#-saas-platform) section below for details.
+**Next**: [Backtest Integration →](ROADMAP.md#-phase-2-backtesting-integration-next-priority)
 
 ## Features
 
@@ -97,8 +100,10 @@ The SaaS platform transforms the standalone bot into a multi-user web applicatio
 
 **Multi-User Management**
 - User registration with admin approval
+- Google OAuth 2.0 integration
+- Password-based authentication (bcrypt)
 - Encrypted API credentials (Fernet encryption)
-- Password hashing (bcrypt)
+- Password reset functionality
 - Admin panel for user management
 
 **Bot Dashboard**
@@ -207,10 +212,11 @@ See [scripts/README.md](scripts/README.md) for details.
    - Cost: ~$15/month
 
 **Migration System**:
-- SQL files in `saas/migrations/`
+- SQL-based migrations in `saas/migrations/`
 - Automatic execution on deployment
-- Tracks applied migrations in database
-- See [docs/DATABASE_MIGRATIONS.md](docs/DATABASE_MIGRATIONS.md)
+- Version tracking in `schema_migrations` table
+- Idempotent and safe for production
+- See [saas/migrations/README.md](saas/migrations/README.md)
 
 **Deployment Flow**:
 ```bash
@@ -277,9 +283,10 @@ See [Backtesting section](#backtesting) in docs for more details.
 ## Documentation
 
 ### Platform Documentation
+- **[Product Roadmap](ROADMAP.md)** - 🚀 Future features and development plans
 - **[SaaS Platform](docs/SAAS.md)** - Multi-user platform overview
 - **[Render Deployment](docs/RENDER_DEPLOYMENT.md)** - Complete deployment guide
-- **[Database Migrations](docs/DATABASE_MIGRATIONS.md)** - Schema management
+- **[Database Migrations](saas/migrations/README.md)** - Schema management
 - **[Local Testing](scripts/README.md)** - Development and testing
 
 ### Bot Documentation
@@ -367,6 +374,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Documentation**: See `docs/` directory
 - **Strategy Questions**: See [STRATEGY.md](docs/STRATEGY.md)
 - **Deployment Help**: See [RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md)
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and development priorities.
+
+**Next up**: Backtest integration in web dashboard - test your strategies before going live!
 
 ## Changelog
 
