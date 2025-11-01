@@ -21,12 +21,23 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-in-product
 
 # Database connection test
 try:
-    from saas.database import test_connection
+    from saas.database import test_connection, get_db
     db_connected = test_connection()
     logger.info("✅ Database connection successful")
 except Exception as e:
     logger.error(f"❌ Database connection failed: {e}")
     db_connected = False
+
+# Run database migrations automatically
+if db_connected:
+    try:
+        from saas.migration_runner import run_migrations
+        with get_db() as conn:
+            run_migrations(conn)
+    except Exception as e:
+        logger.error(f"❌ Migration error: {e}")
+        # Continue app startup even if migrations fail
+        # This allows manual intervention if needed
 
 # Setup Flask-Login
 login_manager = LoginManager()
