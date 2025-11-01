@@ -64,7 +64,7 @@ class MartingaleTradingStrategy(TradingStrategy):
         Entry Strategy: Buy BELOW 1h EMA100 to catch dips with upside potential (counter-trend Martingale)
         """
 
-        conclusion = "Nothing changed"
+        conclusion = None  # Will be set with detailed reasoning
 
         # Check volatility and decline velocity
         is_high_volatility, vol_metrics = self.client.check_volatility(symbol)
@@ -171,6 +171,39 @@ class MartingaleTradingStrategy(TradingStrategy):
             elif is_high_volatility:
                 conclusion = f"High volatility detected ({vol_metrics.get('trigger')}), pausing new entries"
 
+            # ✅ Position exists but no action taken - explain why
+            elif conclusion is None:
+                # Build detailed explanation
+                reasons = []
+
+                # Check why we didn't take profit
+                profit_pnl_pct = unrealised_pnl / total_balance if total_balance > 0 else 0
+                if profit_pnl_pct > 0:
+                    if profit_pnl_pct <= self.profit_threshold:
+                        reasons.append(f"profit too small ({profit_pnl_pct*100:.2f}% vs {self.profit_threshold*100:.2f}% target)")
+                    if position_factor < self.buy_until_limit:
+                        reasons.append(f"position too small ({position_factor*100:.1f}% vs {self.buy_until_limit*100:.1f}% min)")
+
+                # Check why we didn't add to position
+                if margin_level >= 2:  # Not critical margin
+                    if position_factor >= self.buy_until_limit:
+                        reasons.append(f"position at limit ({position_factor*100:.1f}% of balance)")
+                    if unrealised_pnl >= 0:
+                        reasons.append("position in profit, waiting for dip")
+                    elif upnl_percentage >= -0.05:
+                        reasons.append(f"drawdown not deep enough ({upnl_percentage*100:.1f}% vs -5% threshold)")
+
+                if not valid_position:
+                    if pos_side == "Long":
+                        reasons.append(f"price below EMA50 (${current_price:.2f} vs ${ema_50:.2f})")
+                    else:
+                        reasons.append(f"price above EMA50 (${current_price:.2f} vs ${ema_50:.2f})")
+
+                if reasons:
+                    conclusion = f"Holding position - {'; '.join(reasons)}"
+                else:
+                    conclusion = f"Position stable - margin: {margin_level:.2f}, uPnL: {upnl_percentage*100:.1f}%"
+
         # ✅ 3. Open a new position in automatic mode if conditions match
         # Don't open new positions during high volatility or dangerous declines
         # STRATEGY: Buy BELOW 1h EMA100 to catch dips (Martingale works best on pullbacks)
@@ -192,6 +225,14 @@ class MartingaleTradingStrategy(TradingStrategy):
                 conclusion = f"Not opening position - price ${current_price:.2f} above 1h EMA100 ${ema_100_1h:.2f} (waiting for dip)"
             else:
                 conclusion = f"Not opening position - price ${current_price:.2f} below 1h EMA100 ${ema_100_1h:.2f} (waiting for dip)"
+
+        # ✅ Manual mode - no automatic position opening
+        elif not automatic_mode:
+            conclusion = "Manual mode - no automatic actions taken"
+
+        # Safety check - ensure we always have a conclusion
+        if conclusion is None:
+            conclusion = "No action taken - conditions not met"
 
         return conclusion
 
