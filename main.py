@@ -46,8 +46,13 @@ async def load_bot_from_database(bot_id):
         """, (bot_id,))
         pairs = cursor.fetchall()
 
+        # Validate bot has trading pairs
+        if not pairs:
+            raise ValueError(f"Bot {bot_id} has no active trading pairs configured. Please add at least one trading pair.")
+
         # Build symbol_sides string: "BTCUSDT:Long:True,ETHUSDT:Short:False"
-        symbol_sides = ','.join([f"{symbol}:{side}:{automatic}" for symbol, side, leverage, ema_interval, automatic in pairs])
+        # Convert boolean to 'True'/'False' string
+        symbol_sides = ','.join([f"{symbol}:{side}:{'True' if automatic else 'False'}" for symbol, side, leverage, ema_interval, automatic in pairs])
 
         # Use first pair's EMA interval (or default to 1)
         ema_interval = pairs[0][3] if pairs else 1
