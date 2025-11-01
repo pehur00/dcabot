@@ -125,7 +125,7 @@ nav a:hover::after {
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 1.5rem 1.5rem;
 }
 
 .container-small {
@@ -137,8 +137,8 @@ nav a:hover::after {
     background: var(--bg-card);
     border: 1px solid var(--border-primary);
     border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
     transition: all 0.3s ease;
 }
 
@@ -150,8 +150,8 @@ nav a:hover::after {
 .card-header {
     font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border-primary);
     color: var(--text-primary);
     letter-spacing: -0.3px;
@@ -325,7 +325,7 @@ thead {
 
 th {
     text-align: left;
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
     font-weight: 600;
     font-size: 0.8125rem;
     color: var(--text-secondary);
@@ -335,7 +335,7 @@ th {
 }
 
 td {
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border-primary);
     color: var(--text-primary);
     font-size: 0.9375rem;
@@ -437,16 +437,30 @@ tbody tr:hover {
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 .grid-2 {
     grid-template-columns: repeat(2, 1fr);
 }
 
+.grid-bot-detail {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+}
+
+.grid-3-charts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
 @media (max-width: 768px) {
     .grid,
-    .grid-2 {
+    .grid-2,
+    .grid-bot-detail,
+    .grid-3-charts {
         grid-template-columns: 1fr;
     }
 }

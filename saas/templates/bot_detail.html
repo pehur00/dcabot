@@ -4,9 +4,9 @@
 
 {% block content %}
 <div class="container">
-    <div class="flex justify-between items-center mb-2">
+    <div class="flex justify-between items-center" style="margin-bottom: 0.75rem;">
         <div>
-            <h1>{{ bot[1] }}</h1>
+            <h1 style="margin-bottom: 0.25rem;">{{ bot[1] }}</h1>
             <p style="color: var(--gray-600);">
                 {{ bot[2]|title }} •
                 {% if bot[3] %}<span class="badge badge-warning">Testnet</span>{% endif %}
@@ -37,7 +37,7 @@
         </div>
     </div>
 
-    <div class="grid-2">
+    <div class="grid-bot-detail">
         <div class="card">
             <div class="flex justify-between items-center" style="margin-bottom: 1rem;">
                 <h2 style="margin: 0;">Trading Pairs</h2>
@@ -84,7 +84,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                <p style="color: var(--gray-600); text-align: center; padding: 1.5rem;">
                     No trading pairs configured yet
                 </p>
             {% endif %}
@@ -92,31 +92,37 @@
 
         <div class="card">
             <h2 class="card-header">Bot Info</h2>
-            <dl style="line-height: 2;">
-                <dt style="color: var(--gray-600);">Exchange:</dt>
-                <dd style="margin-left: 0;">{{ bot[2]|title }}</dd>
-
-                <dt style="color: var(--gray-600);">Environment:</dt>
-                <dd style="margin-left: 0;">{% if bot[3] %}Testnet{% else %}Mainnet{% endif %}</dd>
-
-                <dt style="color: var(--gray-600);">Created:</dt>
-                <dd style="margin-left: 0;">{{ bot[5].strftime('%Y-%m-%d %H:%M') if bot[5] else 'N/A' }}</dd>
-
-                <dt style="color: var(--gray-600);">Schedule:</dt>
-                <dd style="margin-left: 0;">Every 5 minutes (when running)</dd>
-
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Exchange</div>
+                    <div style="font-weight: 500;">{{ bot[2]|title }}</div>
+                </div>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Environment</div>
+                    <div style="font-weight: 500;">{% if bot[3] %}Testnet{% else %}Mainnet{% endif %}</div>
+                </div>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Created</div>
+                    <div style="font-weight: 500;">{{ bot[5].strftime('%Y-%m-%d %H:%M') if bot[5] else 'N/A' }}</div>
+                </div>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Schedule</div>
+                    <div style="font-weight: 500;">Every 5 min</div>
+                </div>
                 {% if last_execution %}
-                <dt style="color: var(--gray-600);">Last Run:</dt>
-                <dd style="margin-left: 0;">
-                    {{ last_execution[0].strftime('%m/%d %H:%M:%S') if last_execution[0] else 'Never' }}
-                    {% if last_execution[1] == 'INFO' %}
-                        <span class="badge badge-success">Success</span>
-                    {% elif last_execution[1] == 'ERROR' %}
-                        <span class="badge badge-danger">Failed</span>
-                    {% endif %}
-                </dd>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Last Run</div>
+                    <div style="font-weight: 500;">
+                        {{ last_execution[0].strftime('%m/%d %H:%M:%S') if last_execution[0] else 'Never' }}
+                        {% if last_execution[1] == 'INFO' %}
+                            <span class="badge badge-success">Success</span>
+                        {% elif last_execution[1] == 'ERROR' %}
+                            <span class="badge badge-danger">Failed</span>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endif %}
-            </dl>
+            </div>
         </div>
     </div>
 
@@ -124,24 +130,22 @@
     <div class="card">
         <h2 class="card-header">Performance Metrics</h2>
 
-        <!-- Combined Balance & Position Chart -->
-        <div style="margin-bottom: 2rem;">
-            <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Balance & Position Overview</h3>
-            <div style="position: relative; height: 300px;">
-                <canvas id="balancePositionChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Secondary Metrics -->
-        <div class="grid-2">
+        <!-- All Charts Side by Side on Desktop -->
+        <div class="grid-3-charts">
             <div>
-                <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Unrealized PnL</h3>
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Balance & Position Overview</h3>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="balancePositionChart"></canvas>
+                </div>
+            </div>
+            <div>
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Unrealized PnL</h3>
                 <div style="position: relative; height: 200px;">
                     <canvas id="pnlChart"></canvas>
                 </div>
             </div>
             <div>
-                <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Margin Level</h3>
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.5rem;">Margin Level</h3>
                 <div style="position: relative; height: 200px;">
                     <canvas id="marginChart"></canvas>
                 </div>
@@ -181,7 +185,7 @@
                 </tbody>
             </table>
         {% else %}
-            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+            <p style="color: var(--gray-600); text-align: center; padding: 1.5rem;">
                 No activity yet. Logs will appear here when the bot runs.
             </p>
         {% endif %}
@@ -219,7 +223,7 @@
                 </tbody>
             </table>
         {% else %}
-            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+            <p style="color: var(--gray-600); text-align: center; padding: 1.5rem;">
                 No trades yet. Start the bot to begin trading.
             </p>
         {% endif %}
