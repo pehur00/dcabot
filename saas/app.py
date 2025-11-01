@@ -209,6 +209,149 @@ def register():
     return render_template('register.html')
 
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Forgot password page - send reset link"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        from saas.database import get_db
+        from saas.validation import validate_email, sanitize_string
+        from saas.email import email_service
+        import secrets
+        from datetime import datetime, timedelta
+
+        email = request.form.get('email', '').strip()
+
+        # Validate email
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            flash(error_msg, 'error')
+            return render_template('forgot_password.html')
+
+        email = sanitize_string(email, max_length=255).lower()
+
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+
+                # Check if user exists
+                cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+                user = cursor.fetchone()
+
+                # Always show success message (security: don't reveal if email exists)
+                if user:
+                    user_id = user[0]
+
+                    # Generate secure token
+                    token = secrets.token_urlsafe(32)
+                    expires_at = datetime.now() + timedelta(hours=1)
+
+                    # Store token in database
+                    cursor.execute("""
+                        INSERT INTO password_reset_tokens (user_id, token, expires_at)
+                        VALUES (%s, %s, %s)
+                    """, (user_id, token, expires_at))
+                    conn.commit()
+
+                    # Send reset email
+                    reset_link = url_for('reset_password', token=token, _external=True)
+                    email_service.send_password_reset_email(email, reset_link, expires_minutes=60)
+
+            flash('If an account exists with that email, you will receive a password reset link shortly.', 'success')
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            logger.error(f"Forgot password error: {e}")
+            flash('An error occurred. Please try again.', 'error')
+
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Reset password page - validate token and update password"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    from saas.database import get_db
+    from saas.security import hash_password
+    from saas.validation import validate_password
+    from datetime import datetime
+
+    # Validate token
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get token info
+            cursor.execute("""
+                SELECT user_id, expires_at, used
+                FROM password_reset_tokens
+                WHERE token = %s
+            """, (token,))
+            token_data = cursor.fetchone()
+
+            if not token_data:
+                flash('Invalid or expired password reset link', 'error')
+                return redirect(url_for('login'))
+
+            user_id, expires_at, used = token_data
+
+            # Check if token is expired or used
+            if used:
+                flash('This password reset link has already been used', 'error')
+                return redirect(url_for('login'))
+
+            if datetime.now() > expires_at:
+                flash('This password reset link has expired', 'error')
+                return redirect(url_for('login'))
+
+            # Process password reset
+            if request.method == 'POST':
+                password = request.form.get('password', '')
+                password_confirm = request.form.get('password_confirm', '')
+
+                # Validate password
+                is_valid, error_msg = validate_password(password)
+                if not is_valid:
+                    flash(error_msg, 'error')
+                    return render_template('reset_password.html', token=token)
+
+                # Check password confirmation
+                if password != password_confirm:
+                    flash('Passwords do not match', 'error')
+                    return render_template('reset_password.html', token=token)
+
+                # Update password
+                password_hash = hash_password(password)
+                cursor.execute("""
+                    UPDATE users
+                    SET password_hash = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (password_hash, user_id))
+
+                # Mark token as used
+                cursor.execute("""
+                    UPDATE password_reset_tokens
+                    SET used = TRUE
+                    WHERE token = %s
+                """, (token,))
+
+                conn.commit()
+
+                flash('Your password has been reset successfully. You can now login with your new password.', 'success')
+                return redirect(url_for('login'))
+
+    except Exception as e:
+        logger.error(f"Reset password error: {e}")
+        flash('An error occurred. Please try again.', 'error')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html', token=token)
+
+
 @app.route('/logout')
 @login_required
 def logout():
