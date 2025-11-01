@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{% if bot %}Edit Bot{% else %}New Bot{% endif %} - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container container-small">
+    <div class="card">
+        <h1 class="card-header">{% if bot %}Edit Bot{% else %}Create New Bot{% endif %}</h1>
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">Bot Name</label>
+                <input type="text" id="name" name="name" required
+                       value="{{ bot[1] if bot else '' }}"
+                       placeholder="My BTC Long Bot">
+            </div>
+
+            <div class="form-group">
+                <label for="exchange">Exchange</label>
+                <select id="exchange" name="exchange">
+                    <option value="phemex" {% if bot and bot[2] == 'phemex' %}selected{% endif %}>Phemex</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="testnet" name="testnet"
+                           {% if not bot or bot[3] %}checked{% endif %}>
+                    <label for="testnet">Use Testnet (recommended for testing)</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="api_key">API Key</label>
+                <input type="text" id="api_key" name="api_key" required
+                       placeholder="Your exchange API key">
+                <small style="color: var(--gray-600);">Your API key is encrypted before storage</small>
+            </div>
+
+            <div class="form-group">
+                <label for="api_secret">API Secret</label>
+                <input type="password" id="api_secret" name="api_secret" required
+                       placeholder="Your exchange API secret">
+                <small style="color: var(--gray-600);">Your API secret is encrypted before storage</small>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {% if bot %}Update Bot{% else %}Create Bot{% endif %}
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

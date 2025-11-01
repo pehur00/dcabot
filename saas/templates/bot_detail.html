@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bot[1] }} - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="flex justify-between items-center mb-2">
+        <div>
+            <h1>{{ bot[1] }}</h1>
+            <p style="color: var(--gray-600);">
+                {{ bot[2]|title }} •
+                {% if bot[3] %}<span class="badge badge-warning">Testnet</span>{% endif %}
+                {% if bot[4] == 'running' %}
+                    <span class="badge badge-success">Running</span>
+                {% elif bot[4] == 'stopped' %}
+                    <span class="badge badge-secondary">Stopped</span>
+                {% else %}
+                    <span class="badge badge-danger">Error</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            {% if bot[4] == 'stopped' %}
+                <form method="POST" action="{{ url_for('start_bot', bot_id=bot[0]) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-success">Start Bot</button>
+                </form>
+            {% else %}
+                <form method="POST" action="{{ url_for('stop_bot', bot_id=bot[0]) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-warning">Stop Bot</button>
+                </form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('delete_bot', bot_id=bot[0]) }}"
+                  onsubmit="return confirm('Are you sure you want to delete this bot? This cannot be undone.')"
+                  style="display: inline;">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="flex justify-between items-center" style="margin-bottom: 1rem;">
+                <h2 style="margin: 0;">Trading Pairs</h2>
+                <a href="{{ url_for('add_trading_pair', bot_id=bot[0]) }}" class="btn btn-sm btn-primary">+ Add Pair</a>
+            </div>
+            {% if trading_pairs %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Leverage</th>
+                            <th>Auto</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pair in trading_pairs %}
+                        <tr>
+                            <td><strong>{{ pair[1] }}</strong></td>
+                            <td>{{ pair[2] }}</td>
+                            <td>{{ pair[3] }}x</td>
+                            <td>{% if pair[5] %}✓{% else %}✗{% endif %}</td>
+                            <td>
+                                {% if pair[6] %}
+                                    <span class="badge badge-success">Active</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                    <a href="{{ url_for('edit_trading_pair', bot_id=bot[0], pair_id=pair[0]) }}" class="btn btn-sm btn-secondary">Edit</a>
+                                    <form method="POST" action="{{ url_for('delete_trading_pair', bot_id=bot[0], pair_id=pair[0]) }}"
+                                          onsubmit="return confirm('Delete this trading pair?')"
+                                          style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                    No trading pairs configured yet
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h2 class="card-header">Bot Info</h2>
+            <dl style="line-height: 2;">
+                <dt style="color: var(--gray-600);">Exchange:</dt>
+                <dd style="margin-left: 0;">{{ bot[2]|title }}</dd>
+
+                <dt style="color: var(--gray-600);">Environment:</dt>
+                <dd style="margin-left: 0;">{% if bot[3] %}Testnet{% else %}Mainnet{% endif %}</dd>
+
+                <dt style="color: var(--gray-600);">Created:</dt>
+                <dd style="margin-left: 0;">{{ bot[5].strftime('%Y-%m-%d %H:%M') if bot[5] else 'N/A' }}</dd>
+
+                <dt style="color: var(--gray-600);">Schedule:</dt>
+                <dd style="margin-left: 0;">Every 5 minutes (when running)</dd>
+
+                {% if last_execution %}
+                <dt style="color: var(--gray-600);">Last Run:</dt>
+                <dd style="margin-left: 0;">
+                    {{ last_execution[0].strftime('%m/%d %H:%M:%S') if last_execution[0] else 'Never' }}
+                    {% if last_execution[1] == 'INFO' %}
+                        <span class="badge badge-success">Success</span>
+                    {% elif last_execution[1] == 'ERROR' %}
+                        <span class="badge badge-danger">Failed</span>
+                    {% endif %}
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+    </div>
+
+    <!-- Performance Metrics Charts -->
+    <div class="card">
+        <h2 class="card-header">Performance Metrics</h2>
+
+        <!-- Combined Balance & Position Chart -->
+        <div style="margin-bottom: 2rem;">
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Balance & Position Overview</h3>
+            <div style="position: relative; height: 300px;">
+                <canvas id="balancePositionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Secondary Metrics -->
+        <div class="grid-2">
+            <div>
+                <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Unrealized PnL</h3>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="pnlChart"></canvas>
+                </div>
+            </div>
+            <div>
+                <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Margin Level</h3>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="marginChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-header">Bot Activity Log</h2>
+        {% if bot_logs %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Level</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in bot_logs %}
+                    <tr>
+                        <td>{{ log[3].strftime('%m/%d %H:%M:%S') if log[3] else 'N/A' }}</td>
+                        <td>
+                            {% if log[1] == 'ERROR' %}
+                                <span class="badge badge-danger">ERROR</span>
+                            {% elif log[1] == 'WARNING' %}
+                                <span class="badge badge-warning">WARNING</span>
+                            {% elif log[1] == 'INFO' %}
+                                <span class="badge badge-success">INFO</span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ log[1] }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                No activity yet. Logs will appear here when the bot runs.
+            </p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2 class="card-header">Recent Trades</h2>
+        {% if trades %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Action</th>
+                        <th>Side</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>PnL</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in trades %}
+                    <tr>
+                        <td>{{ trade[0] }}</td>
+                        <td>{{ trade[1] }}</td>
+                        <td>{{ trade[2] }}</td>
+                        <td>{{ trade[3] }}</td>
+                        <td>${{ trade[4] }}</td>
+                        <td style="color: {% if trade[5] and trade[5] > 0 %}var(--success){% else %}var(--danger){% endif %}">
+                            {% if trade[5] %}${{ trade[5] }}{% else %}-{% endif %}
+                        </td>
+                        <td>{{ trade[6].strftime('%m/%d %H:%M') if trade[6] else 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                No trades yet. Start the bot to begin trading.
+            </p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Fetch and render bot metrics
+async function loadMetrics() {
+    try {
+        const response = await fetch('/api/bots/{{ bot[0] }}/metrics?days=7');
+        const data = await response.json();
+
+        // Color palette for multiple symbols
+        const symbolColors = [
+            { border: 'rgb(147, 51, 234)', bg: 'rgba(147, 51, 234, 0.2)' },  // Purple
+            { border: 'rgb(59, 130, 246)', bg: 'rgba(59, 130, 246, 0.2)' },  // Blue
+            { border: 'rgb(234, 88, 12)', bg: 'rgba(234, 88, 12, 0.2)' },    // Orange
+            { border: 'rgb(236, 72, 153)', bg: 'rgba(236, 72, 153, 0.2)' },  // Pink
+            { border: 'rgb(34, 197, 94)', bg: 'rgba(34, 197, 94, 0.2)' }     // Green
+        ];
+
+        // Build datasets for combined chart
+        const balancePositionDatasets = [
+            {
+                label: 'Account Balance ($)',
+                data: data.balance,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                fill: true,
+                tension: 0.4,
+                yAxisID: 'y'
+            }
+        ];
+
+        // Add position value dataset for each symbol
+        if (data.symbols) {
+            let colorIndex = 0;
+            for (const [symbol, symbolData] of Object.entries(data.symbols)) {
+                const colors = symbolColors[colorIndex % symbolColors.length];
+                balancePositionDatasets.push({
+                    label: `${symbol} Position ($)`,
+                    data: symbolData.position_value,
+                    borderColor: colors.border,
+                    backgroundColor: colors.bg,
+                    fill: true,
+                    tension: 0.4,
+                    spanGaps: true,
+                    yAxisID: 'y',
+                    borderWidth: 3
+                });
+                colorIndex++;
+            }
+        }
+
+        // Combined Balance & Position Chart with Dual Y-Axes
+        new Chart(document.getElementById('balancePositionChart'), {
+            type: 'line',
+            data: {
+                labels: data.timestamps.map(t => new Date(t).toLocaleTimeString()),
+                datasets: balancePositionDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 200,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += '$' + context.parsed.y.toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Balance & Position Value ($)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+
+        // Build PnL datasets for each symbol
+        const pnlDatasets = [];
+        if (data.symbols) {
+            let colorIndex = 0;
+            for (const [symbol, symbolData] of Object.entries(data.symbols)) {
+                const colors = symbolColors[colorIndex % symbolColors.length];
+                pnlDatasets.push({
+                    label: `${symbol} PnL ($)`,
+                    data: symbolData.unrealized_pnl,
+                    borderColor: colors.border,
+                    backgroundColor: colors.bg,
+                    segment: {
+                        borderColor: ctx => {
+                            const value = ctx.p1.parsed?.y;
+                            if (value === undefined || value === null) return colors.border;
+                            return value >= 0 ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)';
+                        }
+                    },
+                    fill: true,
+                    tension: 0.4,
+                    spanGaps: true,
+                    borderWidth: 2
+                });
+                colorIndex++;
+            }
+        }
+
+        // PnL Chart
+        new Chart(document.getElementById('pnlChart'), {
+            type: 'line',
+            data: {
+                labels: data.timestamps.map(t => new Date(t).toLocaleTimeString()),
+                datasets: pnlDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 200,
+                plugins: {
+                    legend: {
+                        display: pnlDatasets.length > 1,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) {
+                                return (value >= 0 ? '+' : '') + '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+
+        // Build Margin Level datasets for each symbol
+        const marginDatasets = [];
+        if (data.symbols) {
+            let colorIndex = 0;
+            for (const [symbol, symbolData] of Object.entries(data.symbols)) {
+                const colors = symbolColors[colorIndex % symbolColors.length];
+                marginDatasets.push({
+                    label: `${symbol} Margin`,
+                    data: symbolData.margin_level,
+                    borderColor: colors.border,
+                    backgroundColor: colors.bg,
+                    fill: true,
+                    tension: 0.4,
+                    spanGaps: true,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                });
+                colorIndex++;
+            }
+        }
+
+        // Add liquidation danger line (1.5x - close to liquidation)
+        const liquidationThreshold = Array(data.timestamps.length).fill(1.5);
+        marginDatasets.push({
+            label: 'Liquidation Risk (1.5x)',
+            data: liquidationThreshold,
+            borderColor: 'rgb(239, 68, 68)',
+            borderWidth: 2,
+            borderDash: [10, 5],
+            pointRadius: 0,
+            fill: false,
+            tension: 0
+        });
+
+        // Add warning line (2.0x)
+        const warningThreshold = Array(data.timestamps.length).fill(2.0);
+        marginDatasets.push({
+            label: 'Warning (2.0x)',
+            data: warningThreshold,
+            borderColor: 'rgb(251, 191, 36)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            tension: 0
+        });
+
+        // Margin Level Chart
+        new Chart(document.getElementById('marginChart'), {
+            type: 'line',
+            data: {
+                labels: data.timestamps.map(t => new Date(t).toLocaleTimeString()),
+                datasets: marginDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                resizeDelay: 200,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Margin Level'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1) + 'x';
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Failed to load metrics:', error);
+    }
+}
+
+// Load metrics when page loads
+document.addEventListener('DOMContentLoaded', loadMetrics);
+</script>
+
+{% endblock %}

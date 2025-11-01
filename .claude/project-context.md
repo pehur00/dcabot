@@ -1,6 +1,6 @@
 # DCABot - Agent Memory Bank
 
-Last Updated: 2025-10-29
+Last Updated: 2025-11-01
 
 ## Project Overview
 
@@ -365,6 +365,64 @@ pip install -r requirements.txt
 # Run
 python main.py
 ```
+
+## SaaS Platform (Feature Branch)
+
+A **multi-user SaaS platform** is being developed on the `feature/saas-transformation` branch. This transforms the standalone bot into a web-based service where users can create and manage their own trading bots.
+
+### Branch Strategy
+- **main branch**: Standalone bot (current deployment, unchanged)
+- **feature/saas-transformation**: SaaS platform (new development)
+
+### Key Differences
+**Standalone (main)**:
+- Single user, single bot
+- Configuration via .env file
+- Cron job runs one bot every 5 minutes
+- No database required
+
+**SaaS Platform (feature/saas)**:
+- Multiple users, multiple bots
+- Web UI for bot management
+- Cron job executes ALL active bots every 5 minutes
+- PostgreSQL database (Digital Ocean managed)
+- User authentication and API key encryption
+
+### Architecture Overview
+```
+Render (Frankfurt):
+├── dcabot-saas-web (Flask) - $7/month
+│   └── Web UI + API endpoints
+└── dcabot-saas-scheduler (Cron) - FREE
+    └── Executes all active bots every 5 minutes
+
+Digital Ocean:
+└── PostgreSQL (diptrader database)
+    └── Tables: users, bots, trading_pairs, trades, bot_logs
+```
+
+### Documentation
+- **Complete Guide**: `docs/SAAS.md` - Architecture, deployment, schema, troubleshooting
+- **Deployment Checklist**: `DEPLOYMENT_CHECKLIST.md` - Step-by-step deployment guide
+- **Branch**: `feature/saas-transformation` (separate from main)
+
+### Key Files (SaaS only)
+- `saas/app.py` - Flask web application
+- `saas/database.py` - PostgreSQL utilities
+- `saas/security.py` - API key encryption (Fernet)
+- `saas/execute_all_bots.py` - Cron executor for all bots
+- `saas/schema.sql` - Database schema
+- `requirements-saas.txt` - SaaS-specific dependencies
+- `render.yaml` - Render Blueprint (SaaS services only)
+
+### Future Features
+- User registration/login
+- Web dashboard for bot management
+- Backtest integration (test configs before deploying)
+- Performance analytics
+- Telegram notifications per user
+
+See `docs/SAAS.md` for complete details on the SaaS platform.
 
 ## Important Patterns & Decisions
 

@@ -13,6 +13,55 @@ from clients.PhemexClient import PhemexClient
 from notifications.TelegramNotifier import TelegramNotifier
 
 
+async def load_bot_from_database(bot_id):
+    """Load bot configuration from database when BOT_ID is set"""
+    from saas.database import get_db
+    from saas.security import decrypt_api_key
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Get bot info
+        cursor.execute("""
+            SELECT exchange, testnet, api_key_encrypted, api_secret_encrypted
+            FROM bots
+            WHERE id = %s
+        """, (bot_id,))
+        bot = cursor.fetchone()
+
+        if not bot:
+            raise ValueError(f"Bot {bot_id} not found in database")
+
+        exchange, testnet, api_key_encrypted, api_secret_encrypted = bot
+
+        # Decrypt API keys
+        api_key = decrypt_api_key(api_key_encrypted)
+        api_secret = decrypt_api_key(api_secret_encrypted)
+
+        # Get trading pairs
+        cursor.execute("""
+            SELECT symbol, side, leverage, ema_interval, automatic_mode
+            FROM trading_pairs
+            WHERE bot_id = %s AND is_active = true
+        """, (bot_id,))
+        pairs = cursor.fetchall()
+
+        # Build symbol_sides string: "BTCUSDT:Long:True,ETHUSDT:Short:False"
+        symbol_sides = ','.join([f"{symbol}:{side}:{automatic}" for symbol, side, leverage, ema_interval, automatic in pairs])
+
+        # Use first pair's EMA interval (or default to 1)
+        ema_interval = pairs[0][3] if pairs else 1
+
+        return {
+            'api_key': api_key,
+            'api_secret': api_secret,
+            'testnet': testnet,
+            'symbol_sides': symbol_sides,
+            'ema_interval': ema_interval,
+            'exchange': exchange
+        }
+
+
 async def main():
     # Load .env file if it exists (for local development)
     # Docker/Render will inject env vars directly
@@ -20,6 +69,7 @@ async def main():
     if env_path.exists():
         load_dotenv(env_path)
         logging.info("Loaded environment variables from .env file")
+
     # Remove all existing handlers to prevent duplicate logging
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
@@ -43,14 +93,27 @@ async def main():
     logger = logging.getLogger(__name__)
     logger.propagate = True
 
-    # Retrieve environment variables
-    api_key = os.getenv('API_KEY')
-    api_secret = os.getenv('API_SECRET')
-    ema_interval = int(os.getenv('EMA_INTERVAL', 1))  # Provide a default value (e.g., 200) if the variable isn't set
-    testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
+    # Check if BOT_ID is set (SaaS mode)
+    bot_id = os.getenv('BOT_ID')
+    if bot_id:
+        # Load from database
+        logger.info(f"Loading bot configuration from database (BOT_ID={bot_id})")
+        config = await load_bot_from_database(int(bot_id))
+        api_key = config['api_key']
+        api_secret = config['api_secret']
+        testnet = config['testnet']
+        symbol_sides = config['symbol_sides']
+        ema_interval = config['ema_interval']
+    else:
+        # Load from environment variables (legacy mode)
+        logger.info("Loading bot configuration from environment variables")
+        api_key = os.getenv('API_KEY')
+        api_secret = os.getenv('API_SECRET')
+        ema_interval = int(os.getenv('EMA_INTERVAL', 1))
+        testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
+        symbol_sides = os.getenv('SYMBOL', '')
+
     # Parse the symbol configuration into a dictionary
-    # Retrieve symbols from environment or configuration
-    symbol_sides = os.getenv('SYMBOL', '')  # Example: "BTCUSDT:Buy,ETHUSDT:Sell,ADAUSDT:Buy"
     symbol_side_map = await parse_symbols(symbol_sides)
 
     # Validate required environment variables
@@ -107,16 +170,34 @@ async def parse_symbols(symbol_sides):
 async def execute_symbol_strategy(symbol, workflow, ema_interval, pos_side, automatic_mode, notifier=None):
     try:
         # Execute the trading strategy for the specific symbol
-        await asyncio.to_thread(
+        result = await asyncio.to_thread(
             workflow.execute,
             symbol=symbol,
             ema_interval=ema_interval,
             pos_side=pos_side,
             automatic_mode=automatic_mode
         )
-        logging.info(f'Successfully executed strategy for {symbol}')
+
+        # Log the conclusion and metrics in formats that execute_all_bots.py can parse
+        if result:
+            import json
+            action = result.get('action', 'unknown')
+            conclusion = result.get('conclusion', 'No details')
+
+            # Output conclusion for logging
+            print(f"EXECUTION_CONCLUSION: {symbol} {pos_side} - {action.upper()} - {conclusion}")
+
+            # Output full metrics as JSON for database persistence
+            metrics_json = json.dumps(result)
+            print(f"EXECUTION_METRICS: {metrics_json}")
+
+            logging.info(f'Successfully executed strategy for {symbol}: {conclusion}')
+        else:
+            print(f"EXECUTION_CONCLUSION: {symbol} {pos_side} - COMPLETED - No result returned")
+            logging.info(f'Successfully executed strategy for {symbol}')
     except Exception as e:
         error_msg = str(e)
+        print(f"EXECUTION_CONCLUSION: {symbol} {pos_side} - ERROR - {error_msg}")
         logging.error(f'Error executing strategy for {symbol}: {error_msg}')
 
         # Send Telegram notification on error

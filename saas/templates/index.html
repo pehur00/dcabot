@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <h1>Automate Your Crypto Trading</h1>
+    <p>Deploy professional DCA trading bots with Martingale strategy</p>
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+        <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started Free</a>
+        <a href="{{ url_for('login') }}" class="btn btn-secondary">Login</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="grid">
+        <div class="card">
+            <h3>🎯 Smart Strategy</h3>
+            <p>Martingale trading with volatility protection and decline velocity detection</p>
+        </div>
+        <div class="card">
+            <h3>🔒 Secure</h3>
+            <p>Your API keys are encrypted with military-grade encryption</p>
+        </div>
+        <div class="card">
+            <h3>⚡ Fast</h3>
+            <p>Bots execute every 5 minutes to capture optimal entry points</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

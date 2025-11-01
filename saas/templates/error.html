@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Error {{ code }} - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card text-center">
+        <h1 style="font-size: 4rem; color: var(--gray-400);">{{ code }}</h1>
+        <h2>{{ error }}</h2>
+        <p style="color: var(--gray-600); margin: 2rem 0;">Something went wrong. Please try again later.</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Go Home</a>
+    </div>
+</div>
+{% endblock %}

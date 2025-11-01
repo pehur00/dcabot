@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="flex justify-between items-center mb-2">
+        <h1>Your Trading Bots</h1>
+        {% if can_create_more %}
+            <a href="{{ url_for('create_bot') }}" class="btn btn-primary">+ New Bot</a>
+        {% endif %}
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-label">Total Bots</div>
+            <div class="stat-value">{{ bot_count }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Plan</div>
+            <div class="stat-value">{{ current_user.plan|title }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Bot Limit</div>
+            <div class="stat-value">{{ bot_count }} / {{ max_bots }}</div>
+        </div>
+    </div>
+
+    {% if bots %}
+        <div class="grid">
+            {% for bot in bots %}
+            <div class="bot-card">
+                <div class="bot-info">
+                    <h3>{{ bot[1] }}</h3>
+                    <p>
+                        {{ bot[2]|title }}
+                        {% if bot[3] %}<span class="badge badge-warning">Testnet</span>{% endif %}
+                        {% if bot[4] == 'running' %}
+                            <span class="badge badge-success">Running</span>
+                        {% elif bot[4] == 'stopped' %}
+                            <span class="badge badge-secondary">Stopped</span>
+                        {% else %}
+                            <span class="badge badge-danger">Error</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="bot-actions">
+                    <a href="{{ url_for('view_bot', bot_id=bot[0]) }}" class="btn btn-sm btn-primary">View</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            </svg>
+            <h2>No bots yet</h2>
+            <p>Create your first trading bot to get started</p>
+            {% if can_create_more %}
+                <a href="{{ url_for('create_bot') }}" class="btn btn-primary mt-2">Create Your First Bot</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if not can_create_more %}
+        <div class="alert alert-warning mt-2">
+            You've reached your bot limit ({{ max_bots }} bots on {{ current_user.plan }} plan). Upgrade to create more bots.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

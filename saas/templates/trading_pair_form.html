@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}{% if pair %}Edit Trading Pair{% else %}Add Trading Pair{% endif %} - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container container-small">
+    <div class="card">
+        <h1 class="card-header">
+            {% if pair %}Edit Trading Pair - {{ bot[1] }}{% else %}Add Trading Pair - {{ bot[1] }}{% endif %}
+        </h1>
+        <form method="POST">
+            <div class="form-group">
+                <label for="symbol">Symbol</label>
+                <input type="text" id="symbol" name="symbol" required
+                       value="{% if pair %}{{ pair[1] }}{% endif %}"
+                       placeholder="BTCUSDT"
+                       style="text-transform: uppercase;">
+                <small style="color: var(--gray-600);">Trading pair symbol (e.g., BTCUSDT, ETHUSDT, SOLUSDT)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="side">Side</label>
+                <select id="side" name="side" required>
+                    <option value="Long" {% if pair and pair[2] == 'Long' %}selected{% endif %}>Long (Buy)</option>
+                    <option value="Short" {% if pair and pair[2] == 'Short' %}selected{% endif %}>Short (Sell)</option>
+                </select>
+                <small style="color: var(--gray-600);">Long = profit when price goes up, Short = profit when price goes down</small>
+            </div>
+
+            <div class="form-group">
+                <label for="leverage">Leverage</label>
+                <input type="number" id="leverage" name="leverage" required min="1" max="100"
+                       value="{% if pair %}{{ pair[3] }}{% else %}10{% endif %}">
+                <small style="color: var(--gray-600);">Multiplier for position size (1-100x, recommended: 5-20x)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="ema_interval">EMA Interval (minutes)</label>
+                <select id="ema_interval" name="ema_interval">
+                    <option value="1" {% if pair and pair[4] == 1 %}selected{% endif %}>1 minute</option>
+                    <option value="5" {% if pair and pair[4] == 5 %}selected{% endif %}>5 minutes</option>
+                    <option value="15" {% if pair and pair[4] == 15 %}selected{% endif %}>15 minutes</option>
+                    <option value="30" {% if pair and pair[4] == 30 %}selected{% endif %}>30 minutes</option>
+                    <option value="60" {% if pair and pair[4] == 60 %}selected{% endif %}>1 hour</option>
+                </select>
+                <small style="color: var(--gray-600);">EMA timeframe for trend analysis</small>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="automatic_mode" name="automatic_mode"
+                           {% if not pair or pair[5] %}checked{% endif %}>
+                    <label for="automatic_mode">Automatic Trading</label>
+                </div>
+                <small style="color: var(--gray-600);">Auto-open new positions when bot is running</small>
+            </div>
+
+            {% if pair %}
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="is_active" name="is_active"
+                           {% if pair[6] %}checked{% endif %}>
+                    <label for="is_active">Active</label>
+                </div>
+                <small style="color: var(--gray-600);">Enable/disable this trading pair</small>
+            </div>
+            {% endif %}
+
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    {% if pair %}Update Trading Pair{% else %}Add Trading Pair{% endif %}
+                </button>
+                <a href="{{ url_for('view_bot', bot_id=bot[0]) }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

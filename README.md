@@ -1,18 +1,40 @@
-# Martingale Trading Bot
+# DCA Bot - Martingale Trading Platform
 
-A sophisticated cryptocurrency trading bot implementing a Martingale-style averaging strategy with EMA filters, volatility protection, and automated risk management.
+A sophisticated cryptocurrency trading bot implementing a Martingale-style averaging strategy. Available as both a standalone bot and a multi-user SaaS platform.
+
+## 🎯 Two Deployment Modes
+
+### 1. Standalone Bot (Original)
+Single-user bot running on your own infrastructure. Perfect for personal use.
+
+- Deploy to Render, VPS, or run locally
+- Configured via environment variables
+- One bot per deployment
+- See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+
+### 2. SaaS Platform (New!)
+Multi-user web platform with dashboard and bot management UI.
+
+- **Web Dashboard**: Manage bots through a UI
+- **Multi-User**: User registration and admin approval
+- **Multiple Bots**: Each user can run multiple bots
+- **Performance Charts**: Real-time metrics visualization
+- **Admin Panel**: User management and registration control
+- **Cost**: ~$22/month (Render + Database)
+
+See [🚀 SaaS Platform](#-saas-platform) section below for details.
 
 ## Features
 
 - **Martingale Strategy**: Systematic position averaging with EMA-based trend filtering
-- **Volatility Protection**: Automatically pauses trading during high volatility (ATR, Bollinger Bands, Historical Volatility)
-- **Telegram Notifications**: Real-time alerts for positions, profits, warnings, and errors
-- **Risk Management**: Margin monitoring, position size limits, and liquidation protection
-- **Multi-Symbol Support**: Trade multiple pairs simultaneously with different strategies
-- **Retry & Rate Limiting**: Built-in error handling and API rate limiting
-- **Cloud Ready**: Docker support and Render.com deployment configuration
+- **Volatility Protection**: Automatically pauses trading during high volatility
+- **Telegram Notifications**: Real-time alerts for positions, profits, warnings
+- **Risk Management**: Margin monitoring, position limits, liquidation protection
+- **Multi-Symbol Support**: Trade multiple pairs simultaneously
+- **Backtesting Framework**: Validate strategies on historical data
+- **Cloud Ready**: Docker support and one-click deployment
 
-## Quick Start
+## Quick Start (Standalone Mode)
 
 ### 1. Installation
 
@@ -36,64 +58,179 @@ TESTNET=True
 # Optional: Telegram notifications
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
-
-# Optional: Fee optimization (default: True)
-USE_POSTONLY=True
 ```
 
 ### 3. Run Locally
 
 ```bash
-# Option 1: Using virtual environment (recommended)
 dcabot-env/bin/python main.py
+```
 
-# Option 2: If virtual env is activated
+## 🚀 SaaS Platform
+
+The SaaS platform transforms the standalone bot into a multi-user web application.
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────┐
+│ Flask Web Dashboard (Render - $7/month)      │
+│ • User authentication & registration         │
+│ • Bot management UI                          │
+│ • Trading pair configuration                 │
+│ • Performance charts & analytics             │
+│ • Admin panel                                │
+└──────────────────────────────────────────────┘
+              │
+              ├─────────────────────────────────┐
+              │                                 │
+┌─────────────▼──────────┐   ┌─────────────────▼────────┐
+│ Cron Scheduler (FREE)  │   │ PostgreSQL Database      │
+│ • Runs every 5 minutes │   │ • Users & bots           │
+│ • Executes all active  │   │ • Trading pairs          │
+│   bots sequentially    │   │ • Metrics & logs         │
+│ • Logs to database     │   │ • Trades history         │
+└────────────────────────┘   └──────────────────────────┘
+```
+
+### Key Features
+
+**Multi-User Management**
+- User registration with admin approval
+- Encrypted API credentials (Fernet encryption)
+- Password hashing (bcrypt)
+- Admin panel for user management
+
+**Bot Dashboard**
+- Create and manage multiple bots per user
+- Configure trading pairs with different strategies
+- Start/stop bots individually
+- Real-time status monitoring
+
+**Performance Analytics**
+- Balance & Position overview charts
+- Unrealized PnL tracking
+- Margin level monitoring
+- Trade history and activity logs
+
+**Database-Driven Configuration**
+- No environment variables per bot
+- All configuration stored securely
+- Easy bot cloning and management
+- Automatic migration system
+
+### Local Testing (SaaS Platform)
+
+#### 1. Setup Local Database
+
+```bash
+# Start PostgreSQL (Docker)
+docker run -d \
+  --name dcabot-db \
+  -e POSTGRES_USER=dcabot \
+  -e POSTGRES_PASSWORD=dcabot_dev_password \
+  -e POSTGRES_DB=dcabot_dev \
+  -p 5435:5432 \
+  postgres:15
+
+# Set environment variables
+export DATABASE_URL="postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev"
+export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+export SECRET_KEY="dev-secret-key-change-in-production"
+
+# Run database migrations
+python saas/migrate.py
+```
+
+#### 2. Run Flask Web Server
+
+```bash
+# Terminal 1: Start Flask app
+export FLASK_APP=saas.app
+export FLASK_ENV=development
+dcabot-env/bin/python -m flask run --port 3030
+
+# Access at: http://localhost:3030
+```
+
+#### 3. Test Bot Execution
+
+```bash
+# Terminal 2: Execute all active bots once
+export DATABASE_URL="postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev"
+python saas/execute_all_bots.py
+
+# Or test a specific bot
+export BOT_ID=1
 python main.py
 ```
 
-**What happens when you run:**
-- Bot loads environment variables from `.env`
-- Connects to Phemex API (TESTNET=True uses testnet, TESTNET=False uses mainnet)
-- Executes strategy once for each symbol in SYMBOL env var
-- Places orders if strategy conditions are met
-- Exits (simulates one cron job cycle)
+#### 4. Test Scripts
 
-**Testing PostOnly orders:**
+Located in `scripts/` directory:
+
 ```bash
-# Set in .env file (recommended):
-USE_POSTONLY=True    # Uses maker fees (0.075%)
-USE_POSTONLY=False   # Uses taker fees (0.15%)
+# List and execute a specific bot
+./scripts/test_bot_run.sh
 
-# Or export temporarily:
-export USE_POSTONLY=false
-dcabot-env/bin/python main.py
+# Continuous execution (simulates cron)
+./scripts/run_bot_loop.sh
 ```
 
-**Safety tips for local testing:**
-- Start with `TESTNET=True` for risk-free testing
-- Use small position sizes initially
-- Check current positions before running
-- Monitor logs for "Order timeInForce: PostOnly" (entry orders) or "GoodTillCancel" (exit orders)
+See [scripts/README.md](scripts/README.md) for details.
 
-## Documentation
+### Deployment Strategy
 
-- **[Setup Guide](docs/SETUP.md)** - Local and remote installation
-- **[Strategy Explanation](docs/STRATEGY.md)** - How the Martingale strategy works
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy to Render.com or VPS
-- **[Telegram Setup](docs/TELEGRAM_SETUP.md)** - Configure notifications
+**Current Setup**:
+- **Platform**: Render.com
+- **Region**: Frankfurt (EU)
+- **Branch**: `feature/saas-transformation`
+- **Cost**: ~$22/month
 
-## Architecture
+**Services**:
+1. **Web Service** (`dcabot-saas-web`)
+   - Flask application with Gunicorn
+   - Health checks and API endpoints
+   - Automatic migrations on deploy
+   - Cost: $7/month
 
+2. **Cron Job** (`dcabot-saas-scheduler`)
+   - Executes every 5 minutes
+   - Runs all active bots sequentially
+   - Logs results to database
+   - Cost: FREE
+
+3. **PostgreSQL Database** (Digital Ocean)
+   - Stores users, bots, configurations
+   - Tracks metrics and execution history
+   - SSL-enabled connections
+   - Cost: ~$15/month
+
+**Migration System**:
+- SQL files in `saas/migrations/`
+- Automatic execution on deployment
+- Tracks applied migrations in database
+- See [docs/DATABASE_MIGRATIONS.md](docs/DATABASE_MIGRATIONS.md)
+
+**Deployment Flow**:
+```bash
+# 1. Make changes
+git add .
+git commit -m "Add feature"
+
+# 2. Push to GitHub
+git push origin feature/saas-transformation
+
+# 3. Render auto-deploys
+# - Runs migrations
+# - Builds app
+# - Zero downtime
 ```
-dcabot/
-├── clients/          # Exchange API clients (Phemex)
-├── strategies/       # Trading strategy implementations
-├── workflows/        # Execution workflows
-├── notifications/    # Telegram notification system
-├── indicators/       # Technical indicators (volatility, EMA)
-├── utils/            # Retry logic and rate limiting
-└── docs/             # Documentation
-```
+
+**Documentation**:
+- **[Render Deployment Guide](docs/RENDER_DEPLOYMENT.md)** - Complete setup walkthrough
+- **[Database Migrations](docs/DATABASE_MIGRATIONS.md)** - Schema management
+- **[SaaS Platform Details](docs/SAAS.md)** - Architecture and implementation
 
 ## Strategy Overview
 
@@ -105,213 +242,89 @@ The bot implements a **Martingale averaging strategy**:
 4. **Volatility Protection**: Pauses during high volatility
 5. **Risk Management**: Maintains safe margin levels
 
-See [STRATEGY.md](docs/STRATEGY.md) for detailed explanation.
+See [docs/STRATEGY.md](docs/STRATEGY.md) for detailed explanation.
 
 ## Backtesting
 
-The bot includes a comprehensive backtesting framework to validate strategy performance on historical data. The backtest simulates the exact bot behavior, checking every 5 minutes using 1-minute candles.
-
-### Basic Usage
+Comprehensive backtesting framework to validate strategy performance:
 
 ```bash
-# Run backtest with default settings (1 day, $70 balance)
-dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 1 --interval 1 --source binance --balance 70 --side Long
+# Basic backtest
+dcabot-env/bin/python backtest/backtest.py \
+  --symbol BTCUSDT \
+  --days 30 \
+  --balance 200 \
+  --side Long
 
-# Run longer backtest (90 days)
-dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 90 --interval 1 --source binance --balance 70 --side Long
+# Test multiple leverages
+./test_leverages.sh BTCUSDT 30 200 Long
 
-# Test different initial balance
-dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --balance 100 --side Long
-
-# Optimize profit-taking threshold
-dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --profit-pnl 0.15 --side Long
-
-# Test with margin protection (40% max margin cap to prevent early liquidations)
-dcabot-env/bin/python backtest/backtest.py --symbol HBARUSDT --days 30 --max-margin-pct 0.40 --side Long
-
-# Test with different leverage (default is 10x)
-dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --leverage 5 --side Long
-dcabot-env/bin/python backtest/backtest.py --symbol BTCUSDT --days 30 --leverage 20 --side Long
+# Test top volume coins
+dcabot-env/bin/python test_top_coins.py \
+  --leverage 10 \
+  --days 7 \
+  --balance 200
 ```
 
-### Parameters
+Results include:
+- 5-panel performance charts
+- Balance history CSV
+- Trade log CSV
+- Detailed statistics
 
-- `--symbol`: Trading pair (e.g., HBARUSDT, BTCUSDT, u1000PEPEUSDT)
-- `--days`: Number of days to backtest (e.g., 1, 7, 30, 90)
-- `--interval`: Candle interval in minutes (always use `1` for 1-minute candles)
-- `--source`: Data source (`binance` recommended)
-- `--balance`: Initial balance in USDT (default: 100)
-- `--side`: Position side (`Long` or `Short`)
-- `--profit-pnl`: Profit-taking threshold as decimal (default: 0.1 = 10%)
-- `--max-margin-pct`: Optional maximum margin usage cap (e.g., 0.40 = 40% max). When absent, no cap is applied
-- `--leverage`: Leverage multiplier (default: 10). Test different leverages like 5, 10, 15, 20
+See [Backtesting section](#backtesting) in docs for more details.
 
-### Example Results (31 days, SOLUSDT)
+## Documentation
 
-**Performance Metrics:**
-- **Initial Balance**: $200.00
-- **Final Balance**: $221.81
-- **Total Return**: +10.90%
-- **Win Rate**: 96.30% (26 wins, 1 loss)
-- **Max Drawdown**: 23.38%
-- **Total Operations**: 585 (18 opens, 540 adds, 9 reduces, 18 closes)
-- **Average Win**: $0.95
-- **Total Fees**: $2.67
+### Platform Documentation
+- **[SaaS Platform](docs/SAAS.md)** - Multi-user platform overview
+- **[Render Deployment](docs/RENDER_DEPLOYMENT.md)** - Complete deployment guide
+- **[Database Migrations](docs/DATABASE_MIGRATIONS.md)** - Schema management
+- **[Local Testing](scripts/README.md)** - Development and testing
 
-### Backtest Chart Breakdown
+### Bot Documentation
+- **[Strategy Explanation](docs/STRATEGY.md)** - How the Martingale strategy works
+- **[Setup Guide](docs/SETUP.md)** - Local and remote installation
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy standalone bot
+- **[Telegram Setup](docs/TELEGRAM_SETUP.md)** - Configure notifications
 
-The backtest generates a comprehensive 5-panel chart:
-
-1. **Price Chart**: Shows price action with 1-minute EMA200 and all trade markers
-   - Green triangles = OPEN positions
-   - Blue triangles = ADD to positions
-   - Orange squares = REDUCE positions (profit-taking)
-   - Red circles = CLOSE positions
-
-2. **Account Balance & Total Value**: Clean view of your account performance
-   - Blue line = Realized balance (only changes on close/reduce)
-   - Purple line = Total value (balance + unrealized PnL)
-
-3. **Position Size Chart**: Shows margin invested over time
-   - Orange filled area = How much margin is actively in positions
-   - Helps visualize when bot is heavily invested vs idle
-
-4. **Drawdown Analysis**: Shows risk metrics and account drawdowns
-
-5. **Performance Summary**: Detailed statistics and trade breakdown
-
-### Example Backtest Chart
-
-![Backtest Chart Example](backtest/example_backtest.png)
-
-**SOLUSDT 31-Day Backtest - $200 Balance @ 5x Leverage**
-
-This chart demonstrates the bot's position management strategy during real market conditions:
-
-- **Top Panel (Price & Positions)**: Shows multiple position cycles with precise entry/exit timing. Green markers indicate position opens below the 1h EMA100 (dip-buying strategy), blue markers show systematic averaging during drawdowns, and orange/red markers show profit-taking as price recovers.
-
-- **Middle Panel (Balance Performance)**: The purple line (Total Value including unrealized PnL) shows smooth upward trajectory despite market volatility. Notice how unrealized losses are temporary as the bot averages down and recovers.
-
-- **Position Margin Panel**: Orange area shows how the bot dynamically manages capital allocation. Peaks represent full position buildups during drawdowns, valleys show idle periods between trades. The strategy respects the 50% margin cap (dynamic tapering prevents overexposure).
-
-- **Drawdown Chart**: Visualizes risk management effectiveness. Maximum drawdown of ~10% shows the bot's ability to weather adverse conditions without approaching liquidation.
-
-- **Performance Summary**: Final result of +11.19% return over 31 days demonstrates consistent profitability through multiple market cycles.
-
-**Key Observations:**
-- Bot opens positions only during favorable conditions (below 1h EMA100)
-- Systematic position building during drawdowns with controlled margin usage
-- Profit-taking occurs at multiple levels (33% close @ 7.5%, 50% close @ 10%)
-- Multiple successful cycles with 92.3% win rate (12 wins, 1 loss)
-- Dynamic tapering keeps margin usage under control as positions grow
-
-### Output Files
-
-All backtest results are saved to `backtest/results/` with timestamps:
+## Architecture
 
 ```
-HBARUSDT_Long_bal70_profit0.10_20251027_154543_chart.png    # Visual charts
-HBARUSDT_Long_bal70_profit0.10_20251027_154541_balance.csv  # Balance history
-HBARUSDT_Long_bal70_profit0.10_20251027_154541_trades.csv   # Trade log
+dcabot/
+├── saas/                 # SaaS platform
+│   ├── app.py           # Flask web application
+│   ├── database.py      # Database utilities
+│   ├── security.py      # Encryption & auth
+│   ├── migrate.py       # Migration runner
+│   ├── execute_all_bots.py  # Cron executor
+│   ├── migrations/      # SQL migration files
+│   └── templates/       # HTML templates
+├── clients/             # Exchange API clients
+├── strategies/          # Trading strategies
+├── workflows/           # Execution workflows
+├── notifications/       # Telegram notifier
+├── indicators/          # Technical indicators
+├── backtest/           # Backtesting framework
+├── scripts/            # Testing & deployment scripts
+└── docs/               # Documentation
+
 ```
-
-### Important Notes
-
-- Backtest checks every 5 minutes (matching real bot behavior)
-- Uses 1-minute candles for accurate price data
-- Includes all volatility protections and risk management
-- Simulates exact margin calculations and leverage (configurable via `--leverage`)
-- Fees are included in calculations (0.075% per trade)
-
-### Automated Testing Tools
-
-**Test Multiple Leverages** (`test_leverages.sh`):
-```bash
-# Test one symbol with 5x, 10x, 15x, 20x leverage
-./test_leverages.sh HBARUSDT 30 200 Long
-# Results saved as: HBARUSDT_lev5x_30d_*, HBARUSDT_lev10x_30d_*, etc.
-```
-
-**Test Top Volume Coins** (`test_top_coins.py`):
-```bash
-# Test top 10 volume coins automatically
-dcabot-env/bin/python test_top_coins.py --leverage 10 --days 7 --balance 200
-
-# Test specific coins
-dcabot-env/bin/python test_top_coins.py --coins BTCUSDT ETHUSDT SOLUSDT --days 30
-
-# Test top 5 coins with custom settings
-dcabot-env/bin/python test_top_coins.py --num-coins 5 --leverage 5 --days 60 --balance 500
-```
-
-**Features**:
-- Automatically fetches top volume coins from Binance (excludes stablecoins/fiat)
-- Runs backtests sequentially for all coins
-- Generates summary CSV comparing performance across all coins
-- Saves individual charts, balance CSVs, and trade logs for each coin
 
 ## Configuration
 
-Key parameters in `strategies/MartingaleTradingStrategy.py`:
+Key strategy parameters (`strategies/MartingaleTradingStrategy.py`):
 
 ```python
 CONFIG = {
-    'leverage': 10,                   # Trading leverage (10x)
-    'begin_size_of_balance': 0.006,   # Initial position: 0.6% of balance
-    'buy_until_limit': 0.05,          # Max position: 5% of balance (in margin)
-    'profit_threshold': 0.003,        # Min profit: 0.3% of balance to consider closing
-    'profit_pnl': 0.1,                # Target: 10% profit on margin invested
-    'max_margin_pct': None,           # Optional: Max margin cap (e.g., 0.40 = 40%). None = no limit
+    'leverage': 10,                   # Trading leverage
+    'begin_size_of_balance': 0.006,   # Initial position: 0.6%
+    'buy_until_limit': 0.05,          # Max position: 5%
+    'profit_threshold': 0.003,        # Min profit: 0.3%
+    'profit_pnl': 0.1,                # Target: 10% profit
+    'max_margin_pct': 0.50,           # Margin cap: 50%
 }
 ```
-
-**Important Notes**:
-- `buy_until_limit` refers to margin invested, not notional value. With 10x leverage, 5% margin = 50% notional position.
-- `max_margin_pct` provides **margin protection with dynamic tapering**:
-  - When `None`: No protection (not recommended for live trading)
-  - When set (e.g., `0.50`): Implements smart tapering system
-  - **Dynamic Tapering**: Order sizes reduce exponentially as margin usage increases
-    - At 0% margin: 100% order size (full adds)
-    - At 25% margin: 56% order size
-    - At 40% margin: 4% order size
-    - At 50% margin: 0% order size (no adds)
-  - **Benefits**: More trades with smaller sizes, better price averaging, maintains volatility buffer
-  - **Example**: With $200 balance and 50% cap, bot gradually reduces order sizes approaching $100 margin
-  - **Result**: Never hits the hard cap, prevents liquidations while staying active
-
-## Requirements
-
-- Python 3.8+
-- Phemex account with API access
-- (Optional) Telegram bot for notifications
-
-## Deployment
-
-### Render.com (Recommended)
-
-1. Push code to GitHub
-2. Create Cron Job on Render.com
-3. Set environment variables
-4. Deploy
-
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for details.
-
-### Docker
-
-```bash
-docker build -t martingale-bot .
-docker run -d \
-  -e API_KEY=your_key \
-  -e API_SECRET=your_secret \
-  -e SYMBOL=BTCUSDT:Long:True \
-  martingale-bot
-```
-
-## Monitoring
-
-- **Telegram**: Real-time notifications for all bot actions
-- **Logs**: Structured JSON logging for easy parsing
-- **Phemex Dashboard**: Monitor positions and PnL
 
 ## Safety Features
 
@@ -322,8 +335,17 @@ docker run -d \
 - ✅ Volatility detection and pausing
 - ✅ Position size limits
 - ✅ Emergency liquidation protection
-- ✅ **Dynamic position tapering** (reduces order sizes as margin increases)
-- ✅ Optional margin usage cap (50% default with exponential tapering)
+- ✅ Dynamic position tapering
+- ✅ Encrypted API credentials (SaaS)
+- ✅ User authentication (SaaS)
+- ✅ Admin approval system (SaaS)
+
+## Requirements
+
+- Python 3.8+
+- Phemex account with API access
+- (Optional) Telegram bot for notifications
+- (SaaS) PostgreSQL database
 
 ## Risk Warning
 
@@ -341,13 +363,14 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- **Documentation**: See `docs/` directory
 - **Issues**: Report bugs via GitHub Issues
+- **Documentation**: See `docs/` directory
 - **Strategy Questions**: See [STRATEGY.md](docs/STRATEGY.md)
+- **Deployment Help**: See [RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md)
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+See [CHANGELOG.md](docs/CHANGELOG.md) for version history.
 
 ## Disclaimer
 

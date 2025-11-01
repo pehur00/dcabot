@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Admin Panel</h1>
+    <p style="color: var(--gray-600);">Manage users and system settings</p>
+
+    <!-- Registration Toggle -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 class="card-header">Registration Settings</h2>
+        <div class="flex justify-between items-center">
+            <div>
+                <p style="margin: 0;">
+                    <strong>Status:</strong>
+                    {% if registration_enabled %}
+                        <span class="badge badge-success">Enabled</span>
+                    {% else %}
+                        <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                </p>
+                <p style="color: var(--gray-600); margin-top: 0.5rem;">
+                    {% if registration_enabled %}
+                        New users can register and will need approval before accessing the platform.
+                    {% else %}
+                        Registration is closed. New users cannot sign up.
+                    {% endif %}
+                </p>
+            </div>
+            <form method="POST" action="{{ url_for('toggle_registration') }}" style="display: inline;">
+                <button type="submit" class="btn {% if registration_enabled %}btn-danger{% else %}btn-success{% endif %}">
+                    {% if registration_enabled %}Disable Registration{% else %}Enable Registration{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pending Approvals -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 class="card-header">
+            Pending Approvals
+            {% if pending_users %}
+                <span class="badge badge-warning" style="margin-left: 0.5rem;">{{ pending_users|length }}</span>
+            {% endif %}
+        </h2>
+        {% if pending_users %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Requested At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in pending_users %}
+                    <tr>
+                        <td>{{ user[1] }}</td>
+                        <td>{{ user[2].strftime('%Y-%m-%d %H:%M') if user[2] else 'N/A' }}</td>
+                        <td>
+                            <div class="flex gap-2">
+                                <form method="POST" action="{{ url_for('approve_user', user_id=user[0]) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('reject_user', user_id=user[0]) }}"
+                                      onsubmit="return confirm('Reject and delete this user?')"
+                                      style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                No pending approvals
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- All Users -->
+    <div class="card">
+        <h2 class="card-header">All Users</h2>
+        {% if all_users %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in all_users %}
+                    <tr>
+                        <td>
+                            <strong>{{ user[1] }}</strong>
+                            {% if user[0] == current_user.id %}
+                                <span class="badge badge-secondary" style="margin-left: 0.5rem;">You</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user[2] %}
+                                <span class="badge badge-warning">Admin</span>
+                            {% else %}
+                                <span class="badge badge-secondary">User</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user[3] %}
+                                <span class="badge badge-success">Approved</span>
+                            {% else %}
+                                <span class="badge badge-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user[4].strftime('%Y-%m-%d') if user[4] else 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                No users found
+            </p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="margin-top: 2rem;">← Back to Dashboard</a>
+</div>
+{% endblock %}

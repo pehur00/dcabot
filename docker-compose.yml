@@ -1,49 +1,27 @@
+# Docker Compose for Local SaaS Development
+# Run: docker-compose up -d
+
 version: '3.8'
 
 services:
-  bot:
-    build: .
-    image: martingale-bot:latest
-    container_name: dcabot
+  postgres:
+    image: postgres:15-alpine
+    container_name: dcabot-postgres
+    environment:
+      POSTGRES_DB: dcabot_dev
+      POSTGRES_USER: dcabot
+      POSTGRES_PASSWORD: dcabot_dev_password
+    ports:
+      - "5435:5432"  # Using 5435 to avoid port conflicts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./saas/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dcabot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-    # Load environment variables from external file
-    # Edit bot.env to change settings, then: docker-compose restart
-    env_file:
-      - bot.env
-
-    # Alternative: Specify variables directly here
-    # environment:
-    #   - API_KEY=${API_KEY}
-    #   - API_SECRET=${API_SECRET}
-    #   - SYMBOL=${SYMBOL}
-    #   - TESTNET=${TESTNET}
-
-    # Restart policy
-    restart: unless-stopped
-
-    # Optional: Mount logs directory
-    # volumes:
-    #   - ./logs:/app/logs
-
-    # Resource limits (optional)
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
-# For scheduled execution (cron-like)
-# Uncomment this if you want periodic execution instead of continuous
-#
-# bot-cron:
-#   build: .
-#   image: martingale-bot:latest
-#   env_file:
-#     - bot.env
-#   # Run every 5 minutes
-#   command: |
-#     sh -c "while true; do python main.py; sleep 300; done"
-#   restart: unless-stopped
+volumes:
+  postgres_data:
+    driver: local

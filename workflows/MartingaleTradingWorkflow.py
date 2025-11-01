@@ -29,6 +29,37 @@ class MartingaleTradingWorkflow(Workflow):
                 ema_interval, symbol, pos_side
             )
 
+            # Build comprehensive metrics for tracking
+            metrics = {
+                "symbol": symbol,
+                "pos_side": pos_side,
+                "total_balance": total_balance,
+                "current_price": current_price,
+                "ema_200": ema_200,
+                "ema_50": ema_50,
+                # Position details (None if no position)
+                "position_size": None,
+                "position_value": None,
+                "unrealized_pnl": None,
+                "unrealized_pnl_pct": None,
+                "margin_level": None,
+                "entry_price": None,
+                "leverage": None,
+                "side": pos_side
+            }
+
+            # Add position details if position exists
+            if position:
+                metrics.update({
+                    "position_size": position.get('size', 0),
+                    "position_value": position.get('positionValue', 0),
+                    "unrealized_pnl": position.get('unrealisedPnl', 0),
+                    "unrealized_pnl_pct": position.get('upnlPercentage', 0),
+                    "margin_level": position.get('margin_level', 0),
+                    "entry_price": position.get('avgEntryPrice', 0),
+                    "leverage": position.get('leverage', 0)
+                })
+
             # Step 3: Determine and execute actions based on strategy
             if self.strategy.is_valid_position(position=position, current_price=current_price, ema_200=ema_200, pos_side=pos_side):
                 conclusion = self.strategy.manage_position(
@@ -45,6 +76,9 @@ class MartingaleTradingWorkflow(Workflow):
                             "conclusion": conclusion
                         }
                     })
+                metrics["action"] = "managed"
+                metrics["conclusion"] = conclusion
+                return metrics
             else:
                 # Determine the specific reason for skipping
                 if not position:
@@ -75,6 +109,10 @@ class MartingaleTradingWorkflow(Workflow):
                         }
                     }
                 )
+                metrics["action"] = "skipped"
+                metrics["conclusion"] = reason
+                return metrics
 
         except Exception as e:
             self.logger.error(f"Error in workflow execution for {symbol}: {e}")
+            return {"action": "error", "conclusion": str(e), "symbol": symbol, "pos_side": pos_side}
