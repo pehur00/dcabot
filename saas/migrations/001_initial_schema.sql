@@ -13,7 +13,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255),
+    password_hash VARCHAR(255),  -- Nullable for OAuth users
     is_active BOOLEAN DEFAULT FALSE,
     is_admin BOOLEAN DEFAULT FALSE,
     is_approved BOOLEAN DEFAULT FALSE,
