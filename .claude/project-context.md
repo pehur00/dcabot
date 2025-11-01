@@ -1,6 +1,6 @@
 # DCABot - Agent Memory Bank
 
-Last Updated: 2025-11-01
+Last Updated: 2025-11-01 (SaaS Platform Updates)
 
 ## Project Overview
 
@@ -372,7 +372,7 @@ A **multi-user SaaS platform** is being developed on the `feature/saas-transform
 
 ### Branch Strategy
 - **main branch**: Standalone bot (current deployment, unchanged)
-- **feature/saas-transformation**: SaaS platform (new development)
+- **feature/saas-transformation**: SaaS platform (active development)
 
 ### Key Differences
 **Standalone (main)**:
@@ -392,35 +392,108 @@ A **multi-user SaaS platform** is being developed on the `feature/saas-transform
 ```
 Render (Frankfurt):
 ├── dcabot-saas-web (Flask) - $7/month
-│   └── Web UI + API endpoints
+│   └── Web UI + API endpoints + Performance metrics API
 └── dcabot-saas-scheduler (Cron) - FREE
     └── Executes all active bots every 5 minutes
 
 Digital Ocean:
 └── PostgreSQL (diptrader database)
-    └── Tables: users, bots, trading_pairs, trades, bot_logs
+    └── Tables: users, bots, trading_pairs, trades, bot_logs, bot_metrics
 ```
 
 ### Documentation
 - **Complete Guide**: `docs/SAAS.md` - Architecture, deployment, schema, troubleshooting
-- **Deployment Checklist**: `DEPLOYMENT_CHECKLIST.md` - Step-by-step deployment guide
+- **Deployment Guide**: `docs/RENDER_DEPLOYMENT.md` - Step-by-step deployment to Render
 - **Branch**: `feature/saas-transformation` (separate from main)
 
 ### Key Files (SaaS only)
-- `saas/app.py` - Flask web application
+- `saas/app.py` - Flask web application with OWASP security controls
+- `saas/validation.py` - Comprehensive input validation (SQL/XSS/Path traversal prevention)
 - `saas/database.py` - PostgreSQL utilities
-- `saas/security.py` - API key encryption (Fernet)
+- `saas/security.py` - API key encryption (Fernet) + password hashing (PBKDF2-SHA256)
 - `saas/execute_all_bots.py` - Cron executor for all bots
-- `saas/schema.sql` - Database schema
+- `saas/migrate.py` - Database migration runner
+- `saas/schema.sql` - Database schema with migrations
+- `saas/templates/` - Jinja2 templates with professional dark theme
+- `saas/static/css/style.css` - Trading platform-inspired UI (731 lines)
 - `requirements-saas.txt` - SaaS-specific dependencies
 - `render.yaml` - Render Blueprint (SaaS services only)
 
-### Future Features
-- User registration/login
-- Web dashboard for bot management
+### Recent SaaS Enhancements (November 2025)
+
+#### 1. Professional UI/UX Redesign (Commits: c05403b, 5a4ad53)
+**Inspired by**: Bybit, Binance, Phemex trading platforms
+**Features**:
+- **Dark Theme**: Professional color palette (#0B0E11 primary, #1E2329 secondary)
+- **Trading Colors**: Green (#0ECB81) for Long/Buy, Red (#F6465D) for Short/Sell
+- **Gradient Effects**: Cards with gradient borders, smooth transitions, glow effects
+- **Space Optimization**: Charts side-by-side, horizontal Bot Info layout, compact spacing
+- **Chart Layout**: 3 performance charts (Balance, PnL, Margin) displayed horizontally
+- **Custom Styling**: Trading platform badges, monospace price fonts, custom scrollbar
+- **Mobile Responsive**: Single-column stacking on mobile devices
+**Files**: `saas/static/css/style.css`, `saas/templates/bot_detail.html`
+
+#### 2. OWASP Security Controls (Commit: f8e3d5c)
+**Protections**:
+- **A01: Broken Access Control** - Path traversal detection
+- **A03: Injection** - SQL/XSS/Null byte/Path traversal prevention
+- **A07: Authentication Failures** - Strong password policy, input sanitization
+**Features**:
+- Comprehensive `validate_email()` with injection detection
+- Strong password requirements (8+ chars, upper, lower, digit, special char, no common passwords)
+- Input sanitization with HTML escaping, Unicode normalization, control character removal
+- Pattern detection for SQL injection, XSS attacks, path traversal attempts
+- Applied to all forms: registration, login, bot creation, trading pair creation
+**Files**: `saas/validation.py`, `saas/app.py` (routes updated with validation)
+
+#### 3. Production Error Handling Improvements
+**Issue**: Bot execution failed when no trading pairs configured
+**Fix**: Added validation in `main.py` to check for trading pairs before execution
+**Error Message**: "Bot X has no active trading pairs configured. Please add at least one trading pair."
+**Impact**: Clear user feedback instead of generic environment variable error
+**Files**: `main.py:49-51`
+
+#### 4. Database Schema Enhancements
+**Tables**:
+- `users` - User accounts with hashed passwords
+- `bots` - Bot configurations with encrypted API keys
+- `trading_pairs` - Symbol/side/leverage configs per bot
+- `trades` - Trade history tracking
+- `bot_logs` - Execution logs per bot
+- `bot_metrics` - Performance tracking (balance, position, PnL, margin level)
+**Migration System**: Automatic migrations via `saas/migrate.py` during Render deployment
+**Files**: `saas/schema.sql`, `saas/migrate.py`
+
+#### 5. Performance Metrics System
+**API Endpoint**: `/api/bots/<bot_id>/metrics?days=7`
+**Metrics Tracked**:
+- Account balance over time
+- Position value per symbol
+- Unrealized PnL per symbol
+- Margin level per symbol
+- Timestamp history
+**Visualization**: Chart.js integration with 3 interactive charts
+**Files**: `saas/app.py:607-668`, `saas/templates/bot_detail.html:232-502`
+
+### Implemented Features
+✅ User registration/login with secure authentication
+✅ Web dashboard for bot management
+✅ Multi-bot support per user
+✅ Trading pair management (CRUD operations)
+✅ Real-time performance metrics with charts
+✅ Bot execution logs and trade history
+✅ Telegram notifications per user
+✅ API key encryption (Fernet) and password hashing (PBKDF2)
+✅ OWASP security controls (input validation, injection prevention)
+✅ Professional trading platform UI
+✅ Automatic database migrations
+
+### Future Enhancements
 - Backtest integration (test configs before deploying)
-- Performance analytics
-- Telegram notifications per user
+- Advanced analytics dashboard
+- Multi-exchange support (Binance, Bybit)
+- Portfolio-level risk management
+- User API for programmatic bot control
 
 See `docs/SAAS.md` for complete details on the SaaS platform.
 
@@ -665,20 +738,38 @@ python main.py 2>&1 | tee bot.log
 
 ## Git Repository
 
-**Main Branch**: main
+**Branches**:
+- **main**: Standalone bot (production)
+- **feature/saas-transformation**: SaaS platform (active development)
+
 **Remote**: origin (https://github.com/pehur00/dcabot)
-**Recent Commits**:
+
+**Recent Commits (main)**:
 - 5e81be1: Fix misleading skip log message
 - 46ba5cd: Fix error propagation for Telegram notifications
 - 6079bcd: Add decline velocity detection
 - c38a213: Remove 1h EMA200 requirement and enhance notifications
 
-**Workflow**:
+**Recent Commits (feature/saas-transformation)**:
+- 5a4ad53: Optimize bot detail page layout for better space utilization
+- c05403b: Redesign UI with Bybit/Binance/Phemex-inspired dark theme
+- d0f96b3: Improve bot execution error handling for missing trading pairs
+- f8e3d5c: Implement OWASP security controls (validation.py)
+- [Multiple earlier commits]: Database schema, migrations, metrics system
+
+**Workflow (main branch)**:
 1. Make changes locally
 2. Test with `python main.py`
 3. Commit with detailed message
 4. Push to main
 5. Render auto-deploys
+
+**Workflow (SaaS branch)**:
+1. Make changes locally
+2. Test with local Flask app (`python saas/app.py`)
+3. Commit with detailed message
+4. Push to feature/saas-transformation
+5. Render auto-deploys SaaS services
 
 ## Dependencies
 
