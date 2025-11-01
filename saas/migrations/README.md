@@ -11,40 +11,26 @@ Migrations run **automatically** when the Flask app starts:
 
 ## Migration File Format
 
-Migrations are Python files with a specific format:
+Migrations are SQL files with a specific format:
 
-```python
-"""
-Migration: Brief description
-Date: YYYY-MM-DD
-"""
+```sql
+-- Migration: Brief description
+-- Date: YYYY-MM-DD
+-- Description: Longer description of what this migration does
 
-description = "Longer description of what this migration does"
+-- Your migration SQL here
+ALTER TABLE users ADD COLUMN new_field VARCHAR(255);
 
-def upgrade(conn):
-    """
-    Apply the migration
-
-    Args:
-        conn: psycopg2 database connection
-    """
-    cursor = conn.cursor()
-
-    # Your migration SQL here
-    cursor.execute("""
-        ALTER TABLE users ADD COLUMN new_field VARCHAR(255)
-    """)
-
-    conn.commit()
+CREATE INDEX IF NOT EXISTS idx_users_new_field ON users(new_field);
 ```
 
 ## Naming Convention
 
 Migrations must be named with a 3-digit prefix and descriptive name:
 
-- `001_add_password_reset_tokens.py`
-- `002_add_oauth_fields.py`
-- `003_your_migration_name.py`
+- `001_initial_schema.sql`
+- `002_add_oauth_fields.sql`
+- `003_your_migration_name.sql`
 
 ## Creating a New Migration
 
@@ -57,8 +43,7 @@ Migrations must be named with a 3-digit prefix and descriptive name:
 
 | Version | Description | Date |
 |---------|-------------|------|
-| 001 | Add password reset tokens table | 2025-11-01 |
-| 002 | Add Google OAuth fields to users | 2025-11-01 |
+| 001 | Complete initial schema with OAuth, metrics, and admin features | 2025-11-01 |
 
 ## Checking Migration Status
 

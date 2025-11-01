@@ -49,15 +49,15 @@ class MigrationRunner:
         """Get list of migrations that haven't been applied yet"""
         applied = self.get_applied_migrations()
 
-        # Find all migration files (format: 001_name.py)
+        # Find all migration files (format: 001_name.sql)
         migration_files = sorted([
             f for f in os.listdir(self.migrations_dir)
-            if f.endswith('.py') and not f.startswith('__')
+            if f.endswith('.sql')
         ])
 
         pending = []
         for filename in migration_files:
-            version = filename.replace('.py', '')
+            version = filename.replace('.sql', '')
             if version not in applied:
                 pending.append((version, filename))
 
@@ -67,21 +67,23 @@ class MigrationRunner:
         """Run a single migration"""
         logger.info(f"Running migration: {version}")
 
-        # Import the migration module
-        import importlib.util
+        # Read the SQL migration file
         migration_path = self.migrations_dir / filename
-        spec = importlib.util.spec_from_file_location(version, migration_path)
-        migration_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(migration_module)
+        with open(migration_path, 'r') as f:
+            sql_content = f.read()
 
-        # Run the upgrade function
-        migration_module.upgrade(self.conn)
+        # Extract description from SQL comments (-- Description: ...)
+        description = version
+        for line in sql_content.split('\n'):
+            if line.strip().startswith('-- Description:'):
+                description = line.split('-- Description:', 1)[1].strip()
+                break
 
-        # Get description from module
-        description = getattr(migration_module, 'description', version)
+        # Execute the SQL
+        cursor = self.conn.cursor()
+        cursor.execute(sql_content)
 
         # Record migration as applied
-        cursor = self.conn.cursor()
         cursor.execute("""
             INSERT INTO schema_migrations (version, description)
             VALUES (%s, %s)
