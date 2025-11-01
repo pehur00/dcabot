@@ -83,9 +83,24 @@ def login():
     if request.method == 'POST':
         from saas.database import get_db
         from saas.security import verify_password
+        from saas.validation import validate_email, sanitize_string
 
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+
+        # OWASP A03 & A07: Validate login inputs
+        if not email or not password:
+            flash('Email and password are required', 'error')
+            return render_template('login.html')
+
+        # Validate email format (prevent injection)
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            flash('Invalid email or password', 'error')  # Generic message for security
+            return render_template('login.html')
+
+        # Sanitize email
+        email = sanitize_string(email, max_length=255).lower()
 
         try:
             with get_db() as conn:
@@ -136,22 +151,34 @@ def register():
 
     if request.method == 'POST':
         from saas.security import hash_password
+        from saas.validation import (
+            validate_email,
+            validate_password,
+            sanitize_string
+        )
 
-        email = request.form.get('email')
-        password = request.form.get('password')
-        password_confirm = request.form.get('password_confirm')
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
 
-        # Validation
-        if not email or not password:
-            flash('Email and password are required', 'error')
+        # OWASP A03: Validate and sanitize email
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            flash(error_msg, 'error')
             return render_template('register.html')
 
+        # Sanitize email (defense in depth)
+        email = sanitize_string(email, max_length=255).lower()
+
+        # OWASP A07: Validate password strength
+        is_valid, error_msg = validate_password(password)
+        if not is_valid:
+            flash(error_msg, 'error')
+            return render_template('register.html')
+
+        # Check password confirmation
         if password != password_confirm:
             flash('Passwords do not match', 'error')
-            return render_template('register.html')
-
-        if len(password) < 8:
-            flash('Password must be at least 8 characters', 'error')
             return render_template('register.html')
 
         try:
@@ -246,19 +273,48 @@ def create_bot():
             return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        try:
-            name = request.form.get('name')
-            exchange = request.form.get('exchange', 'phemex')
-            testnet = request.form.get('testnet') == 'on'
-            api_key = request.form.get('api_key')
-            api_secret = request.form.get('api_secret')
+        from saas.validation import (
+            validate_bot_name,
+            validate_exchange,
+            validate_api_key,
+            sanitize_string
+        )
 
-            # Validation
-            if not name or not api_key or not api_secret:
-                flash('All fields are required', 'error')
+        try:
+            name = request.form.get('name', '').strip()
+            exchange = request.form.get('exchange', 'phemex').strip().lower()
+            testnet = request.form.get('testnet') == 'on'
+            api_key = request.form.get('api_key', '').strip()
+            api_secret = request.form.get('api_secret', '').strip()
+
+            # OWASP A03: Validate bot name
+            is_valid, error_msg = validate_bot_name(name)
+            if not is_valid:
+                flash(error_msg, 'error')
                 return render_template('bot_form.html')
 
-            # Encrypt API credentials
+            # OWASP A03: Validate exchange
+            is_valid, error_msg = validate_exchange(exchange)
+            if not is_valid:
+                flash(error_msg, 'error')
+                return render_template('bot_form.html')
+
+            # OWASP A03: Validate API credentials
+            is_valid, error_msg = validate_api_key(api_key)
+            if not is_valid:
+                flash(f'API Key: {error_msg}', 'error')
+                return render_template('bot_form.html')
+
+            is_valid, error_msg = validate_api_key(api_secret)
+            if not is_valid:
+                flash(f'API Secret: {error_msg}', 'error')
+                return render_template('bot_form.html')
+
+            # Sanitize inputs (defense in depth)
+            name = sanitize_string(name, max_length=100)
+            exchange = sanitize_string(exchange, max_length=20)
+
+            # Encrypt API credentials (OWASP A02: Cryptographic Failures)
             api_key_encrypted = encrypt_api_key(api_key)
             api_secret_encrypted = encrypt_api_key(api_secret)
 
