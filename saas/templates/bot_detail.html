@@ -502,6 +502,47 @@ async function loadMetrics() {
 
 // Load metrics when page loads
 document.addEventListener('DOMContentLoaded', loadMetrics);
+
+// Auto-refresh: Poll for new bot executions
+let lastExecutionTime = null;
+let pollInterval = null;
+
+async function checkForNewExecution() {
+    try {
+        const response = await fetch('/api/bots/{{ bot[0] }}/last-execution');
+        const data = await response.json();
+
+        if (data.last_execution) {
+            if (lastExecutionTime === null) {
+                // First check - just store the timestamp
+                lastExecutionTime = data.last_execution;
+                console.log('Initial execution time:', lastExecutionTime);
+            } else if (data.last_execution !== lastExecutionTime) {
+                // New execution detected!
+                console.log('New execution detected, refreshing page...');
+                window.location.reload();
+            }
+        }
+    } catch (error) {
+        console.error('Failed to check for new execution:', error);
+    }
+}
+
+// Start polling every 30 seconds
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial check
+    checkForNewExecution();
+
+    // Poll every 30 seconds (adjust as needed)
+    pollInterval = setInterval(checkForNewExecution, 30000);
+});
+
+// Clean up polling when leaving the page
+window.addEventListener('beforeunload', () => {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+});
 </script>
 
 {% endblock %}

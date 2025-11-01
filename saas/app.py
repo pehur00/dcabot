@@ -861,6 +861,44 @@ def get_bot_metrics(bot_id):
         return jsonify({'error': 'Failed to fetch metrics'}), 500
 
 
+@app.route('/api/bots/<int:bot_id>/last-execution')
+@login_required
+def get_last_execution(bot_id):
+    """API endpoint to get last execution timestamp for auto-refresh detection"""
+    from saas.database import get_db
+    from flask import jsonify
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Verify user owns this bot
+            cursor.execute("""
+                SELECT id FROM bots WHERE id = %s AND user_id = %s
+            """, (bot_id, current_user.id))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Bot not found'}), 404
+
+            # Get most recent execution time from execution_metrics
+            cursor.execute("""
+                SELECT MAX(executed_at) as last_execution
+                FROM execution_metrics
+                WHERE bot_id = %s
+            """, (bot_id,))
+
+            result = cursor.fetchone()
+            last_execution = result[0] if result and result[0] else None
+
+            return jsonify({
+                'last_execution': last_execution.isoformat() if last_execution else None,
+                'bot_id': bot_id
+            })
+
+    except Exception as e:
+        logger.error(f"Get last execution error: {e}")
+        return jsonify({'error': 'Failed to fetch last execution'}), 500
+
+
 @app.route('/bots/<int:bot_id>/pairs/new', methods=['GET', 'POST'])
 @login_required
 def add_trading_pair(bot_id):
