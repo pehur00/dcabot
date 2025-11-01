@@ -5,10 +5,13 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
+    password_hash VARCHAR(255),
+    is_active BOOLEAN DEFAULT FALSE,
     plan VARCHAR(20) DEFAULT 'free',
     max_bots INTEGER DEFAULT 1,
+    google_id VARCHAR(255) UNIQUE,
+    oauth_provider VARCHAR(20),
+    profile_picture_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

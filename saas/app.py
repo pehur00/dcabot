@@ -34,6 +34,10 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 
+# Setup OAuth
+from saas.oauth import init_oauth
+oauth = init_oauth(app)
+
 
 class User(UserMixin):
     """User model for Flask-Login"""
@@ -218,7 +222,7 @@ def forgot_password():
     if request.method == 'POST':
         from saas.database import get_db
         from saas.validation import validate_email, sanitize_string
-        from saas.email import email_service
+        from saas.email_service import email_service
         import secrets
         from datetime import datetime, timedelta
 
@@ -350,6 +354,120 @@ def reset_password(token):
         return redirect(url_for('login'))
 
     return render_template('reset_password.html', token=token)
+
+
+# ============================================================================
+# OAuth Routes
+# ============================================================================
+
+@app.route('/auth/google')
+def google_login():
+    """Initiate Google OAuth login"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    if not oauth:
+        flash('Google login is not configured', 'error')
+        return redirect(url_for('login'))
+
+    from saas.oauth import get_redirect_uri
+    redirect_uri = get_redirect_uri(request)
+
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@app.route('/auth/google/callback')
+def google_callback():
+    """Handle Google OAuth callback"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    if not oauth:
+        flash('Google login is not configured', 'error')
+        return redirect(url_for('login'))
+
+    try:
+        from saas.database import get_db
+        from saas.oauth import extract_user_info
+
+        # Get OAuth token
+        token = oauth.google.authorize_access_token()
+        user_info = extract_user_info(token)
+
+        # Validate user info
+        if not user_info.get('email_verified'):
+            flash('Please verify your Google email address first', 'error')
+            return redirect(url_for('login'))
+
+        google_id = user_info.get('google_id')
+        email = user_info.get('email')
+
+        if not google_id or not email:
+            flash('Failed to get user information from Google', 'error')
+            return redirect(url_for('login'))
+
+        # Check if user exists
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Try to find user by Google ID first
+            cursor.execute("""
+                SELECT id, email, plan, max_bots, is_admin, is_active
+                FROM users
+                WHERE google_id = %s
+            """, (google_id,))
+            user_data = cursor.fetchone()
+
+            # If not found by Google ID, try by email
+            if not user_data:
+                cursor.execute("""
+                    SELECT id, email, plan, max_bots, is_admin, is_active
+                    FROM users
+                    WHERE email = %s
+                """, (email,))
+                user_data = cursor.fetchone()
+
+                # If user exists with email but not Google ID, link accounts
+                if user_data:
+                    cursor.execute("""
+                        UPDATE users
+                        SET google_id = %s, oauth_provider = 'google', profile_picture_url = %s, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (google_id, user_info.get('picture'), user_data[0]))
+                    conn.commit()
+                    logger.info(f"Linked Google account to existing user: {email}")
+
+            # If user doesn't exist, create new user (pending approval)
+            if not user_data:
+                cursor.execute("""
+                    INSERT INTO users (email, google_id, oauth_provider, profile_picture_url, plan, max_bots, is_active)
+                    VALUES (%s, %s, 'google', %s, 'free', 1, FALSE)
+                    RETURNING id, email, plan, max_bots, is_admin, is_active
+                """, (email, google_id, user_info.get('picture')))
+                user_data = cursor.fetchone()
+                conn.commit()
+                logger.info(f"Created new user via Google OAuth: {email}")
+
+                flash('Your account has been created successfully! Please wait for admin approval before you can login.', 'success')
+                return redirect(url_for('login'))
+
+            # User exists - check if approved
+            user_id, user_email, plan, max_bots, is_admin, is_active = user_data
+
+            if not is_active:
+                flash('Your account is pending approval. Please wait for an administrator to approve your registration.', 'warning')
+                return redirect(url_for('login'))
+
+            # Login user
+            user = User(user_id, user_email, plan, max_bots, is_admin, is_active)
+            login_user(user)
+            flash('Successfully logged in with Google!', 'success')
+            return redirect(url_for('dashboard'))
+
+    except Exception as e:
+        logger.error(f"Google OAuth error: {e}")
+        flash('An error occurred during Google login', 'error')
+        return redirect(url_for('login'))
 
 
 @app.route('/logout')
