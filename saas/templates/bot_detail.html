@@ -103,7 +103,13 @@
                 </div>
                 <div>
                     <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Created</div>
-                    <div style="font-weight: 500;">{{ bot[5].strftime('%Y-%m-%d %H:%M') if bot[5] else 'N/A' }}</div>
+                    <div style="font-weight: 500;">
+                        {% if bot[5] %}
+                            <span data-utc-time="{{ bot[5].isoformat() }}" data-format="datetime-short">{{ bot[5] }}</span>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
                 </div>
                 <div>
                     <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Schedule</div>
@@ -113,7 +119,11 @@
                 <div>
                     <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Last Run</div>
                     <div style="font-weight: 500;">
-                        {{ last_execution[0].strftime('%m/%d %H:%M:%S') if last_execution[0] else 'Never' }}
+                        {% if last_execution[0] %}
+                            <span data-utc-time="{{ last_execution[0].isoformat() }}" data-format="datetime-short">{{ last_execution[0] }}</span>
+                        {% else %}
+                            Never
+                        {% endif %}
                         {% if last_execution[1] == 'INFO' %}
                             <span class="badge badge-success">Success</span>
                         {% elif last_execution[1] == 'ERROR' %}
@@ -168,7 +178,14 @@
                     <tr>
                         <td>
                             <div class="activity-meta">
-                                <span class="activity-time">{{ log[3].strftime('%m/%d') }}<br/>{{ log[3].strftime('%H:%M:%S') if log[3] else 'N/A' }}</span>
+                                <span class="activity-time">
+                                    {% if log[3] %}
+                                        <span data-utc-time="{{ log[3].isoformat() }}" data-format="date-short">{{ log[3] }}</span><br/>
+                                        <span data-utc-time="{{ log[3].isoformat() }}" data-format="time-only">{{ log[3] }}</span>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
                                 {% if log[1] == 'ERROR' %}
                                     <span class="badge badge-danger">ERROR</span>
                                 {% elif log[1] == 'WARNING' %}
@@ -218,7 +235,13 @@
                         <td style="color: {% if trade[5] and trade[5] > 0 %}var(--success){% else %}var(--danger){% endif %}">
                             {% if trade[5] %}${{ trade[5] }}{% else %}-{% endif %}
                         </td>
-                        <td>{{ trade[6].strftime('%m/%d %H:%M') if trade[6] else 'N/A' }}</td>
+                        <td>
+                            {% if trade[6] %}
+                                <span data-utc-time="{{ trade[6].isoformat() }}" data-format="datetime-short">{{ trade[6] }}</span>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

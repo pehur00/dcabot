@@ -8,7 +8,7 @@
 
     <h1>{{backtest.symbol.replace('USDT', '')}} Backtest Results</h1>
     <p style="color: var(--text-secondary); margin-bottom: 2rem;">
-        Tested {{ backtest.start_date.strftime('%b %d') }} - {{ backtest.end_date.strftime('%b %d, %Y') }}
+        Tested <span data-utc-time="{{ backtest.start_date.isoformat() }}" data-format="date-short">{{ backtest.start_date }}</span> - <span data-utc-time="{{ backtest.end_date.isoformat() }}" data-format="date">{{ backtest.end_date }}</span>
         ({{ backtest.test_period_days}} days)
     </p>
 
@@ -120,7 +120,13 @@
             </tr>
             <tr>
                 <td>Tested At</td>
-                <td>{{ backtest.executed_at.strftime('%Y-%m-%d %H:%M:%S') if backtest.executed_at else 'N/A' }}</td>
+                <td>
+                    {% if backtest.executed_at %}
+                        <span data-utc-time="{{ backtest.executed_at.isoformat() }}" data-format="datetime">{{ backtest.executed_at }}</span>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
             </tr>
         </table>
     </div>
