@@ -191,6 +191,38 @@ def store_backtest_error(symbol: str, side: str, leverage: int, error_message: s
         conn.commit()
 
 
+def cleanup_old_results():
+    """
+    Clean up old and failed backtest results to prevent unique constraint violations.
+    Keeps successful results from today.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        # Delete failed results
+        cursor.execute("DELETE FROM backtest_results WHERE status = 'failed'")
+        failed_count = cursor.rowcount
+
+        # Delete old results (older than today, keeping most recent successful run per symbol)
+        cursor.execute("""
+            DELETE FROM backtest_results
+            WHERE id NOT IN (
+                SELECT DISTINCT ON (symbol, side, leverage)
+                    id
+                FROM backtest_results
+                WHERE status = 'completed'
+                ORDER BY symbol, side, leverage, executed_at DESC
+            )
+            AND status = 'completed'
+            AND executed_at::date < CURRENT_DATE
+        """)
+        old_count = cursor.rowcount
+
+        conn.commit()
+
+        return failed_count, old_count
+
+
 def run_weekly_backtests():
     """
     Main function to run weekly backtests for all active symbols.
@@ -199,6 +231,13 @@ def run_weekly_backtests():
     print("🔄 WEEKLY BACKTEST RUNNER")
     print("=" * 80)
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+    # Clean up old results
+    print("🧹 Cleaning up old backtest results...")
+    failed_count, old_count = cleanup_old_results()
+    print(f"   Deleted {failed_count} failed results")
+    print(f"   Deleted {old_count} old results (keeping latest per symbol)")
+    print()
 
     # Fetch active configurations
     print("📋 Fetching active backtest configurations...")
