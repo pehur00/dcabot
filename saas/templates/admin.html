@@ -81,6 +81,73 @@
         {% endif %}
     </div>
 
+    <!-- Backtest Configurations -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 class="card-header">
+            Weekly Backtest Configurations
+            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('add-backtest-modal').style.display='block'" style="float: right;">
+                + Add Symbol
+            </button>
+        </h2>
+        {% if backtest_configs %}
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Leverage</th>
+                            <th>Days</th>
+                            <th>Balance</th>
+                            <th>Source</th>
+                            <th>Category</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for config in backtest_configs %}
+                        <tr data-config-id="{{ config[0] }}">
+                            <td><strong>{{ config[1] }}</strong></td>
+                            <td>{{ config[2] }}</td>
+                            <td>{{ config[3] }}x</td>
+                            <td>{{ config[6] }}</td>
+                            <td>${{ "%.0f"|format(config[7]) }}</td>
+                            <td>{{ config[8] }}</td>
+                            <td>
+                                <span class="badge badge-secondary">{{ config[5] }}</span>
+                            </td>
+                            <td>
+                                {% if config[9] %}
+                                    <span class="badge badge-success">Active</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="openEditModal({{ config[0] }}, '{{ config[1] }}', '{{ config[2] }}', {{ config[3] }}, {{ config[4] }}, {{ config[6] }}, {{ config[7] }}, '{{ config[8] }}', '{{ config[5] }}', {{ config[9]|lower }}, {{ config[10] }}, {{ config[11] or 'null' }}, {{ config[12] }}, {{ config[13] }})">
+                                        Edit
+                                    </button>
+                                    <form method="POST" action="{{ url_for('toggle_backtest_config', config_id=config[0]) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm {% if config[9] %}btn-warning{% else %}btn-success{% endif %}">
+                                            {% if config[9] %}Disable{% else %}Enable{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+                No backtest configurations found
+            </p>
+        {% endif %}
+    </div>
+
     <!-- All Users -->
     <div class="card">
         <h2 class="card-header">All Users</h2>
@@ -131,4 +198,173 @@
 
     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="margin-top: 2rem;">← Back to Dashboard</a>
 </div>
+
+<!-- Add Backtest Configuration Modal -->
+<div id="add-backtest-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('add-backtest-modal').style.display='none'">&times;</span>
+        <h2>Add Backtest Configuration</h2>
+        <form method="POST" action="{{ url_for('add_backtest_config') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="add-symbol">Symbol</label>
+                    <input type="text" id="add-symbol" name="symbol" required placeholder="BTCUSDT">
+                </div>
+                <div class="form-group">
+                    <label for="add-side">Side</label>
+                    <select id="add-side" name="side" required>
+                        <option value="Long">Long</option>
+                        <option value="Short">Short</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="add-leverage">Leverage</label>
+                    <input type="number" id="add-leverage" name="leverage" value="10" min="1" max="125" required>
+                </div>
+                <div class="form-group">
+                    <label for="add-days">Days</label>
+                    <input type="number" id="add-days" name="days" value="7" min="1" max="365" required>
+                </div>
+                <div class="form-group">
+                    <label for="add-balance">Balance (USD)</label>
+                    <input type="number" id="add-balance" name="balance" value="200" min="10" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="add-source">Data Source</label>
+                    <select id="add-source" name="source" required>
+                        <option value="binance">Binance</option>
+                        <option value="phemex">Phemex</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="add-category">Category</label>
+                    <select id="add-category" name="category" required>
+                        <option value="major">Major</option>
+                        <option value="altcoin">Altcoin</option>
+                        <option value="meme">Meme</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-backtest-modal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Configuration</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Backtest Configuration Modal -->
+<div id="edit-backtest-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('edit-backtest-modal').style.display='none'">&times;</span>
+        <h2>Edit Backtest Configuration</h2>
+        <form method="POST" id="edit-backtest-form">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="edit-symbol">Symbol</label>
+                    <input type="text" id="edit-symbol" name="symbol" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-side">Side</label>
+                    <select id="edit-side" name="side" required>
+                        <option value="Long">Long</option>
+                        <option value="Short">Short</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-leverage">Leverage</label>
+                    <input type="number" id="edit-leverage" name="leverage" min="1" max="125" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-days">Days</label>
+                    <input type="number" id="edit-days" name="days" min="1" max="365" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-balance">Balance (USD)</label>
+                    <input type="number" id="edit-balance" name="balance" min="10" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-source">Data Source</label>
+                    <select id="edit-source" name="source" required>
+                        <option value="binance">Binance</option>
+                        <option value="phemex">Phemex</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-category">Category</label>
+                    <select id="edit-category" name="category" required>
+                        <option value="major">Major</option>
+                        <option value="altcoin">Altcoin</option>
+                        <option value="meme">Meme</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-active">
+                        <input type="checkbox" id="edit-active" name="is_active">
+                        Active
+                    </label>
+                </div>
+            </div>
+
+            <!-- Strategy Parameters Section -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--color-long);">Strategy Parameters</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="edit-profit-pnl">Profit PnL %</label>
+                    <input type="number" id="edit-profit-pnl" name="profit_pnl" step="0.001" min="0" value="0.1" required>
+                    <small>Default: 0.1 (10%)</small>
+                </div>
+                <div class="form-group">
+                    <label for="edit-max-margin-pct">Max Margin %</label>
+                    <input type="number" id="edit-max-margin-pct" name="max_margin_pct" step="0.01" min="0" max="1" placeholder="Leave empty for no cap">
+                    <small>Optional: e.g., 0.40 for 40% cap</small>
+                </div>
+                <div class="form-group">
+                    <label for="edit-profit-threshold">Profit Threshold</label>
+                    <input type="number" id="edit-profit-threshold" name="profit_threshold" step="0.0001" min="0" value="0.003" required>
+                    <small>Default: 0.003 (0.3%)</small>
+                </div>
+                <div class="form-group">
+                    <label for="edit-buy-until-limit">Position Size Limit</label>
+                    <input type="number" id="edit-buy-until-limit" name="buy_until_limit" step="0.001" min="0" max="1" value="0.02" required>
+                    <small>Default: 0.02 (2% of balance)</small>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('edit-backtest-modal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(id, symbol, side, leverage, interval, days, balance, source, category, is_active, profit_pnl, max_margin_pct, profit_threshold, buy_until_limit) {
+    document.getElementById('edit-backtest-form').action = `/admin/backtest/${id}/update`;
+    document.getElementById('edit-symbol').value = symbol;
+    document.getElementById('edit-side').value = side;
+    document.getElementById('edit-leverage').value = leverage;
+    document.getElementById('edit-days').value = days;
+    document.getElementById('edit-balance').value = balance;
+    document.getElementById('edit-source').value = source;
+    document.getElementById('edit-category').value = category;
+    document.getElementById('edit-active').checked = is_active;
+    document.getElementById('edit-profit-pnl').value = profit_pnl || 0.1;
+    document.getElementById('edit-max-margin-pct').value = max_margin_pct || '';
+    document.getElementById('edit-profit-threshold').value = profit_threshold || 0.003;
+    document.getElementById('edit-buy-until-limit').value = buy_until_limit || 0.02;
+    document.getElementById('edit-backtest-modal').style.display = 'block';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+    }
+}
+</script>
+
 {% endblock %}

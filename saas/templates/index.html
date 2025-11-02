@@ -10,6 +10,55 @@
     </div>
 </div>
 
+{% if backtest_results %}
+<section class="backtest-performance">
+    <div class="container">
+        <h2>📊 Weekly Backtest Performance</h2>
+        <p class="subtitle">Last 7 days performance with default strategy settings (10x leverage, $200 balance)</p>
+
+        <div class="performance-grid">
+            {% for result in backtest_results %}
+            <a href="{{ url_for('backtest_detail', symbol=result.symbol) }}" class="performance-card {% if result.profit_loss_pct > 0 %}positive{% else %}negative{% endif %}">
+                <div class="card-header">
+                    <span class="symbol">{{ result.symbol.replace('USDT', '') }}</span>
+                    <span class="leverage">{{ result.leverage }}x</span>
+                </div>
+
+                <div class="pnl">
+                    <span class="pnl-pct">{{ "%.2f"|format(result.profit_loss_pct) }}%</span>
+                    <span class="pnl-amount">${{ "%.2f"|format(result.profit_loss) }}</span>
+                </div>
+
+                <div class="metrics">
+                    <div class="metric">
+                        <span class="label">Win Rate</span>
+                        <span class="value">{{ "%.1f"|format(result.win_rate) }}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Drawdown</span>
+                        <span class="value">{{ "%.2f"|format(result.max_drawdown_pct) }}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Trades</span>
+                        <span class="value">{{ result.total_trades }}</span>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <span class="date">{{ result.start_date.strftime('%b %d') }} - {{ result.end_date.strftime('%b %d') }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <p class="disclaimer">
+            ⚠️ Past performance does not guarantee future results. Backtest data is for informational purposes only.
+            Cryptocurrency trading carries significant risk.
+        </p>
+    </div>
+</section>
+{% endif %}
+
 <div class="container">
     <div class="grid">
         <div class="card">

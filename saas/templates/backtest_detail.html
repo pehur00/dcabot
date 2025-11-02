@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{backtest.symbol}} Backtest Results - DCA Bot{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('index') }}" class="btn btn-secondary" style="margin-bottom: 2rem;">← Back to Home</a>
+
+    <h1>{{backtest.symbol.replace('USDT', '')}} Backtest Results</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+        Tested {{ backtest.start_date.strftime('%b %d') }} - {{ backtest.end_date.strftime('%b %d, %Y') }}
+        ({{ backtest.test_period_days}} days)
+    </p>
+
+    <!-- Performance Summary -->
+    <div class="detail-summary">
+        <div class="summary-card {% if backtest.profit_loss_pct > 0 %}positive{% else %}negative{% endif %}">
+            <h2 style="margin-bottom: 0;">{{ "%.2f"|format(backtest.profit_loss_pct) }}%</h2>
+            <p>Total P&L</p>
+            <span class="summary-amount">${{ "%.2f"|format(backtest.profit_loss) }}</span>
+        </div>
+        <div class="summary-card">
+            <h2 style="margin-bottom: 0;">{{ "%.1f"|format(backtest.win_rate) }}%</h2>
+            <p>Win Rate</p>
+            <span class="summary-detail">{{ backtest.winning_trades }}/{{ backtest.total_trades }} trades</span>
+        </div>
+        <div class="summary-card">
+            <h2 style="margin-bottom: 0;">{{ "%.2f"|format(backtest.max_drawdown_pct) }}%</h2>
+            <p>Max Drawdown</p>
+        </div>
+        <div class="summary-card">
+            <h2 style="margin-bottom: 0;">{{ backtest.total_trades }}</h2>
+            <p>Total Trades</p>
+            <span class="summary-detail">{{ backtest.leverage }}x leverage</span>
+        </div>
+    </div>
+
+    <!-- Chart Display -->
+    <div class="card" style="margin-top: 2rem;">
+        <h2 class="card-header">Performance Charts</h2>
+        <div style="padding: 1rem;">
+            <img src="{{ url_for('get_backtest_chart', backtest_id=backtest.id) }}"
+                 alt="{{backtest.symbol}} Backtest Chart"
+                 style="width: 100%; border-radius: 8px;"
+                 onerror="this.parentElement.innerHTML='<p style=\'text-align: center; padding: 2rem; color: var(--text-secondary);\'>No chart available for this backtest</p>';">
+        </div>
+    </div>
+
+    <!-- Detailed Metrics -->
+    <div class="card" style="margin-top: 2rem;">
+        <h2 class="card-header">Detailed Metrics</h2>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Initial Balance</td>
+                <td>${{ "%.2f"|format(backtest.initial_balance) }}</td>
+            </tr>
+            <tr>
+                <td>Final Balance</td>
+                <td>${{ "%.2f"|format(backtest.final_balance) }}</td>
+            </tr>
+            <tr>
+                <td>Profit/Loss</td>
+                <td style="color: {% if backtest.profit_loss > 0 %}var(--color-long){% else %}var(--color-short){% endif %};">
+                    ${{ "%.2f"|format(backtest.profit_loss) }} ({{ "%.2f"|format(backtest.profit_loss_pct) }}%)
+                </td>
+            </tr>
+            <tr>
+                <td>Maximum Drawdown</td>
+                <td>{{ "%.2f"|format(backtest.max_drawdown_pct) }}%</td>
+            </tr>
+            <tr>
+                <td>Total Trades</td>
+                <td>{{ backtest.total_trades }}</td>
+            </tr>
+            <tr>
+                <td>Winning Trades</td>
+                <td>{{ backtest.winning_trades }}</td>
+            </tr>
+            <tr>
+                <td>Losing Trades</td>
+                <td>{{ backtest.losing_trades }}</td>
+            </tr>
+            <tr>
+                <td>Win Rate</td>
+                <td>{{ "%.1f"|format(backtest.win_rate) }}%</td>
+            </tr>
+            <tr>
+                <td>Max Position Size</td>
+                <td>${{ "%.2f"|format(backtest.max_position_size) }}</td>
+            </tr>
+            <tr>
+                <td>Max Margin Used</td>
+                <td>{{ "%.1f"|format(backtest.max_margin_used_pct) }}%</td>
+            </tr>
+            <tr>
+                <td>Liquidation</td>
+                <td>
+                    {% if backtest.liquidation_occurred %}
+                        <span class="badge badge-danger">Yes</span>
+                    {% else %}
+                        <span class="badge badge-success">No</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Execution Time</td>
+                <td>{{ backtest.execution_duration_seconds }}s</td>
+            </tr>
+            <tr>
+                <td>Position Side</td>
+                <td>{{ backtest.side }}</td>
+            </tr>
+            <tr>
+                <td>Leverage</td>
+                <td>{{ backtest.leverage }}x</td>
+            </tr>
+            <tr>
+                <td>Tested At</td>
+                <td>{{ backtest.executed_at.strftime('%Y-%m-%d %H:%M:%S') if backtest.executed_at else 'N/A' }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -742,3 +742,391 @@ tbody tr:hover {
 .glow-red {
     box-shadow: 0 0 20px rgba(246, 70, 93, 0.3);
 }
+
+/* ========================================================================== */
+/* Backtest Performance Section */
+/* ========================================================================== */
+
+.backtest-performance {
+    padding: 4rem 0;
+    background: var(--bg-primary);
+}
+
+.backtest-performance h2 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.backtest-performance .subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+    font-size: 0.95rem;
+}
+
+.performance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.performance-card {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.performance-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--border-primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.performance-card:hover {
+    border-color: var(--color-long);
+    box-shadow: 0 0 20px rgba(14, 203, 129, 0.2);
+    transform: translateY(-2px);
+}
+
+.performance-card:hover::before {
+    opacity: 1;
+}
+
+.performance-card.positive:hover {
+    border-color: var(--color-long);
+    box-shadow: 0 0 20px rgba(14, 203, 129, 0.2);
+}
+
+.performance-card.negative:hover {
+    border-color: var(--color-short);
+    box-shadow: 0 0 20px rgba(246, 70, 93, 0.2);
+}
+
+.performance-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.performance-card .symbol {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+}
+
+.performance-card .leverage {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid var(--border-secondary);
+}
+
+.performance-card .pnl {
+    margin: 1.5rem 0;
+    text-align: center;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-secondary);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.performance-card .pnl-pct {
+    font-size: 2.5rem;
+    font-weight: 700;
+    display: block;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.performance-card.positive .pnl-pct {
+    color: var(--color-long);
+}
+
+.performance-card.negative .pnl-pct {
+    color: var(--color-short);
+}
+
+.performance-card .pnl-amount {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    display: block;
+}
+
+.performance-card .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.performance-card .metric {
+    text-align: center;
+}
+
+.performance-card .metric .label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    display: block;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.performance-card .metric .value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+}
+
+.performance-card .card-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-secondary);
+    text-align: center;
+}
+
+.performance-card .card-footer .date {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.backtest-performance .disclaimer {
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    margin-top: 3rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-secondary);
+}
+
+/* Mobile Responsiveness for Performance Cards */
+@media (max-width: 768px) {
+    .performance-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .performance-card .symbol {
+        font-size: 1.25rem;
+    }
+
+    .performance-card .pnl-pct {
+        font-size: 2rem;
+    }
+}
+
+/* =================================================================
+   Modal Styles
+   ================================================================= */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background-color: var(--bg-secondary);
+    margin: 5% auto;
+    padding: 2rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.modal-content h3 {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+}
+
+.close {
+    color: var(--text-secondary);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close:hover,
+.close:focus {
+    color: var(--text-primary);
+}
+
+/* =================================================================
+   Form Grid Layout
+   ================================================================= */
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-long);
+    box-shadow: 0 0 0 2px rgba(14, 203, 129, 0.1);
+}
+
+.form-group input[type="checkbox"] {
+    margin-right: 0.5rem;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.form-group small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+/* Responsive form grid */
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 2% auto;
+        padding: 1rem;
+    }
+}
+
+/* =================================================================
+   Backtest Detail Page
+   ================================================================= */
+
+.detail-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.summary-card.positive h2 {
+    color: var(--color-long);
+}
+
+.summary-card.negative h2 {
+    color: var(--color-short);
+}
+
+.summary-card p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.5rem 0;
+}
+
+.summary-amount {
+    display: block;
+    color: var(--text-tertiary);
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+.summary-detail {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+/* Clickable performance cards */
+.performance-card {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.performance-card:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .detail-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .detail-summary {
+        grid-template-columns: 1fr;
+    }
+}

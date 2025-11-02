@@ -2,7 +2,7 @@
 DCA Bot SaaS - Flask Web Application
 Complete UI with user authentication and bot management
 """
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
 import logging
@@ -86,7 +86,48 @@ def index():
     """Home page"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    return render_template('index.html')
+
+    # Fetch latest backtest results for front page
+    backtest_results = []
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get most recent result for each symbol
+            cursor.execute("""
+                SELECT DISTINCT ON (symbol)
+                    symbol, side, leverage,
+                    profit_loss, profit_loss_pct, max_drawdown_pct,
+                    total_trades, win_rate,
+                    start_date, end_date
+                FROM backtest_results
+                WHERE status = 'completed'
+                ORDER BY symbol, executed_at DESC
+                LIMIT 10
+            """)
+
+            for row in cursor.fetchall():
+                backtest_results.append({
+                    'symbol': row[0],
+                    'side': row[1],
+                    'leverage': row[2],
+                    'profit_loss': float(row[3]) if row[3] else 0,
+                    'profit_loss_pct': float(row[4]) if row[4] else 0,
+                    'max_drawdown_pct': float(row[5]) if row[5] else 0,
+                    'total_trades': row[6],
+                    'win_rate': float(row[7]) if row[7] else 0,
+                    'start_date': row[8],
+                    'end_date': row[9],
+                })
+
+            # Sort by profit_loss_pct descending
+            backtest_results.sort(key=lambda x: x['profit_loss_pct'], reverse=True)
+
+    except Exception as e:
+        print(f"Error fetching backtest results for front page: {e}")
+        # Continue with empty results
+
+    return render_template('index.html', backtest_results=backtest_results)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1060,10 +1101,22 @@ def admin_panel():
             result = cursor.fetchone()
             registration_enabled = result[0].lower() == 'true' if result else True
 
+            # Get backtest configurations
+            cursor.execute("""
+                SELECT id, symbol, side, leverage, interval, category,
+                       days, balance, source, is_active,
+                       profit_pnl, max_margin_pct, profit_threshold,
+                       buy_until_limit
+                FROM backtest_configs
+                ORDER BY category, symbol
+            """)
+            backtest_configs = cursor.fetchall()
+
             return render_template('admin.html',
                                  pending_users=pending_users,
                                  all_users=all_users,
-                                 registration_enabled=registration_enabled)
+                                 registration_enabled=registration_enabled,
+                                 backtest_configs=backtest_configs)
     except Exception as e:
         logger.error(f"Admin panel error: {e}")
         flash('Error loading admin panel', 'error')
@@ -1159,6 +1212,124 @@ def toggle_registration():
     return redirect(url_for('admin_panel'))
 
 
+@app.route('/admin/backtest/<int:config_id>/update', methods=['POST'])
+@login_required
+def update_backtest_config(config_id):
+    """Update backtest configuration"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+
+    from saas.database import get_db
+
+    try:
+        # Get form data
+        symbol = request.form.get('symbol')
+        side = request.form.get('side')
+        leverage = int(request.form.get('leverage'))
+        days = int(request.form.get('days'))
+        balance = float(request.form.get('balance'))
+        source = request.form.get('source')
+        is_active = request.form.get('is_active') == 'on'
+        category = request.form.get('category')
+
+        # Strategy parameters
+        profit_pnl = float(request.form.get('profit_pnl'))
+        profit_threshold = float(request.form.get('profit_threshold'))
+        buy_until_limit = float(request.form.get('buy_until_limit'))
+        max_margin_pct_str = request.form.get('max_margin_pct')
+        max_margin_pct = float(max_margin_pct_str) if max_margin_pct_str else None
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE backtest_configs
+                SET symbol = %s, side = %s, leverage = %s, days = %s,
+                    balance = %s, source = %s, is_active = %s, category = %s,
+                    profit_pnl = %s, max_margin_pct = %s, profit_threshold = %s,
+                    buy_until_limit = %s, updated_at = NOW()
+                WHERE id = %s
+            """, (symbol, side, leverage, days, balance, source, is_active, category,
+                  profit_pnl, max_margin_pct, profit_threshold, buy_until_limit, config_id))
+            conn.commit()
+
+        flash(f'Backtest configuration for {symbol} updated successfully!', 'success')
+    except Exception as e:
+        logger.error(f"Error updating backtest config: {e}")
+        flash('Error updating backtest configuration', 'error')
+
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/backtest/<int:config_id>/toggle', methods=['POST'])
+@login_required
+def toggle_backtest_config(config_id):
+    """Toggle backtest configuration active status"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+
+    from saas.database import get_db
+
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE backtest_configs
+                SET is_active = NOT is_active, updated_at = NOW()
+                WHERE id = %s
+                RETURNING symbol, is_active
+            """, (config_id,))
+            result = cursor.fetchone()
+            conn.commit()
+
+        if result:
+            symbol, is_active = result
+            status = 'enabled' if is_active else 'disabled'
+            flash(f'Backtest for {symbol} {status} successfully!', 'success')
+    except Exception as e:
+        logger.error(f"Error toggling backtest config: {e}")
+        flash('Error toggling backtest configuration', 'error')
+
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/backtest/add', methods=['POST'])
+@login_required
+def add_backtest_config():
+    """Add new backtest configuration"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+
+    from saas.database import get_db
+
+    try:
+        # Get form data
+        symbol = request.form.get('symbol')
+        side = request.form.get('side', 'Long')
+        leverage = int(request.form.get('leverage', 10))
+        days = int(request.form.get('days', 7))
+        balance = float(request.form.get('balance', 200.0))
+        source = request.form.get('source', 'binance')
+        category = request.form.get('category', 'other')
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO backtest_configs (symbol, side, leverage, days, balance, source, category)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (symbol, side, leverage, days, balance, source, category))
+            conn.commit()
+
+        flash(f'Backtest configuration for {symbol} added successfully!', 'success')
+    except Exception as e:
+        logger.error(f"Error adding backtest config: {e}")
+        flash('Error adding backtest configuration', 'error')
+
+    return redirect(url_for('admin_panel'))
+
+
 # ============================================================================
 # API Routes (for health checks and monitoring)
 # ============================================================================
@@ -1205,6 +1376,189 @@ def api_status():
         'database_connected': db_connected,
         'timestamp': datetime.utcnow().isoformat()
     })
+
+
+@app.route('/api/backtests/latest')
+def api_latest_backtests():
+    """
+    Get latest backtest results for each symbol.
+    Returns most recent completed backtest for each symbol/side combination.
+    """
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get most recent result for each symbol using DISTINCT ON
+            cursor.execute("""
+                SELECT DISTINCT ON (symbol, side)
+                    symbol, side, leverage, interval,
+                    profit_loss, profit_loss_pct, max_drawdown_pct,
+                    total_trades, win_rate, max_margin_used_pct,
+                    start_date, end_date, executed_at
+                FROM backtest_results
+                WHERE status = 'completed'
+                ORDER BY symbol, side, executed_at DESC
+            """)
+
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    'symbol': row[0],
+                    'side': row[1],
+                    'leverage': row[2],
+                    'interval': row[3],
+                    'profit_loss': float(row[4]) if row[4] else 0,
+                    'profit_loss_pct': float(row[5]) if row[5] else 0,
+                    'max_drawdown_pct': float(row[6]) if row[6] else 0,
+                    'total_trades': row[7],
+                    'win_rate': float(row[8]) if row[8] else 0,
+                    'max_margin_used_pct': float(row[9]) if row[9] else 0,
+                    'start_date': row[10].isoformat() if row[10] else None,
+                    'end_date': row[11].isoformat() if row[11] else None,
+                    'executed_at': row[12].isoformat() if row[12] else None,
+                })
+
+            # Sort by profit_loss_pct descending
+            results.sort(key=lambda x: x['profit_loss_pct'], reverse=True)
+
+            return jsonify(results)
+
+    except Exception as e:
+        print(f"Error fetching latest backtests: {e}")
+        return jsonify([]), 500
+
+
+@app.route('/api/backtests/<symbol>/history')
+def api_backtest_history(symbol):
+    """
+    Get historical backtest results for a specific symbol.
+    Returns last 12 backtest results for trending analysis.
+    """
+    try:
+        limit = request.args.get('limit', 12, type=int)
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT
+                    executed_at, profit_loss_pct, max_drawdown_pct,
+                    total_trades, win_rate, liquidation_occurred
+                FROM backtest_results
+                WHERE symbol = %s AND status = 'completed'
+                ORDER BY executed_at DESC
+                LIMIT %s
+            """, (symbol, limit))
+
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    'date': row[0].isoformat() if row[0] else None,
+                    'profit_loss_pct': float(row[1]) if row[1] else 0,
+                    'max_drawdown_pct': float(row[2]) if row[2] else 0,
+                    'total_trades': row[3],
+                    'win_rate': float(row[4]) if row[4] else 0,
+                    'liquidation_occurred': row[5]
+                })
+
+            # Reverse to get chronological order (oldest to newest)
+            results.reverse()
+
+            return jsonify(results)
+
+    except Exception as e:
+        print(f"Error fetching backtest history for {symbol}: {e}")
+        return jsonify([]), 500
+
+
+@app.route('/backtest/<symbol>')
+def backtest_detail(symbol):
+    """Backtest detail page showing charts and metrics for a specific symbol"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Get the latest backtest for this symbol
+            cursor.execute("""
+                SELECT
+                    id, symbol, side, leverage, interval,
+                    test_period_days, start_date, end_date,
+                    initial_balance, final_balance, profit_loss, profit_loss_pct,
+                    max_drawdown_pct, total_trades, winning_trades, losing_trades, win_rate,
+                    max_position_size, max_margin_used_pct, liquidation_occurred,
+                    executed_at, execution_duration_seconds,
+                    chart_balance_path, chart_position_path, chart_price_path
+                FROM backtest_results
+                WHERE symbol = %s AND status = 'completed'
+                ORDER BY executed_at DESC
+                LIMIT 1
+            """, (symbol,))
+
+            result = cursor.fetchone()
+
+            if not result:
+                flash(f'No backtest results found for {symbol}', 'error')
+                return redirect(url_for('index'))
+
+            backtest = {
+                'id': result[0],
+                'symbol': result[1],
+                'side': result[2],
+                'leverage': result[3],
+                'interval': result[4],
+                'test_period_days': result[5],
+                'start_date': result[6],
+                'end_date': result[7],
+                'initial_balance': float(result[8]) if result[8] else 0,
+                'final_balance': float(result[9]) if result[9] else 0,
+                'profit_loss': float(result[10]) if result[10] else 0,
+                'profit_loss_pct': float(result[11]) if result[11] else 0,
+                'max_drawdown_pct': float(result[12]) if result[12] else 0,
+                'total_trades': result[13],
+                'winning_trades': result[14],
+                'losing_trades': result[15],
+                'win_rate': float(result[16]) if result[16] else 0,
+                'max_position_size': float(result[17]) if result[17] else 0,
+                'max_margin_used_pct': float(result[18]) if result[18] else 0,
+                'liquidation_occurred': result[19],
+                'executed_at': result[20],
+                'execution_duration_seconds': result[21],
+                'chart_path': result[22]
+            }
+
+            return render_template('backtest_detail.html', backtest=backtest)
+
+    except Exception as e:
+        logger.error(f"Error loading backtest detail: {e}")
+        flash('Error loading backtest details', 'error')
+        return redirect(url_for('index'))
+
+
+@app.route('/api/backtest/<int:backtest_id>/chart')
+def get_backtest_chart(backtest_id):
+    """API endpoint to serve chart image from database"""
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Fetch chart data from database
+            cursor.execute("""
+                SELECT chart_data
+                FROM backtest_results
+                WHERE id = %s AND chart_data IS NOT NULL
+            """, (backtest_id,))
+
+            result = cursor.fetchone()
+
+            if not result or not result[0]:
+                abort(404)
+
+            # Return PNG image
+            return Response(result[0], mimetype='image/png')
+
+    except Exception as e:
+        logger.error(f"Error serving chart: {e}")
+        abort(500)
 
 
 # ============================================================================

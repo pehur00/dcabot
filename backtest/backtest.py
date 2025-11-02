@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from clients.PhemexClient import PhemexClient
 from strategies.MartingaleTradingStrategy import MartingaleTradingStrategy
-from data_fetcher import fetch_historical_data_ccxt, convert_phemex_to_binance_symbol
+from backtest.data_fetcher import fetch_historical_data_ccxt, convert_phemex_to_binance_symbol
 
 
 def fetch_extended_historical_data(client: PhemexClient, symbol: str, interval: int,
@@ -650,6 +650,10 @@ class BacktestEngine:
         self._print_results(symbol, pos_side)
         self.generate_charts(symbol, pos_side)
 
+        # Store start and end dates for get_results_dict
+        self._backtest_start_date = df.index[0]
+        self._backtest_end_date = df.index[-1]
+
     def run_multi_symbol_backtest(self, df_dict: Dict[str, pd.DataFrame], pos_side: str,
                                     ema_interval: int, automatic_mode: bool = True):
         """
@@ -1109,13 +1113,87 @@ class BacktestEngine:
             df_trades.to_csv(trades_csv, index=False)
             print(f"💾 Trade history saved to: {trades_csv}")
 
-    def generate_charts(self, symbol: str, pos_side: str):
-        """Generate visualization charts for backtest results"""
+    def get_results_dict(self, symbol: str, side: str, test_period_days: int,
+                         start_date: datetime, end_date: datetime, data_source: str) -> Dict[str, Any]:
+        """
+        Return backtest results as a structured dictionary for database storage.
+
+        Args:
+            symbol: Trading symbol
+            side: 'Long' or 'Short'
+            test_period_days: Number of days tested
+            start_date: Start date of backtest
+            end_date: End date of backtest
+            data_source: 'binance' or 'phemex'
+
+        Returns:
+            Dictionary with all backtest metrics and trade details
+        """
+        final_balance = self.balance
+        profit_loss = final_balance - self.initial_balance
+        profit_loss_pct = (profit_loss / self.initial_balance) * 100
+        win_rate = (self.winning_trades / self.total_trades * 100) if self.total_trades > 0 else 0
+
+        # Find max position size
+        max_position_size = 0
+        max_margin_pct = 0
+        if self.balance_history:
+            for snapshot in self.balance_history:
+                if 'position_value' in snapshot and snapshot['position_value'] > 0:
+                    margin_pct = (snapshot['position_value'] / self.initial_balance) * 100
+                    if margin_pct > max_margin_pct:
+                        max_margin_pct = margin_pct
+
+        if self.trades:
+            for trade in self.trades:
+                if trade.get('position_size', 0) > max_position_size:
+                    max_position_size = trade['position_size']
+
+        return {
+            'symbol': symbol,
+            'side': side,
+            'leverage': self.strategy.leverage,
+            'interval': 1,  # Assuming 1-minute candles
+            'test_period_days': test_period_days,
+            'start_date': start_date,
+            'end_date': end_date,
+            'initial_balance': float(self.initial_balance),
+            'final_balance': float(final_balance),
+            'profit_loss': float(profit_loss),
+            'profit_loss_pct': float(profit_loss_pct),
+            'max_drawdown_pct': float(self.max_drawdown),
+            'total_trades': self.total_trades,
+            'winning_trades': self.winning_trades,
+            'losing_trades': self.losing_trades,
+            'win_rate': float(win_rate),
+            'max_position_size': float(max_position_size),
+            'max_margin_used_pct': float(max_margin_pct),
+            'liquidation_occurred': self.liquidations > 0,
+            'data_source': data_source,
+            'trades': self.trades  # Full trade list for optional storage
+        }
+
+    def generate_charts(self, symbol: str, pos_side: str, output_dir: str = None):
+        """
+        Generate visualization charts for backtest results
+
+        Args:
+            symbol: Trading symbol
+            pos_side: Position side (Long/Short)
+            output_dir: Optional custom output directory for charts. If not provided, uses backtest directory.
+
+        Returns:
+            str: Path to the saved chart file, or None if no chart was generated
+        """
         if not self.balance_history:
             print("⚠️  No balance history to plot")
-            return
+            return None
 
-        backtest_dir = Path(__file__).parent
+        if output_dir:
+            backtest_dir = Path(output_dir)
+            backtest_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            backtest_dir = Path(__file__).parent
 
         # Convert balance history to DataFrame
         df = pd.DataFrame(self.balance_history)
@@ -1292,7 +1370,11 @@ class BacktestEngine:
         plt.tight_layout()
 
         # Use same unique filename as CSVs
-        backtest_dir = Path(__file__).parent / 'results'
+        if not output_dir:
+            backtest_dir = Path(__file__).parent / 'results'
+            backtest_dir.mkdir(exist_ok=True)
+        # else: backtest_dir was already set at the start of the method
+
         from datetime import datetime
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         base_name = f"{symbol}_{pos_side}_bal{int(self.initial_balance)}_profit{self.strategy.profit_pnl:.2f}_{timestamp}"
@@ -1302,6 +1384,8 @@ class BacktestEngine:
         print(f"📈 Backtest chart saved to: {chart_path}")
 
         plt.close()
+
+        return str(chart_path)
 
     def _print_multi_symbol_results(self, pos_side: str):
         """Print multi-symbol backtest results with per-symbol breakdown"""
@@ -2022,6 +2106,151 @@ def main():
             ema_interval=args.interval,
             automatic_mode=True
         )
+
+
+def run_backtest_programmatic(symbol: str, side: str = 'Long', days: int = 7,
+                              balance: float = 200.0, leverage: int = 10,
+                              interval: int = 1, source: str = 'binance',
+                              profit_pnl: float = 0.1, max_margin_pct: float = None,
+                              profit_threshold: float = 0.003, buy_until_limit: float = 0.02) -> Dict[str, Any]:
+    """
+    Run a backtest programmatically and return results as a dictionary.
+    This function is designed for use by automated scripts (like weekly backtest runner).
+
+    Args:
+        symbol: Trading symbol (e.g., 'BTCUSDT')
+        side: 'Long' or 'Short'
+        days: Number of days to backtest
+        balance: Initial balance in USDT
+        leverage: Leverage multiplier
+        interval: Candle interval in minutes
+        source: 'binance' or 'phemex'
+        profit_pnl: Profit-taking threshold as decimal (default: 0.1 = 10%)
+        max_margin_pct: Maximum margin usage cap (e.g., 0.40 = 40%). None = no cap
+        profit_threshold: Price movement threshold to start considering profit-taking (default: 0.003 = 0.3%)
+        buy_until_limit: Maximum position size as % of balance (default: 0.02 = 2%)
+
+    Returns:
+        Dictionary with backtest results including metrics and trades
+
+    Raises:
+        Exception: If backtest fails
+    """
+    import time
+    start_time = time.time()
+
+    # Load environment
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+
+    # Setup minimal logging
+    logging.basicConfig(level=logging.ERROR, format='%(message)s')
+    logger = logging.getLogger(__name__)
+
+    # Initialize client and strategy
+    api_key = os.getenv('API_KEY')
+    api_secret = os.getenv('API_SECRET')
+    testnet = os.getenv('TESTNET', 'True').lower() in ('true', '1', 't')
+
+    if not api_key or not api_secret:
+        raise Exception("API_KEY and API_SECRET must be set in .env file")
+
+    client = PhemexClient(api_key, api_secret, logger, testnet)
+    strategy = MartingaleTradingStrategy(client=client, logger=logger, notifier=None)
+
+    # Configure strategy parameters
+    strategy.leverage = leverage
+    strategy.profit_pnl = profit_pnl
+    strategy.profit_threshold = profit_threshold
+    strategy.buy_until_limit = buy_until_limit
+    if max_margin_pct is not None:
+        strategy.max_margin_pct = max_margin_pct
+
+    # Fetch historical data
+    timeframe_map = {
+        1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m',
+        60: '1h', 120: '2h', 240: '4h', 360: '6h', 720: '12h',
+        1440: '1d'
+    }
+    timeframe = timeframe_map.get(interval, '1h')
+
+    if source == 'binance':
+        binance_symbol = convert_phemex_to_binance_symbol(symbol)
+        df = fetch_historical_data_ccxt(
+            symbol=binance_symbol,
+            timeframe=timeframe,
+            days=days,
+            exchange_name='binance'
+        )
+    else:
+        periods_needed = (days * 24 * 60) // interval + 200
+        df = fetch_extended_historical_data(client, symbol, interval, periods_needed)
+
+    if df.empty:
+        raise Exception(f"Failed to fetch historical data for {symbol}")
+
+    # Run backtest
+    engine = BacktestEngine(client, strategy, balance, max_margin_pct=max_margin_pct)
+
+    # Get instrument specs
+    try:
+        min_qty, max_qty, qty_step = client.define_instrument_info(symbol)
+        engine.set_instrument_specs(min_qty, max_qty, qty_step)
+    except Exception:
+        pass  # Use defaults
+
+    # Run the backtest (suppressing output)
+    import sys
+    from io import StringIO
+
+    # Temporarily redirect stdout to suppress print statements
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+
+    try:
+        engine.run_backtest(
+            df=df,
+            symbol=symbol,
+            pos_side=side,
+            ema_interval=interval,
+            automatic_mode=True
+        )
+    finally:
+        sys.stdout = old_stdout
+
+    # Calculate execution time
+    execution_time = int(time.time() - start_time)
+
+    # Get results as dictionary
+    results = engine.get_results_dict(
+        symbol=symbol,
+        side=side,
+        test_period_days=days,
+        start_date=engine._backtest_start_date,
+        end_date=engine._backtest_end_date,
+        data_source=source
+    )
+
+    # Add execution duration
+    results['execution_duration_seconds'] = execution_time
+
+    # Generate charts and save to saas/static/charts directory
+    try:
+        saas_charts_dir = Path(__file__).parent.parent / 'saas' / 'static' / 'charts'
+        chart_path = engine.generate_charts(symbol, side, output_dir=str(saas_charts_dir))
+
+        if chart_path:
+            # Store relative path for web serving
+            chart_filename = Path(chart_path).name
+            results['chart_path'] = f'/static/charts/{chart_filename}'
+        else:
+            results['chart_path'] = None
+    except Exception as e:
+        logger.warning(f"Failed to generate charts: {e}")
+        results['chart_path'] = None
+
+    return results
 
 
 if __name__ == '__main__':

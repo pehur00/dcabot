@@ -49,12 +49,34 @@ services:
       - key: ENCRYPTION_KEY
         sync: false
 
+  # Cron Job (weekly backtests for front page performance display) - FREE!
+  - type: cron
+    name: dcabot-weekly-backtests
+    env: python
+    region: frankfurt
+    schedule: "0 2 * * 0"  # Every Sunday at 2 AM UTC
+    branch: feature/saas-transformation
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt -r requirements-saas.txt
+    startCommand: python saas/run_weekly_backtests.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false
+
 # ============================================================================
 # DEPLOYMENT INFO
 # ============================================================================
-# Cost: $7/month (1 web service, 1 cron job is free)
+# Cost: $7/month (1 web service, 2 cron jobs are free)
 # Region: Frankfurt (EU)
 # URL: https://dcabot-saas-web.onrender.com
+#
+# Services:
+# - dcabot-saas-web: Flask dashboard ($7/month starter plan)
+# - dcabot-saas-scheduler: Executes all active bots every 5 minutes (FREE)
+# - dcabot-weekly-backtests: Runs weekly backtests every Sunday 2 AM UTC (FREE)
 #
 # Database: Digital Ocean PostgreSQL (diptrader)
 # - Must allow Render IPs: 3.75.158.163, 3.125.183.140, 35.157.117.28,
