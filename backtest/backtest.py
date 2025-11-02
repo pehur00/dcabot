@@ -2112,7 +2112,8 @@ def run_backtest_programmatic(symbol: str, side: str = 'Long', days: int = 7,
                               balance: float = 200.0, leverage: int = 10,
                               interval: int = 1, source: str = 'binance',
                               profit_pnl: float = 0.1, max_margin_pct: float = None,
-                              profit_threshold: float = 0.003, buy_until_limit: float = 0.02) -> Dict[str, Any]:
+                              profit_threshold: float = 0.003, buy_until_limit: float = 0.02,
+                              begin_size_of_balance: float = 0.006) -> Dict[str, Any]:
     """
     Run a backtest programmatically and return results as a dictionary.
     This function is designed for use by automated scripts (like weekly backtest runner).
@@ -2129,6 +2130,7 @@ def run_backtest_programmatic(symbol: str, side: str = 'Long', days: int = 7,
         max_margin_pct: Maximum margin usage cap (e.g., 0.40 = 40%). None = no cap
         profit_threshold: Price movement threshold to start considering profit-taking (default: 0.003 = 0.3%)
         buy_until_limit: Maximum position size as % of balance (default: 0.02 = 2%)
+        begin_size_of_balance: Initial order size as % of balance (default: 0.006 = 0.6%)
 
     Returns:
         Dictionary with backtest results including metrics and trades
@@ -2166,6 +2168,7 @@ def run_backtest_programmatic(symbol: str, side: str = 'Long', days: int = 7,
     strategy.profit_pnl = profit_pnl
     strategy.profit_threshold = profit_threshold
     strategy.buy_until_limit = buy_until_limit
+    strategy.proportion_of_balance = begin_size_of_balance
     if max_margin_pct is not None:
         strategy.max_margin_pct = max_margin_pct
 
