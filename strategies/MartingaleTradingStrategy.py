@@ -182,16 +182,16 @@ class MartingaleTradingStrategy(TradingStrategy):
                     if profit_pnl_pct <= self.profit_threshold:
                         reasons.append(f"profit too small ({profit_pnl_pct*100:.2f}% vs {self.profit_threshold*100:.2f}% target)")
                     if position_factor < self.buy_until_limit:
-                        reasons.append(f"position too small ({position_factor*100:.1f}% vs {self.buy_until_limit*100:.1f}% min)")
+                        reasons.append(f"position too small ({position_factor*100:.2f}% vs {self.buy_until_limit*100:.2f}% min)")
 
                 # Check why we didn't add to position
                 if margin_level >= 2:  # Not critical margin
                     if position_factor >= self.buy_until_limit:
-                        reasons.append(f"position at limit ({position_factor*100:.1f}% of balance)")
+                        reasons.append(f"position at limit ({position_factor*100:.2f}% of balance)")
                     if unrealised_pnl >= 0:
                         reasons.append("position in profit, waiting for dip")
                     elif upnl_percentage >= -0.05:
-                        reasons.append(f"drawdown not deep enough ({upnl_percentage*100:.1f}% vs -5% threshold)")
+                        reasons.append(f"drawdown not deep enough ({upnl_percentage*100:.2f}% vs -5% threshold)")
 
                 if not valid_position:
                     if pos_side == "Long":
@@ -202,7 +202,7 @@ class MartingaleTradingStrategy(TradingStrategy):
                 if reasons:
                     conclusion = f"Holding position - {'; '.join(reasons)}"
                 else:
-                    conclusion = f"Position stable - margin: {margin_level:.2f}, uPnL: {upnl_percentage*100:.1f}%"
+                    conclusion = f"Position stable - margin: {margin_level:.2f}, uPnL: {upnl_percentage*100:.2f}%"
 
         # ✅ 3. Open a new position in automatic mode if conditions match
         # Don't open new positions during high volatility or dangerous declines
