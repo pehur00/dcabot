@@ -65,12 +65,9 @@ services:
         value: 3.11.0
       - key: DATABASE_URL
         sync: false
-      - key: API_KEY
-        sync: false
-      - key: API_SECRET
-        sync: false
-      - key: TESTNET
-        value: "False"  # Use production Binance for backtests
+      # API_KEY and API_SECRET are optional when using Binance (source='binance')
+      # CCXT fetches public market data without authentication
+      # Only needed if using Phemex as data source
 
 # ============================================================================
 # DEPLOYMENT INFO

@@ -2149,12 +2149,14 @@ def run_backtest_programmatic(symbol: str, side: str = 'Long', days: int = 7,
     logger = logging.getLogger(__name__)
 
     # Initialize client and strategy
-    api_key = os.getenv('API_KEY')
-    api_secret = os.getenv('API_SECRET')
+    api_key = os.getenv('API_KEY', 'dummy_key')
+    api_secret = os.getenv('API_SECRET', 'dummy_secret')
     testnet = os.getenv('TESTNET', 'True').lower() in ('true', '1', 't')
 
-    if not api_key or not api_secret:
-        raise Exception("API_KEY and API_SECRET must be set in .env file")
+    # API credentials are only needed when source != 'binance'
+    # For Binance backtests, CCXT fetches public data without authentication
+    if source != 'binance' and (api_key == 'dummy_key' or api_secret == 'dummy_secret'):
+        raise Exception("API_KEY and API_SECRET must be set for non-Binance data sources")
 
     client = PhemexClient(api_key, api_secret, logger, testnet)
     strategy = MartingaleTradingStrategy(client=client, logger=logger, notifier=None)
