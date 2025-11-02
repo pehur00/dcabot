@@ -353,6 +353,40 @@ tbody tr:hover {
     background-color: var(--bg-tertiary);
 }
 
+/* Activity Log Layout */
+.activity-log-table .activity-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.activity-log-table .activity-time {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    font-family: 'Courier New', monospace;
+}
+
+.activity-log-table td:first-child {
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.activity-log-table td:last-child {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .activity-log-table th:first-child {
+        width: 140px !important;
+    }
+
+    .activity-log-table .activity-time {
+        font-size: 0.75rem;
+    }
+}
+
 /* Status Badges */
 .badge {
     display: inline-flex;
@@ -456,11 +490,27 @@ tbody tr:hover {
     gap: 1rem;
 }
 
+.bot-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
 @media (max-width: 768px) {
     .grid,
     .grid-2,
     .grid-bot-detail,
     .grid-3-charts {
+        grid-template-columns: 1fr;
+    }
+
+    .bot-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .bot-info-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -767,6 +817,55 @@ tbody tr:hover {
     font-size: 0.95rem;
 }
 
+/* Compact Backtest Summary Table */
+.backtest-summary-table {
+    margin: 1.5rem 0;
+}
+
+.backtest-summary-table table {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+}
+
+.backtest-row {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.backtest-row:hover {
+    background-color: var(--bg-tertiary) !important;
+    transform: translateX(4px);
+}
+
+.backtest-row.positive .pnl-value {
+    color: var(--color-long);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.backtest-row.negative .pnl-value {
+    color: var(--color-short);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.backtest-row td:first-child {
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .backtest-summary-table table {
+        font-size: 0.85rem;
+    }
+
+    .backtest-summary-table th:nth-child(4),
+    .backtest-summary-table td:nth-child(4),
+    .backtest-summary-table th:nth-child(6),
+    .backtest-summary-table td:nth-child(6) {
+        display: none;  /* Hide Drawdown and Period on mobile */
+    }
+}
+
 .performance-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -778,7 +877,7 @@ tbody tr:hover {
     background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
     border: 1px solid var(--border-primary);
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 1rem;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -820,7 +919,7 @@ tbody tr:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .performance-card .symbol {
@@ -841,19 +940,19 @@ tbody tr:hover {
 }
 
 .performance-card .pnl {
-    margin: 1.5rem 0;
+    margin: 0.75rem 0;
     text-align: center;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     border-top: 1px solid var(--border-secondary);
     border-bottom: 1px solid var(--border-secondary);
 }
 
 .performance-card .pnl-pct {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     display: block;
     line-height: 1;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .performance-card.positive .pnl-pct {
@@ -873,8 +972,8 @@ tbody tr:hover {
 .performance-card .metrics {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-top: 1.5rem;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
 }
 
 .performance-card .metric {
@@ -898,8 +997,8 @@ tbody tr:hover {
 }
 
 .performance-card .card-footer {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
     border-top: 1px solid var(--border-secondary);
     text-align: center;
 }
@@ -931,7 +1030,7 @@ tbody tr:hover {
     }
 
     .performance-card .pnl-pct {
-        font-size: 2rem;
+        font-size: 1.5rem;
     }
 }
 

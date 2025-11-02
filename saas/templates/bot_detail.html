@@ -92,7 +92,7 @@
 
         <div class="card">
             <h2 class="card-header">Bot Info</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+            <div class="bot-info-grid">
                 <div>
                     <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Exchange</div>
                     <div style="font-weight: 500;">{{ bot[2]|title }}</div>
@@ -156,28 +156,29 @@
     <div class="card">
         <h2 class="card-header">Bot Activity Log</h2>
         {% if bot_logs %}
-            <table>
+            <table class="activity-log-table">
                 <thead>
                     <tr>
-                        <th>Time</th>
-                        <th>Level</th>
+                        <th style="width: 200px;">Time / Level</th>
                         <th>Message</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for log in bot_logs %}
                     <tr>
-                        <td>{{ log[3].strftime('%m/%d %H:%M:%S') if log[3] else 'N/A' }}</td>
                         <td>
-                            {% if log[1] == 'ERROR' %}
-                                <span class="badge badge-danger">ERROR</span>
-                            {% elif log[1] == 'WARNING' %}
-                                <span class="badge badge-warning">WARNING</span>
-                            {% elif log[1] == 'INFO' %}
-                                <span class="badge badge-success">INFO</span>
-                            {% else %}
-                                <span class="badge badge-secondary">{{ log[1] }}</span>
-                            {% endif %}
+                            <div class="activity-meta">
+                                <span class="activity-time">{{ log[3].strftime('%m/%d') }}<br/>{{ log[3].strftime('%H:%M:%S') if log[3] else 'N/A' }}</span>
+                                {% if log[1] == 'ERROR' %}
+                                    <span class="badge badge-danger">ERROR</span>
+                                {% elif log[1] == 'WARNING' %}
+                                    <span class="badge badge-warning">WARNING</span>
+                                {% elif log[1] == 'INFO' %}
+                                    <span class="badge badge-success">INFO</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{{ log[1] }}</span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>{{ log[2] }}</td>
                     </tr>
