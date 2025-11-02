@@ -219,7 +219,7 @@ def store_backtest_error(symbol: str, side: str, leverage: int, error_message: s
 def cleanup_old_results():
     """
     Clean up old and failed backtest results to prevent unique constraint violations.
-    Keeps successful results from today.
+    Deletes today's results to allow re-running, keeps most recent from previous days.
     """
     with get_db() as conn:
         cursor = conn.cursor()
@@ -227,6 +227,13 @@ def cleanup_old_results():
         # Delete failed results
         cursor.execute("DELETE FROM backtest_results WHERE status = 'failed'")
         failed_count = cursor.rowcount
+
+        # Delete today's results (to allow re-running backtests on same day)
+        cursor.execute("""
+            DELETE FROM backtest_results
+            WHERE executed_at::date = CURRENT_DATE
+        """)
+        today_count = cursor.rowcount
 
         # Delete old results (older than today, keeping most recent successful run per symbol)
         cursor.execute("""
@@ -245,7 +252,7 @@ def cleanup_old_results():
 
         conn.commit()
 
-        return failed_count, old_count
+        return failed_count, today_count, old_count
 
 
 def run_weekly_backtests():
@@ -259,8 +266,9 @@ def run_weekly_backtests():
 
     # Clean up old results
     print("🧹 Cleaning up old backtest results...")
-    failed_count, old_count = cleanup_old_results()
+    failed_count, today_count, old_count = cleanup_old_results()
     print(f"   Deleted {failed_count} failed results")
+    print(f"   Deleted {today_count} results from today (to allow re-run)")
     print(f"   Deleted {old_count} old results (keeping latest per symbol)")
     print()
 

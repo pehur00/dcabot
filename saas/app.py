@@ -1643,9 +1643,12 @@ def get_backtest_chart(backtest_id):
             if not result or not result[0]:
                 abort(404)
 
+            # Convert memoryview to bytes (PostgreSQL BYTEA returns memoryview)
+            chart_bytes = bytes(result[0])
+
             # Return PNG image with aggressive caching headers
             # Charts never change once created, so cache forever
-            response = Response(result[0], mimetype='image/png')
+            response = Response(chart_bytes, mimetype='image/png')
             response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'  # 1 year
             response.headers['ETag'] = f'"{backtest_id}"'  # Use backtest_id as ETag
             return response
