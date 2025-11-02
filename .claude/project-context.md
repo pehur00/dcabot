@@ -1,6 +1,6 @@
 # DCABot - Agent Memory Bank
 
-Last Updated: 2025-11-01 (SaaS Platform Updates)
+Last Updated: 2025-11-02 (Auto-Refresh & Enhanced Logging)
 
 ## Project Overview
 
@@ -421,7 +421,38 @@ Digital Ocean:
 
 ### Recent SaaS Enhancements (November 2025)
 
-#### 1. Professional UI/UX Redesign (Commits: c05403b, 5a4ad53)
+#### 1. Auto-Refresh & Detailed Logging (Commits: 7e4c1de, a70f20f) - **LATEST**
+**Enhanced Bot Execution Logging** (Commit: a70f20f):
+**Why**: Generic "Nothing changed" messages didn't explain bot decision-making
+**What**: Added detailed reasoning for all scenarios where no action is taken
+**Features**:
+- Position holding reasons with specific thresholds and percentages
+- EMA alignment checks with actual price comparisons
+- Market condition explanations (volatility, decline velocity)
+- Manual mode indicators
+**Examples**:
+- Before: `"Nothing changed"`
+- After: `"Holding position - position at limit (2.0% of balance); position in profit, waiting for dip"`
+- After: `"Not opening position - price $150.25 above 1h EMA100 $148.50 (waiting for dip)"`
+**Impact**: Full transparency into bot decision-making for monitoring and debugging
+**Files**: `strategies/MartingaleTradingStrategy.py:67, 174-235`
+
+**Auto-Refresh on Bot Detail Page** (Commit: 7e4c1de):
+**Why**: Users had to manually refresh to see new bot execution results
+**What**: Added polling mechanism to detect and auto-refresh when bot executes
+**Backend**:
+- New API endpoint `/api/bots/<bot_id>/last-execution`
+- Returns latest execution timestamp from `execution_metrics` table
+- Validates bot ownership before responding
+**Frontend**:
+- JavaScript polling every 30 seconds
+- Detects new bot executions automatically
+- Refreshes page when new data available
+- Clean lifecycle (starts on load, stops on page leave)
+**Impact**: Real-time updates to charts, logs, and trade history without manual refresh
+**Files**: `saas/app.py:864-899`, `saas/templates/bot_detail.html:506-545`
+
+#### 2. Professional UI/UX Redesign (Commits: c05403b, 5a4ad53)
 **Inspired by**: Bybit, Binance, Phemex trading platforms
 **Features**:
 - **Dark Theme**: Professional color palette (#0B0E11 primary, #1E2329 secondary)
@@ -481,6 +512,8 @@ Digital Ocean:
 ✅ Multi-bot support per user
 ✅ Trading pair management (CRUD operations)
 ✅ Real-time performance metrics with charts
+✅ Auto-refresh when bot executes (30s polling)
+✅ Detailed bot decision logging (explains why no action taken)
 ✅ Bot execution logs and trade history
 ✅ Telegram notifications per user
 ✅ API key encryption (Fernet) and password hashing (PBKDF2)
@@ -751,6 +784,8 @@ python main.py 2>&1 | tee bot.log
 - c38a213: Remove 1h EMA200 requirement and enhance notifications
 
 **Recent Commits (feature/saas-transformation)**:
+- 7e4c1de: Add auto-refresh for bot detail page when executions complete
+- a70f20f: Improve bot execution logging with detailed reasoning
 - 5a4ad53: Optimize bot detail page layout for better space utilization
 - c05403b: Redesign UI with Bybit/Binance/Phemex-inspired dark theme
 - d0f96b3: Improve bot execution error handling for missing trading pairs
