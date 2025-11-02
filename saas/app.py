@@ -4,6 +4,7 @@ Complete UI with user authentication and bot management
 """
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_caching import Cache
 from datetime import datetime
 import logging
 import os
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 # Create Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-in-production')
+
+# Configure caching (in-memory, resets on deploy)
+app.config['CACHE_TYPE'] = 'SimpleCache'  # In-memory cache
+app.config['CACHE_DEFAULT_TIMEOUT'] = 0  # Cache forever (charts never change)
+cache = Cache(app)
 
 # Database connection test
 try:
@@ -1535,8 +1541,14 @@ def backtest_detail(symbol):
 
 
 @app.route('/api/backtest/<int:backtest_id>/chart')
+@cache.cached(timeout=0, key_prefix=lambda: f'chart_{request.view_args["backtest_id"]}')
 def get_backtest_chart(backtest_id):
-    """API endpoint to serve chart image from database"""
+    """
+    API endpoint to serve chart image from database with server-side + client-side caching.
+
+    Server-side cache: In-memory (resets on deploy), reduces DB queries for all users
+    Client-side cache: Browser cache (1 year), eliminates requests after first load
+    """
     try:
         with get_db() as conn:
             cursor = conn.cursor()
@@ -1553,8 +1565,12 @@ def get_backtest_chart(backtest_id):
             if not result or not result[0]:
                 abort(404)
 
-            # Return PNG image
-            return Response(result[0], mimetype='image/png')
+            # Return PNG image with aggressive caching headers
+            # Charts never change once created, so cache forever
+            response = Response(result[0], mimetype='image/png')
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'  # 1 year
+            response.headers['ETag'] = f'"{backtest_id}"'  # Use backtest_id as ETag
+            return response
 
     except Exception as e:
         logger.error(f"Error serving chart: {e}")
