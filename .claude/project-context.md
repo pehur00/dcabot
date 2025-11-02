@@ -1,13 +1,15 @@
 # DCABot - Agent Memory Bank
 
-Last Updated: 2025-11-02 (Auto-Refresh & Enhanced Logging)
+Last Updated: 2025-11-02 (Timezone Support & SaaS Architecture)
 
 ## Project Overview
 
-**DCABot** is a cryptocurrency trading bot that implements a **Martingale strategy** (not pure DCA) with intelligent risk management. It automatically manages positions on Phemex exchange with advanced volatility protection and decline velocity detection.
+**DCABot** is a **multi-user SaaS platform** for cryptocurrency trading that implements a **Martingale strategy** (not pure DCA) with intelligent risk management. Users can create and manage multiple trading bots through a web interface, with each bot automatically managing positions on Phemex exchange with advanced volatility protection and decline velocity detection.
 
+**Architecture**: Multi-user SaaS Web Application + Scheduled Bot Executor
 **Repository**: https://github.com/pehur00/dcabot
-**Deployment**: Render.com (cron job, runs every 5 minutes)
+**Deployment**: Render.com (~$22/month: Web Service + PostgreSQL + Cron Job)
+**Database**: PostgreSQL (Render Managed)
 **Exchange**: Phemex (testnet and mainnet support)
 
 ## Core Strategy: Martingale Trading
@@ -324,81 +326,84 @@ BOT_STARTUP=False
 ### Docker/Render (bot.env or environment variables)
 Same variables, but injected directly (no .env file in container)
 
-## Deployment
+## Current Architecture (SaaS Platform)
 
-### Render.com Setup
-**Type**: Cron job
-**Schedule**: Every 5 minutes (`*/5 * * * *`)
-**Service**: martingale-trading-bot
-**Region**: Frankfurt
+### Deployment Overview
+**Type**: Multi-service SaaS Application
+**Deployment**: Render.com
+**Total Cost**: ~$22/month
 **Blueprint**: render.yaml
 
-**How to Deploy**:
-1. Push to GitHub main branch
-2. Render auto-deploys from GitHub
-3. Configure environment variables in Render dashboard
-
-**Render CLI Access**:
-```bash
-render login
-# Set workspace in ~/.render/cli.yaml
-render services list
-render logs -s martingale-trading-bot
+### Services
+```
+Render.com:
+├── dcabot-saas-web (Flask Web Service) - $7/month
+│   ├── Flask 3.0 web application
+│   ├── User authentication (Flask-Login + Google OAuth)
+│   ├── Bot management dashboard
+│   ├── Performance metrics API
+│   ├── Timezone-aware date display
+│   └── Auto-migrations on deploy
+│
+├── dcabot-saas-scheduler (Cron Job) - FREE
+│   ├── Runs every 5 minutes (*/5 * * * *)
+│   ├── Executes ALL active user bots
+│   └── Writes metrics to database
+│
+└── PostgreSQL Database (Managed) - $15/month
+    ├── User accounts with hashed passwords
+    ├── Bot configurations (encrypted API keys)
+    ├── Trading pairs per bot
+    ├── Trade history
+    ├── Execution logs
+    ├── Performance metrics
+    └── Backtest results
 ```
 
-### Docker Deployment
-```bash
-# Build
-docker build -t dcabot .
-
-# Run
-docker run --env-file bot.env dcabot
-```
+### How It Works
+1. **User Registration**: Users sign up via web interface (with admin approval) or Google OAuth
+2. **Bot Creation**: Users create bots with Phemex API credentials (encrypted with Fernet)
+3. **Trading Pair Setup**: Configure symbols, leverage, side (Long/Short), automatic mode
+4. **Scheduled Execution**: Cron job runs every 5 minutes and executes all active bots
+5. **Real-time Monitoring**: Web dashboard shows bot status, trades, logs, and performance charts
+6. **Timezone Support**: All timestamps displayed in user's local timezone
 
 ### Local Development
 ```bash
-# Setup
+# Setup virtual environment
 python3 -m venv dcabot-env
 source dcabot-env/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-saas.txt
 
-# Run
-python main.py
+# Start local PostgreSQL (Docker)
+docker-compose up -d
+
+# Run migrations
+export DATABASE_URL="postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev"
+python saas/migrate.py
+
+# Start web server
+python saas/app.py
+
+# Test bot execution
+python saas/execute_all_bots.py
 ```
 
-## SaaS Platform (Feature Branch)
+### Deployment Process
+1. Push to GitHub main branch
+2. Render detects changes and triggers build
+3. Database migrations run automatically during build
+4. If migrations succeed → new version deploys
+5. If migrations fail → build stops, old version continues running
+6. Both web service and cron job restart with new code
 
-A **multi-user SaaS platform** is being developed on the `feature/saas-transformation` branch. This transforms the standalone bot into a web-based service where users can create and manage their own trading bots.
-
-### Branch Strategy
-- **main branch**: Standalone bot (current deployment, unchanged)
-- **feature/saas-transformation**: SaaS platform (active development)
-
-### Key Differences
-**Standalone (main)**:
-- Single user, single bot
-- Configuration via .env file
-- Cron job runs one bot every 5 minutes
-- No database required
-
-**SaaS Platform (feature/saas)**:
-- Multiple users, multiple bots
-- Web UI for bot management
-- Cron job executes ALL active bots every 5 minutes
-- PostgreSQL database (Digital Ocean managed)
-- User authentication and API key encryption
-
-### Architecture Overview
-```
-Render (Frankfurt):
-├── dcabot-saas-web (Flask) - $7/month
-│   └── Web UI + API endpoints + Performance metrics API
-└── dcabot-saas-scheduler (Cron) - FREE
-    └── Executes all active bots every 5 minutes
-
-Digital Ocean:
-└── PostgreSQL (diptrader database)
-    └── Tables: users, bots, trading_pairs, trades, bot_logs, bot_metrics
+### Render CLI Access
+```bash
+render login
+render services list
+render logs -s dcabot-saas-web --tail
+render logs -s dcabot-saas-scheduler --tail
 ```
 
 ### Documentation
@@ -413,15 +418,120 @@ Digital Ocean:
 - `saas/security.py` - API key encryption (Fernet) + password hashing (PBKDF2-SHA256)
 - `saas/execute_all_bots.py` - Cron executor for all bots
 - `saas/migrate.py` - Database migration runner
-- `saas/schema.sql` - Database schema with migrations
+- `saas/migrations/` - SQL migration files (version-controlled)
 - `saas/templates/` - Jinja2 templates with professional dark theme
 - `saas/static/css/style.css` - Trading platform-inspired UI (731 lines)
 - `requirements-saas.txt` - SaaS-specific dependencies
 - `render.yaml` - Render Blueprint (SaaS services only)
 
+### Database Migration Strategy
+
+**IMPORTANT**: This project uses SQL-based migrations, NOT seed scripts or ORM migrations.
+
+**How Migrations Work**:
+1. **Migration Files**: SQL files in `saas/migrations/` with sequential naming (001_, 002_, 003_)
+2. **Automatic Execution**: Migrations run automatically during app startup/deployment
+3. **Tracking**: `schema_migrations` table tracks which migrations have been applied
+4. **Idempotent**: All migrations use `IF NOT EXISTS` / `IF EXISTS` / `ON CONFLICT DO NOTHING`
+
+**Migration File Format**:
+```sql
+-- Migration: Brief description
+-- Date: YYYY-MM-DD
+-- Description: Detailed explanation
+
+-- Table creation
+CREATE TABLE IF NOT EXISTS table_name (...);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_name ON table_name(column);
+
+-- Default/seed data (IMPORTANT: Put seed data IN migrations, not separate scripts)
+INSERT INTO table_name (col1, col2) VALUES
+    ('value1', 'value2'),
+    ('value3', 'value4')
+ON CONFLICT (unique_column) DO NOTHING;
+```
+
+**Naming Convention**:
+- `001_initial_schema.sql` - Complete initial schema
+- `002_add_oauth_columns.sql` - OAuth support
+- `003_make_password_hash_nullable.sql` - Password hash nullable
+- `004_add_backtest_tables.sql` - Next migration (backtest tables + seed data)
+
+**Key Principles**:
+- ✅ **DO**: Put seed/default data in migrations using `INSERT ... ON CONFLICT DO NOTHING`
+- ✅ **DO**: Use `IF NOT EXISTS` for CREATE TABLE/INDEX
+- ✅ **DO**: Test migrations locally before pushing
+- ✅ **DO**: Make migrations idempotent (can run multiple times safely)
+- ❌ **DON'T**: Create separate seed scripts (put data in migrations)
+- ❌ **DON'T**: Edit existing migrations after deployment (create new migration)
+- ❌ **DON'T**: Skip version numbers
+
+**Testing Migrations Locally**:
+```bash
+export DATABASE_URL="postgresql://dcabot:password@localhost:5435/dcabot_dev"
+python saas/migrate.py          # Run pending migrations
+python saas/migrate.py --status # Check migration status
+```
+
+**Deployment Flow**:
+1. Create migration file in `saas/migrations/`
+2. Test locally with `python saas/migrate.py`
+3. Commit and push to GitHub
+4. Render auto-deploys and runs migrations during build phase
+5. If migration fails → build stops, old version keeps running
+6. If migration succeeds → new version starts
+
+**Example: 001_initial_schema.sql**:
+- Creates all tables (users, bots, trading_pairs, trades, bot_logs, etc.)
+- Creates all indexes
+- Inserts default settings: `INSERT INTO settings (key, value) VALUES ('registration_enabled', 'true') ON CONFLICT (key) DO NOTHING;`
+- This is the pattern to follow: everything in one migration file
+
+**Documentation**:
+- `saas/migrations/README.md` - Migration system details
+- `docs/DATABASE_MIGRATIONS.md` - Complete migration guide
+
 ### Recent SaaS Enhancements (November 2025)
 
-#### 1. Auto-Refresh & Detailed Logging (Commits: 7e4c1de, a70f20f) - **LATEST**
+#### 1. Timezone Support (November 2) - **LATEST**
+**Why**: All timestamps were displayed in UTC, confusing for international users
+**What**: Complete timezone support with auto-detection and user preferences
+**Database Changes**:
+- Migration `008_add_user_timezone_country.sql`:
+  - Added `timezone` column (IANA timezone identifier, default: 'UTC')
+  - Added `country_code` column (ISO 3166-1 alpha-2 country code)
+  - Created index on timezone for efficient queries
+**Backend Features**:
+- `saas/timezone_utils.py`: Timezone conversion utilities
+  - Country-to-timezone mapping (50+ countries)
+  - Timezone validation using pytz
+  - Timezone-aware datetime conversion
+  - Jinja2 template filters for easy formatting
+- Registration auto-detects browser timezone via JavaScript
+- User class includes timezone attribute
+- Settings page for changing timezone preferences
+**Template Filters**:
+- `user_timezone`: Format datetime in user's timezone with custom format
+- `user_date`: Format date only
+- `user_time`: Format time only
+- `user_datetime_short`: Format datetime in short format (YYYY-MM-DD HH:MM)
+- `timezone_offset`: Get UTC offset (e.g., '+01:00', '-05:00')
+**Templates Updated**:
+- `bot_detail.html`: All timestamps (created, last run, logs, trades) now timezone-aware
+- `backtest_detail.html`: Test dates and execution timestamps timezone-aware
+- `settings.html`: New settings page for timezone configuration
+- `register.html`: Auto-detects and captures user timezone
+- `base.html`: Added Settings link to navigation
+**Impact**: Users see all dates/times in their local timezone, improving UX for international users
+**Files**:
+- Migration: `saas/migrations/008_add_user_timezone_country.sql`
+- Utilities: `saas/timezone_utils.py`
+- Backend: `saas/app.py` (User class, load_user, register, oauth, settings route)
+- Templates: `bot_detail.html`, `backtest_detail.html`, `settings.html`, `register.html`, `base.html`
+
+#### 2. Auto-Refresh & Detailed Logging (Commits: 7e4c1de, a70f20f)
 **Enhanced Bot Execution Logging** (Commit: a70f20f):
 **Why**: Generic "Nothing changed" messages didn't explain bot decision-making
 **What**: Added detailed reasoning for all scenarios where no action is taken
@@ -507,19 +617,21 @@ Digital Ocean:
 **Files**: `saas/app.py:607-668`, `saas/templates/bot_detail.html:232-502`
 
 ### Implemented Features
-✅ User registration/login with secure authentication
+✅ User registration/login with secure authentication (email + Google OAuth)
 ✅ Web dashboard for bot management
 ✅ Multi-bot support per user
 ✅ Trading pair management (CRUD operations)
-✅ Real-time performance metrics with charts
+✅ Real-time performance metrics with charts (Chart.js)
 ✅ Auto-refresh when bot executes (30s polling)
 ✅ Detailed bot decision logging (explains why no action taken)
 ✅ Bot execution logs and trade history
 ✅ Telegram notifications per user
-✅ API key encryption (Fernet) and password hashing (PBKDF2)
+✅ API key encryption (Fernet) and password hashing (PBKDF2-SHA256)
 ✅ OWASP security controls (input validation, injection prevention)
-✅ Professional trading platform UI
-✅ Automatic database migrations
+✅ Professional trading platform UI (Bybit/Binance-inspired dark theme)
+✅ Automatic database migrations (SQL-based with version tracking)
+✅ **Timezone support** (auto-detection, user preferences, 50+ countries)
+✅ User settings page (timezone, country code, account info)
 
 ### Future Enhancements
 - Backtest integration (test configs before deploying)
