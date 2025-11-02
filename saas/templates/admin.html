@@ -81,6 +81,97 @@
         {% endif %}
     </div>
 
+    <!-- Global Backtest Strategy Config -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 class="card-header">
+            Global Backtest Strategy Config
+            <span style="font-size: 0.9rem; font-weight: normal; color: var(--gray-600); margin-left: 1rem;">
+                (Applies to all symbols)
+            </span>
+        </h2>
+        {% if global_config %}
+        <form method="POST" action="{{ url_for('update_global_config') }}">
+            <h3 style="margin-bottom: 1rem; color: var(--color-long);">Backtest Execution</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="leverage">Leverage</label>
+                    <input type="number" id="leverage" name="leverage" min="1" max="125" value="{{ global_config.leverage }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ global_config.leverage }}x</small>
+                </div>
+                <div class="form-group">
+                    <label for="days">Test Period (days)</label>
+                    <input type="number" id="days" name="days" min="1" max="365" value="{{ global_config.days }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ global_config.days }} days</small>
+                </div>
+                <div class="form-group">
+                    <label for="balance">Starting Balance (USD)</label>
+                    <input type="number" id="balance" name="balance" min="10" step="0.01" value="{{ global_config.balance }}" required>
+                    <small style="color: var(--gray-600);">Current: ${{ global_config.balance|round(2) }}</small>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--color-long);">Strategy Parameters</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="profit_pnl">Full Close Profit Target (%)</label>
+                    <input type="number" id="profit_pnl" name="profit_pnl" step="0.001" min="0" value="{{ global_config.profit_pnl }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ (global_config.profit_pnl * 100)|round(1) }}% - When to close full position</small>
+                </div>
+                <div class="form-group">
+                    <label for="profit_threshold">Partial Close PNL Trigger (%)</label>
+                    <input type="number" id="profit_threshold" name="profit_threshold" step="0.001" min="0" value="{{ global_config.profit_threshold }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ (global_config.profit_threshold * 100)|round(2) }}% - Min PNL before partial closes</small>
+                </div>
+                <div class="form-group">
+                    <label for="buy_until_limit">Max Position Size (% of balance)</label>
+                    <input type="number" id="buy_until_limit" name="buy_until_limit" step="0.001" min="0" max="1" value="{{ global_config.buy_until_limit }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ (global_config.buy_until_limit * 100)|round(1) }}%</small>
+                </div>
+                <div class="form-group">
+                    <label for="max_margin_pct">Max Margin Usage (%)</label>
+                    <input type="number" id="max_margin_pct" name="max_margin_pct" step="0.01" min="0" max="1" value="{{ global_config.max_margin_pct or '' }}" placeholder="No limit">
+                    <small style="color: var(--gray-600);">Current: {% if global_config.max_margin_pct %}{{ (global_config.max_margin_pct * 100)|round(0) }}%{% else %}No limit{% endif %}</small>
+                </div>
+                <div class="form-group">
+                    <label for="begin_size_of_balance">Initial Order Size (% of balance)</label>
+                    <input type="number" id="begin_size_of_balance" name="begin_size_of_balance" step="0.001" min="0" max="1" value="{{ global_config.begin_size_of_balance }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ (global_config.begin_size_of_balance * 100)|round(2) }}%</small>
+                </div>
+                <div class="form-group">
+                    <label for="close_threshold_high">High Position Threshold (% of balance)</label>
+                    <input type="number" id="close_threshold_high" name="close_threshold_high" step="0.1" min="0" value="{{ global_config.close_threshold_high }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ global_config.close_threshold_high|round(1) }}% - Close 50% when exceeded</small>
+                </div>
+                <div class="form-group">
+                    <label for="close_threshold_mid">Mid Position Threshold (% of balance)</label>
+                    <input type="number" id="close_threshold_mid" name="close_threshold_mid" step="0.1" min="0" value="{{ global_config.close_threshold_mid }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ global_config.close_threshold_mid|round(1) }}% - Close 33% when exceeded</small>
+                </div>
+                <div class="form-group">
+                    <label for="close_pct_high">High Close Percentage</label>
+                    <input type="number" id="close_pct_high" name="close_pct_high" step="0.01" min="0" max="1" value="{{ global_config.close_pct_high }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ (global_config.close_pct_high * 100)|round(0) }}%</small>
+                </div>
+                <div class="form-group">
+                    <label for="close_pct_mid">Mid Close Percentage</label>
+                    <input type="number" id="close_pct_mid" name="close_pct_mid" step="0.01" min="0" max="1" value="{{ global_config.close_pct_mid }}" required>
+                    <small style="color: var(--gray-600);">Current: {{ (global_config.close_pct_mid * 100)|round(0) }}%</small>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-800); display: flex; justify-content: space-between; align-items: center;">
+                <p style="color: var(--gray-600); margin: 0;">
+                    💡 Tip: Test different values using the backtest runner before applying to production
+                </p>
+                <button type="submit" class="btn btn-primary">Save Global Config</button>
+            </div>
+        </form>
+        {% else %}
+        <p style="color: var(--gray-600); text-align: center; padding: 2rem;">
+            No global configuration found
+        </p>
+        {% endif %}
+    </div>
+
     <!-- Backtest Configurations -->
     <div class="card" style="margin-bottom: 2rem;">
         <h2 class="card-header">
@@ -96,9 +187,6 @@
                         <tr>
                             <th>Symbol</th>
                             <th>Side</th>
-                            <th>Leverage</th>
-                            <th>Days</th>
-                            <th>Balance</th>
                             <th>Source</th>
                             <th>Category</th>
                             <th>Active</th>
@@ -110,15 +198,12 @@
                         <tr data-config-id="{{ config[0] }}">
                             <td><strong>{{ config[1] }}</strong></td>
                             <td>{{ config[2] }}</td>
-                            <td>{{ config[3] }}x</td>
-                            <td>{{ config[6] }}</td>
-                            <td>${{ "%.0f"|format(config[7]) }}</td>
-                            <td>{{ config[8] }}</td>
+                            <td>{{ config[5] }}</td>
                             <td>
-                                <span class="badge badge-secondary">{{ config[5] }}</span>
+                                <span class="badge badge-secondary">{{ config[4] }}</span>
                             </td>
                             <td>
-                                {% if config[9] %}
+                                {% if config[6] %}
                                     <span class="badge badge-success">Active</span>
                                 {% else %}
                                     <span class="badge badge-secondary">Inactive</span>
@@ -126,12 +211,12 @@
                             </td>
                             <td>
                                 <div class="flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-primary" onclick="openEditModal({{ config[0] }}, '{{ config[1] }}', '{{ config[2] }}', {{ config[3] }}, {{ config[4] }}, {{ config[6] }}, {{ config[7] }}, '{{ config[8] }}', '{{ config[5] }}', {{ config[9]|lower }}, {{ config[10] }}, {{ config[11] or 'null' }}, {{ config[12] }}, {{ config[13] }})">
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="openEditModal({{ config[0] }}, '{{ config[1] }}', '{{ config[2] }}', {{ config[3] }}, '{{ config[5] }}', '{{ config[4] }}', {{ config[6]|lower }})">
                                         Edit
                                     </button>
                                     <form method="POST" action="{{ url_for('toggle_backtest_config', config_id=config[0]) }}" style="display: inline;">
-                                        <button type="submit" class="btn btn-sm {% if config[9] %}btn-warning{% else %}btn-success{% endif %}">
-                                            {% if config[9] %}Disable{% else %}Enable{% endif %}
+                                        <button type="submit" class="btn btn-sm {% if config[6] %}btn-warning{% else %}btn-success{% endif %}">
+                                            {% if config[6] %}Disable{% else %}Enable{% endif %}
                                         </button>
                                     </form>
                                 </div>
@@ -218,18 +303,6 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="add-leverage">Leverage</label>
-                    <input type="number" id="add-leverage" name="leverage" value="10" min="1" max="125" required>
-                </div>
-                <div class="form-group">
-                    <label for="add-days">Days</label>
-                    <input type="number" id="add-days" name="days" value="7" min="1" max="365" required>
-                </div>
-                <div class="form-group">
-                    <label for="add-balance">Balance (USD)</label>
-                    <input type="number" id="add-balance" name="balance" value="200" min="10" step="0.01" required>
-                </div>
-                <div class="form-group">
                     <label for="add-source">Data Source</label>
                     <select id="add-source" name="source" required>
                         <option value="binance">Binance</option>
@@ -273,18 +346,6 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="edit-leverage">Leverage</label>
-                    <input type="number" id="edit-leverage" name="leverage" min="1" max="125" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-days">Days</label>
-                    <input type="number" id="edit-days" name="days" min="1" max="365" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-balance">Balance (USD)</label>
-                    <input type="number" id="edit-balance" name="balance" min="10" step="0.01" required>
-                </div>
-                <div class="form-group">
                     <label for="edit-source">Data Source</label>
                     <select id="edit-source" name="source" required>
                         <option value="binance">Binance</option>
@@ -308,31 +369,6 @@
                 </div>
             </div>
 
-            <!-- Strategy Parameters Section -->
-            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--color-long);">Strategy Parameters</h3>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="edit-profit-pnl">Profit PnL %</label>
-                    <input type="number" id="edit-profit-pnl" name="profit_pnl" step="0.001" min="0" value="0.1" required>
-                    <small>Default: 0.1 (10%)</small>
-                </div>
-                <div class="form-group">
-                    <label for="edit-max-margin-pct">Max Margin %</label>
-                    <input type="number" id="edit-max-margin-pct" name="max_margin_pct" step="0.01" min="0" max="1" placeholder="Leave empty for no cap">
-                    <small>Optional: e.g., 0.40 for 40% cap</small>
-                </div>
-                <div class="form-group">
-                    <label for="edit-profit-threshold">Profit Threshold</label>
-                    <input type="number" id="edit-profit-threshold" name="profit_threshold" step="0.0001" min="0" value="0.003" required>
-                    <small>Default: 0.003 (0.3%)</small>
-                </div>
-                <div class="form-group">
-                    <label for="edit-buy-until-limit">Position Size Limit</label>
-                    <input type="number" id="edit-buy-until-limit" name="buy_until_limit" step="0.001" min="0" max="1" value="0.02" required>
-                    <small>Default: 0.02 (2% of balance)</small>
-                </div>
-            </div>
-
             <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('edit-backtest-modal').style.display='none'">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -342,20 +378,13 @@
 </div>
 
 <script>
-function openEditModal(id, symbol, side, leverage, interval, days, balance, source, category, is_active, profit_pnl, max_margin_pct, profit_threshold, buy_until_limit) {
+function openEditModal(id, symbol, side, interval, source, category, is_active) {
     document.getElementById('edit-backtest-form').action = `/admin/backtest/${id}/update`;
     document.getElementById('edit-symbol').value = symbol;
     document.getElementById('edit-side').value = side;
-    document.getElementById('edit-leverage').value = leverage;
-    document.getElementById('edit-days').value = days;
-    document.getElementById('edit-balance').value = balance;
     document.getElementById('edit-source').value = source;
     document.getElementById('edit-category').value = category;
     document.getElementById('edit-active').checked = is_active;
-    document.getElementById('edit-profit-pnl').value = profit_pnl || 0.1;
-    document.getElementById('edit-max-margin-pct').value = max_margin_pct || '';
-    document.getElementById('edit-profit-threshold').value = profit_threshold || 0.003;
-    document.getElementById('edit-buy-until-limit').value = buy_until_limit || 0.02;
     document.getElementById('edit-backtest-modal').style.display = 'block';
 }
 

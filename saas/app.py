@@ -1107,12 +1107,41 @@ def admin_panel():
             result = cursor.fetchone()
             registration_enabled = result[0].lower() == 'true' if result else True
 
-            # Get backtest configurations
+            # Get global backtest config
             cursor.execute("""
-                SELECT id, symbol, side, leverage, interval, category,
-                       days, balance, source, is_active,
-                       profit_pnl, max_margin_pct, profit_threshold,
-                       buy_until_limit
+                SELECT id, name, profit_pnl, profit_threshold, buy_until_limit,
+                       max_margin_pct, begin_size_of_balance,
+                       close_threshold_high, close_threshold_mid,
+                       close_pct_high, close_pct_mid, is_active,
+                       leverage, days, balance
+                FROM global_backtest_config
+                WHERE is_active = true
+                LIMIT 1
+            """)
+            global_config_row = cursor.fetchone()
+            global_config = None
+            if global_config_row:
+                global_config = {
+                    'id': global_config_row[0],
+                    'name': global_config_row[1],
+                    'profit_pnl': float(global_config_row[2]),
+                    'profit_threshold': float(global_config_row[3]),
+                    'buy_until_limit': float(global_config_row[4]),
+                    'max_margin_pct': float(global_config_row[5]) if global_config_row[5] else None,
+                    'begin_size_of_balance': float(global_config_row[6]),
+                    'close_threshold_high': float(global_config_row[7]),
+                    'close_threshold_mid': float(global_config_row[8]),
+                    'close_pct_high': float(global_config_row[9]),
+                    'close_pct_mid': float(global_config_row[10]),
+                    'is_active': global_config_row[11],
+                    'leverage': global_config_row[12],
+                    'days': global_config_row[13],
+                    'balance': float(global_config_row[14])
+                }
+
+            # Get backtest configurations (per-symbol settings only)
+            cursor.execute("""
+                SELECT id, symbol, side, interval, category, source, is_active
                 FROM backtest_configs
                 ORDER BY category, symbol
             """)
@@ -1122,7 +1151,8 @@ def admin_panel():
                                  pending_users=pending_users,
                                  all_users=all_users,
                                  registration_enabled=registration_enabled,
-                                 backtest_configs=backtest_configs)
+                                 backtest_configs=backtest_configs,
+                                 global_config=global_config)
     except Exception as e:
         logger.error(f"Admin panel error: {e}")
         flash('Error loading admin panel', 'error')
@@ -1218,6 +1248,69 @@ def toggle_registration():
     return redirect(url_for('admin_panel'))
 
 
+@app.route('/admin/global-config/update', methods=['POST'])
+@login_required
+def update_global_config():
+    """Update global backtest configuration"""
+    if not current_user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('dashboard'))
+
+    from saas.database import get_db
+
+    try:
+        # Get form data
+        leverage = int(request.form.get('leverage'))
+        days = int(request.form.get('days'))
+        balance = float(request.form.get('balance'))
+        profit_pnl = float(request.form.get('profit_pnl'))
+        profit_threshold = float(request.form.get('profit_threshold'))
+        buy_until_limit = float(request.form.get('buy_until_limit'))
+        max_margin_pct = request.form.get('max_margin_pct')
+        max_margin_pct = float(max_margin_pct) if max_margin_pct else None
+        begin_size_of_balance = float(request.form.get('begin_size_of_balance'))
+        close_threshold_high = float(request.form.get('close_threshold_high'))
+        close_threshold_mid = float(request.form.get('close_threshold_mid'))
+        close_pct_high = float(request.form.get('close_pct_high'))
+        close_pct_mid = float(request.form.get('close_pct_mid'))
+
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Update the active global config
+            cursor.execute("""
+                UPDATE global_backtest_config
+                SET leverage = %s,
+                    days = %s,
+                    balance = %s,
+                    profit_pnl = %s,
+                    profit_threshold = %s,
+                    buy_until_limit = %s,
+                    max_margin_pct = %s,
+                    begin_size_of_balance = %s,
+                    close_threshold_high = %s,
+                    close_threshold_mid = %s,
+                    close_pct_high = %s,
+                    close_pct_mid = %s,
+                    updated_at = NOW()
+                WHERE is_active = true
+            """, (leverage, days, balance, profit_pnl, profit_threshold, buy_until_limit,
+                  max_margin_pct, begin_size_of_balance, close_threshold_high,
+                  close_threshold_mid, close_pct_high, close_pct_mid))
+
+            conn.commit()
+
+        flash('Global backtest config updated successfully!', 'success')
+    except ValueError as e:
+        logger.error(f"Invalid input for global config: {e}")
+        flash('Invalid input values', 'error')
+    except Exception as e:
+        logger.error(f"Error updating global config: {e}")
+        flash('Error updating global config', 'error')
+
+    return redirect(url_for('admin_panel'))
+
+
 @app.route('/admin/backtest/<int:config_id>/update', methods=['POST'])
 @login_required
 def update_backtest_config(config_id):
@@ -1229,34 +1322,21 @@ def update_backtest_config(config_id):
     from saas.database import get_db
 
     try:
-        # Get form data
+        # Get form data (per-symbol settings only - leverage, days, balance, and strategy params are global)
         symbol = request.form.get('symbol')
         side = request.form.get('side')
-        leverage = int(request.form.get('leverage'))
-        days = int(request.form.get('days'))
-        balance = float(request.form.get('balance'))
         source = request.form.get('source')
         is_active = request.form.get('is_active') == 'on'
         category = request.form.get('category')
-
-        # Strategy parameters
-        profit_pnl = float(request.form.get('profit_pnl'))
-        profit_threshold = float(request.form.get('profit_threshold'))
-        buy_until_limit = float(request.form.get('buy_until_limit'))
-        max_margin_pct_str = request.form.get('max_margin_pct')
-        max_margin_pct = float(max_margin_pct_str) if max_margin_pct_str else None
 
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE backtest_configs
-                SET symbol = %s, side = %s, leverage = %s, days = %s,
-                    balance = %s, source = %s, is_active = %s, category = %s,
-                    profit_pnl = %s, max_margin_pct = %s, profit_threshold = %s,
-                    buy_until_limit = %s, updated_at = NOW()
+                SET symbol = %s, side = %s, source = %s, is_active = %s, category = %s,
+                    updated_at = NOW()
                 WHERE id = %s
-            """, (symbol, side, leverage, days, balance, source, is_active, category,
-                  profit_pnl, max_margin_pct, profit_threshold, buy_until_limit, config_id))
+            """, (symbol, side, source, is_active, category, config_id))
             conn.commit()
 
         flash(f'Backtest configuration for {symbol} updated successfully!', 'success')
@@ -1312,20 +1392,18 @@ def add_backtest_config():
 
     try:
         # Get form data
+        # Per-symbol settings only (leverage, days, balance are now global)
         symbol = request.form.get('symbol')
         side = request.form.get('side', 'Long')
-        leverage = int(request.form.get('leverage', 10))
-        days = int(request.form.get('days', 7))
-        balance = float(request.form.get('balance', 200.0))
         source = request.form.get('source', 'binance')
         category = request.form.get('category', 'other')
 
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO backtest_configs (symbol, side, leverage, days, balance, source, category)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (symbol, side, leverage, days, balance, source, category))
+                INSERT INTO backtest_configs (symbol, side, source, category)
+                VALUES (%s, %s, %s, %s)
+            """, (symbol, side, source, category))
             conn.commit()
 
         flash(f'Backtest configuration for {symbol} added successfully!', 'success')

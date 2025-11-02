@@ -37,7 +37,8 @@ def fetch_global_config() -> Dict[str, Any]:
             SELECT profit_pnl, profit_threshold, buy_until_limit, max_margin_pct,
                    begin_size_of_balance,
                    close_threshold_high, close_threshold_mid,
-                   close_pct_high, close_pct_mid
+                   close_pct_high, close_pct_mid,
+                   leverage, days, balance
             FROM global_backtest_config
             WHERE is_active = true
             LIMIT 1
@@ -56,7 +57,10 @@ def fetch_global_config() -> Dict[str, Any]:
             'close_threshold_high': float(row[5]),
             'close_threshold_mid': float(row[6]),
             'close_pct_high': float(row[7]),
-            'close_pct_mid': float(row[8])
+            'close_pct_mid': float(row[8]),
+            'leverage': int(row[9]),
+            'days': int(row[10]),
+            'balance': float(row[11])
         }
 
 
@@ -65,13 +69,12 @@ def fetch_active_backtest_symbols() -> List[Dict[str, Any]]:
     Fetch all active symbols from backtest_configs table.
 
     Returns:
-        List of dicts with symbol info (no strategy parameters)
+        List of dicts with symbol info (leverage, days, balance from global config)
     """
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, symbol, side, leverage, interval, category,
-                   days, balance, source
+            SELECT id, symbol, side, interval, category, source
             FROM backtest_configs
             WHERE is_active = true
             ORDER BY category, symbol
@@ -83,12 +86,9 @@ def fetch_active_backtest_symbols() -> List[Dict[str, Any]]:
                 'id': row[0],
                 'symbol': row[1],
                 'side': row[2],
-                'leverage': row[3],
-                'interval': row[4],
-                'category': row[5],
-                'days': row[6],
-                'balance': float(row[7]) if row[7] else 200.0,
-                'source': row[8]
+                'interval': row[3],
+                'category': row[4],
+                'source': row[5]
             })
 
         return symbols
@@ -269,6 +269,9 @@ def run_weekly_backtests():
     try:
         global_config = fetch_global_config()
         print(f"✅ Loaded global config:")
+        print(f"   - Leverage: {global_config['leverage']}x")
+        print(f"   - Test period: {global_config['days']} days")
+        print(f"   - Starting balance: ${global_config['balance']:.2f}")
         print(f"   - Profit target: {global_config['profit_pnl']*100:.1f}%")
         print(f"   - Max margin: {global_config['max_margin_pct']*100:.0f}%" if global_config['max_margin_pct'] else "   - Max margin: None")
         print(f"   - Buy until: {global_config['buy_until_limit']*100:.1f}%")
@@ -291,22 +294,21 @@ def run_weekly_backtests():
     for idx, config in enumerate(symbols, 1):
         symbol = config['symbol']
         side = config['side']
-        leverage = config['leverage']
         category = config['category']
 
-        print(f"[{idx}/{len(symbols)}] Testing {symbol} ({side}, {leverage}x, {category})...")
+        print(f"[{idx}/{len(symbols)}] Testing {symbol} ({side}, {global_config['leverage']}x, {category})...")
 
         try:
             # Run backtest with global config parameters
             result = run_backtest_programmatic(
                 symbol=symbol,
                 side=side,
-                days=config.get('days', 7),
-                balance=config.get('balance', 200.0),
-                leverage=leverage,
+                days=global_config['days'],          # From global config
+                balance=global_config['balance'],    # From global config
+                leverage=global_config['leverage'],  # From global config
                 interval=config.get('interval', 1),
                 source=config.get('source', 'binance'),
-                # Global config parameters (same for all symbols)
+                # Global config strategy parameters (same for all symbols)
                 profit_pnl=global_config['profit_pnl'],
                 max_margin_pct=global_config['max_margin_pct'],
                 profit_threshold=global_config['profit_threshold'],
@@ -354,7 +356,7 @@ def run_weekly_backtests():
             print(f"   ❌ Failed: {error_msg}\n")
 
             # Store error
-            store_backtest_error(symbol, side, leverage, error_msg)
+            store_backtest_error(symbol, side, global_config['leverage'], error_msg)
 
             results_summary.append({
                 'symbol': symbol,
