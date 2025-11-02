@@ -65,6 +65,12 @@ services:
         value: 3.11.0
       - key: DATABASE_URL
         sync: false
+      - key: API_KEY
+        sync: false
+      - key: API_SECRET
+        sync: false
+      - key: TESTNET
+        value: "False"  # Use production Binance for backtests
 
 # ============================================================================
 # DEPLOYMENT INFO
