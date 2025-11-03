@@ -105,7 +105,7 @@
                     <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Created</div>
                     <div style="font-weight: 500;">
                         {% if bot[5] %}
-                            <span data-utc-time="{{ bot[5].isoformat() }}" data-format="datetime-short">{{ bot[5] }}</span>
+                            <span data-utc-time="{{ bot[5].isoformat() }}Z" data-format="datetime-short">{{ bot[5] }}</span>
                         {% else %}
                             N/A
                         {% endif %}
@@ -120,7 +120,7 @@
                     <div style="color: var(--text-secondary); font-size: 0.8125rem; margin-bottom: 0.25rem;">Last Run</div>
                     <div style="font-weight: 500;">
                         {% if last_execution[0] %}
-                            <span data-utc-time="{{ last_execution[0].isoformat() }}" data-format="datetime-short">{{ last_execution[0] }}</span>
+                            <span data-utc-time="{{ last_execution[0].isoformat() }}Z" data-format="datetime-short">{{ last_execution[0] }}</span>
                         {% else %}
                             Never
                         {% endif %}
@@ -180,8 +180,8 @@
                             <div class="activity-meta">
                                 <span class="activity-time">
                                     {% if log[3] %}
-                                        <span data-utc-time="{{ log[3].isoformat() }}" data-format="date-short">{{ log[3] }}</span><br/>
-                                        <span data-utc-time="{{ log[3].isoformat() }}" data-format="time-only">{{ log[3] }}</span>
+                                        <span data-utc-time="{{ log[3].isoformat() }}Z" data-format="date-short">{{ log[3] }}</span><br/>
+                                        <span data-utc-time="{{ log[3].isoformat() }}Z" data-format="time-only">{{ log[3] }}</span>
                                     {% else %}
                                         N/A
                                     {% endif %}
@@ -237,7 +237,7 @@
                         </td>
                         <td>
                             {% if trade[6] %}
-                                <span data-utc-time="{{ trade[6].isoformat() }}" data-format="datetime-short">{{ trade[6] }}</span>
+                                <span data-utc-time="{{ trade[6].isoformat() }}Z" data-format="datetime-short">{{ trade[6] }}</span>
                             {% else %}
                                 N/A
                             {% endif %}
