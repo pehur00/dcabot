@@ -360,12 +360,15 @@ class MartingaleTradingStrategy(TradingStrategy):
 
             # Send Telegram notification if configured
             if self.notifier:
-                self.notifier.notify(
-                    f"⚠️ Order Skipped - Max Margin Protection\n"
-                    f"Symbol: {symbol} ({pos_side})\n"
-                    f"Margin usage would be: {margin_usage_pct * 100:.2f}%\n"
-                    f"Max allowed: {self.max_margin_pct * 100:.2f}%\n"
-                    f"Order: {float(order_qty):.4f} @ ${current_price:.6f}"
+                self.notifier.notify_error(
+                    error_type="Max Margin Protection",
+                    symbol=f"{symbol} ({pos_side})",
+                    error_message=(
+                        f"Order Skipped\n"
+                        f"Margin usage would be: {margin_usage_pct * 100:.2f}%\n"
+                        f"Max allowed: {self.max_margin_pct * 100:.2f}%\n"
+                        f"Order: {float(order_qty):.4f} @ ${current_price:.6f}"
+                    )
                 )
 
             return f"Skipped order - margin usage would be {margin_usage_pct * 100:.1f}% (max: {self.max_margin_pct * 100:.0f}%)"
@@ -425,12 +428,15 @@ class MartingaleTradingStrategy(TradingStrategy):
 
             # Send Telegram notification if configured
             if self.notifier:
-                self.notifier.notify(
-                    f"⚠️ Order Skipped - Max Margin Protection\n"
-                    f"Symbol: {symbol} ({pos_side})\n"
-                    f"Margin usage would be: {margin_usage_pct * 100:.2f}%\n"
-                    f"Max allowed: {self.max_margin_pct * 100:.2f}%\n"
-                    f"Order: {float(order_qty):.4f} @ ${current_price:.6f}"
+                self.notifier.notify_error(
+                    error_type="Max Margin Protection",
+                    symbol=f"{symbol} ({pos_side})",
+                    error_message=(
+                        f"Order Skipped\n"
+                        f"Margin usage would be: {margin_usage_pct * 100:.2f}%\n"
+                        f"Max allowed: {self.max_margin_pct * 100:.2f}%\n"
+                        f"Order: {float(order_qty):.4f} @ ${current_price:.6f}"
+                    )
                 )
 
             return f"Skipped order - margin usage would be {margin_usage_pct * 100:.1f}% (max: {self.max_margin_pct * 100:.0f}%)"
