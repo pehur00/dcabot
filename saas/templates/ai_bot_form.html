@@ -106,87 +106,63 @@
             </div>
 
             <!-- Provider & Model Selection -->
-            <h3 style="margin-top: 2rem; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
-                🤖 Select AI Provider & Models
+            <h3 style="margin-top: 2rem; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                🤖 AI Providers <small style="font-weight: normal; color: var(--gray-500); font-size: 0.85rem;">Check provider → Enter key → Select models</small>
             </h3>
 
-            <div style="background: var(--blue-900); border: 1px solid var(--blue-700); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <p style="margin: 0; color: var(--gray-300); line-height: 1.6;">
-                    <strong>How it works:</strong> Check a provider → Enter API key → Select models from that provider
-                </p>
-            </div>
-
-            <div style="background: var(--gray-800); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                 {% for provider, models in models_by_provider.items() %}
-                <div class="provider-section" data-provider="{{ provider }}" style="margin-bottom: 2rem; padding: 1.5rem; background: var(--gray-900); border-radius: 8px; border: 2px solid var(--gray-700);">
-                    <!-- Provider Checkbox -->
-                    <div class="checkbox-group" style="margin-bottom: 1rem;">
+                <div class="provider-card" data-provider="{{ provider }}" style="background: var(--gray-800); border-radius: 8px; border: 1px solid var(--gray-700); padding: 1rem;">
+                    <!-- Provider Header -->
+                    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
                         <input type="checkbox" id="provider_{{ provider }}" class="provider-checkbox"
                                data-provider="{{ provider }}">
-                        <label for="provider_{{ provider }}" style="font-size: 1.1rem; font-weight: 600; color: var(--gray-200);">
-                            {{ provider|title }}
-                            {% if provider == 'z.ai' %}(Zhipu AI){% endif %}
+                        <label for="provider_{{ provider }}" style="font-size: 1rem; font-weight: 600; color: var(--gray-200); margin: 0;">
+                            {{ provider|title }}{% if provider == 'z.ai' %} (Zhipu){% endif %}
                         </label>
                     </div>
 
                     <!-- API Key Field (hidden by default) -->
-                    <div class="api-key-field" id="api_key_field_{{ provider }}" style="display: none; margin-bottom: 1.5rem; padding-left: 1.8rem;">
-                        <label for="{{ provider }}_api_key" style="color: var(--gray-300); margin-bottom: 0.5rem; display: block;">
-                            API Key
-                        </label>
+                    <div class="api-key-field" id="api_key_field_{{ provider }}" style="display: none; margin-bottom: 0.75rem;">
                         <input type="text" id="{{ provider }}_api_key" name="{{ provider }}_api_key"
                                class="provider-api-key"
                                data-provider="{{ provider }}"
-                               placeholder="Enter your {{ provider|title }} API key">
-                        <small style="color: var(--gray-500); display: block; margin-top: 0.5rem;">
-                            🔒 Encrypted before storage
+                               placeholder="API key"
+                               style="width: 100%; font-size: 0.9rem;">
+                        <small style="color: var(--gray-500); display: block; margin-top: 0.25rem; font-size: 0.8rem;">
                             {% if provider == 'z.ai' %}
-                            • Get key at: <a href="https://open.bigmodel.cn/" target="_blank" style="color: var(--blue);">open.bigmodel.cn</a>
+                            <a href="https://open.bigmodel.cn/" target="_blank" style="color: var(--blue);">Get key →</a>
                             {% elif provider == 'deepseek' %}
-                            • Get key at: <a href="https://platform.deepseek.com/" target="_blank" style="color: var(--blue);">platform.deepseek.com</a>
+                            <a href="https://platform.deepseek.com/" target="_blank" style="color: var(--blue);">Get key →</a>
                             {% elif provider == 'anthropic' %}
-                            • Get key at: <a href="https://console.anthropic.com/" target="_blank" style="color: var(--blue);">console.anthropic.com</a>
+                            <a href="https://console.anthropic.com/" target="_blank" style="color: var(--blue);">Get key →</a>
                             {% endif %}
                         </small>
                     </div>
 
                     <!-- Model Selection (hidden by default) -->
-                    <div class="model-selection" id="models_{{ provider }}" style="display: none; padding-left: 1.8rem;">
-                        <h5 style="color: var(--gray-300); font-size: 0.95rem; margin-bottom: 0.75rem; font-weight: 500;">
-                            Select Models:
-                        </h5>
-
+                    <div class="model-selection" id="models_{{ provider }}" style="display: none;">
                         {% for model in models %}
-                        <div class="checkbox-group" style="margin-bottom: 0.75rem; padding: 0.75rem; background: var(--gray-800); border-radius: 6px;">
+                        <div class="checkbox-group" style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--gray-900); border-radius: 4px;">
                             <input type="checkbox" id="model_{{ model['id'] }}"
                                    name="selected_models" value="{{ model['id'] }}"
                                    class="model-checkbox"
                                    data-provider="{{ provider }}"
                                    disabled>
-                            <label for="model_{{ model['id'] }}" style="display: flex; align-items: center; flex: 1;">
+                            <label for="model_{{ model['id'] }}" style="display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.9rem;">
                                 <img src="{{ model['logo_url'] }}"
                                      alt="{{ model['name'] }}"
-                                     style="width: 24px; height: 24px; margin-right: 0.75rem; border-radius: 50%;">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 500; color: var(--gray-200);">{{ model['name'] }}</div>
-                                    <div style="font-size: 0.85rem; color: var(--gray-500);">
-                                        Input: ${{ "%.2f"|format(model['cost_per_1m_input']) }}/M
-                                        • Output: ${{ "%.2f"|format(model['cost_per_1m_output']) }}/M
-                                        {% if model['cost_per_1m_input'] == 0 %}
-                                        <span style="color: var(--green); font-weight: 500; margin-left: 0.5rem;">FREE</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
+                                     style="width: 20px; height: 20px; border-radius: 50%;">
+                                <span style="color: var(--gray-200);">{{ model['name'] }}</span>
+                                {% if model['cost_per_1m_input'] == 0 %}
+                                <span style="color: var(--green); font-weight: 500; font-size: 0.75rem; margin-left: auto;">FREE</span>
+                                {% endif %}
                             </label>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
                 {% endfor %}
-
-                <small style="color: var(--gray-500); display: block; margin-top: 1rem;">
-                    💡 Select multiple providers to compare their models side-by-side
-                </small>
             </div>
 
             <!-- Exchange Credentials -->
