@@ -100,9 +100,12 @@ def register_ai_bot_routes(app):
             phemex_api_secret = request.form.get('phemex_api_secret', '').strip()
 
             # AI model API keys (grouped by provider)
-            zhipu_api_key = request.form.get('zhipu_api_key', '').strip()
-            deepseek_api_key = request.form.get('deepseek_api_key', '').strip()
-            anthropic_api_key = request.form.get('anthropic_api_key', '').strip()
+            # Support both old field names and new provider-based names
+            api_keys_by_provider = {
+                'z.ai': request.form.get('z.ai_api_key', '').strip() or request.form.get('zhipu_api_key', '').strip(),
+                'deepseek': request.form.get('deepseek_api_key', '').strip(),
+                'anthropic': request.form.get('anthropic_api_key', '').strip()
+            }
 
             # Selected models (checkboxes)
             selected_model_ids = request.form.getlist('selected_models')
@@ -151,19 +154,12 @@ def register_ai_bot_routes(app):
                     if not model:
                         continue
 
-                    # Determine which AI API key to use
-                    if model['provider'] == 'z.ai':
-                        ai_api_key = zhipu_api_key
-                    elif model['provider'] == 'deepseek':
-                        ai_api_key = deepseek_api_key
-                    elif model['provider'] == 'anthropic':
-                        ai_api_key = anthropic_api_key
-                    else:
-                        logger.warning(f"Unknown provider: {model['provider']}")
-                        continue
+                    # Get API key for this model's provider
+                    provider = model['provider']
+                    ai_api_key = api_keys_by_provider.get(provider, '').strip()
 
                     if not ai_api_key:
-                        flash(f"Missing API key for {model['provider']}", 'warning')
+                        flash(f"Missing API key for {provider}", 'warning')
                         continue
 
                     # Validate AI API key
