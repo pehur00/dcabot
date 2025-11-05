@@ -197,3 +197,151 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
         exit(1)
+
+
+# ============================================================================
+# AI Bot Helper Functions
+# ============================================================================
+
+def get_active_ai_bots():
+    """Get all active AI bots with their model configurations"""
+    query = """
+        SELECT
+            ab.*,
+            amc.name as model_name,
+            amc.provider as model_provider,
+            amc.api_endpoint,
+            amc.model_identifier,
+            amc.cost_per_1m_input,
+            amc.cost_per_1m_output
+        FROM ai_bots ab
+        JOIN ai_model_configs amc ON ab.model_config_id = amc.id
+        WHERE ab.is_active = true
+        ORDER BY ab.id
+    """
+    return execute_query(query, fetch=True)
+
+
+def get_ai_bot_by_id(bot_id):
+    """Get specific AI bot with model config"""
+    query = """
+        SELECT
+            ab.*,
+            amc.name as model_name,
+            amc.provider as model_provider,
+            amc.api_endpoint,
+            amc.model_identifier,
+            amc.cost_per_1m_input,
+            amc.cost_per_1m_output,
+            amc.logo_url
+        FROM ai_bots ab
+        JOIN ai_model_configs amc ON ab.model_config_id = amc.id
+        WHERE ab.id = %s
+    """
+    results = execute_query(query, (bot_id,), fetch=True)
+    return results[0] if results else None
+
+
+def get_model_config(model_config_id):
+    """Get AI model configuration by ID"""
+    query = "SELECT * FROM ai_model_configs WHERE id = %s"
+    results = execute_query(query, (model_config_id,), fetch=True)
+    return results[0] if results else None
+
+
+def log_ai_decision(decision_data):
+    """
+    Log AI decision to database
+
+    Args:
+        decision_data: Dict with all decision fields
+
+    Returns:
+        Decision ID
+    """
+    query = """
+        INSERT INTO ai_decisions (
+            ai_bot_id, symbol,
+            current_price, ema20_1m, ema50_5m, ema100_1h,
+            rsi_14, volume_trend, trend_description,
+            decision, confidence, reasoning, risk_level,
+            stop_loss, take_profit,
+            action_taken, skip_reason, trade_id,
+            input_tokens, output_tokens, api_cost, response_time_ms
+        ) VALUES (
+            %(ai_bot_id)s, %(symbol)s,
+            %(current_price)s, %(ema20_1m)s, %(ema50_5m)s, %(ema100_1h)s,
+            %(rsi_14)s, %(volume_trend)s, %(trend_description)s,
+            %(decision)s, %(confidence)s, %(reasoning)s, %(risk_level)s,
+            %(stop_loss)s, %(take_profit)s,
+            %(action_taken)s, %(skip_reason)s, %(trade_id)s,
+            %(input_tokens)s, %(output_tokens)s, %(api_cost)s, %(response_time_ms)s
+        )
+        RETURNING id
+    """
+    results = execute_query(query, decision_data, fetch=True)
+    return results[0]['id'] if results else None
+
+
+def update_ai_decision_action(decision_id, action_taken, skip_reason=None, trade_id=None):
+    """Update action taken for a decision"""
+    query = """
+        UPDATE ai_decisions
+        SET action_taken = %s, skip_reason = %s, trade_id = %s
+        WHERE id = %s
+    """
+    execute_query(query, (action_taken, skip_reason, trade_id, decision_id), fetch=False)
+
+
+def save_ai_bot_performance(performance_data):
+    """Save AI bot performance snapshot"""
+    query = """
+        INSERT INTO ai_model_performance (
+            ai_bot_id, model_config_id,
+            balance, pnl_percentage, pnl_amount,
+            total_trades, winning_trades, losing_trades, win_rate,
+            open_positions, total_position_value,
+            total_api_cost, total_api_calls
+        ) VALUES (
+            %(ai_bot_id)s, %(model_config_id)s,
+            %(balance)s, %(pnl_percentage)s, %(pnl_amount)s,
+            %(total_trades)s, %(winning_trades)s, %(losing_trades)s, %(win_rate)s,
+            %(open_positions)s, %(total_position_value)s,
+            %(total_api_cost)s, %(total_api_calls)s
+        )
+    """
+    execute_query(query, performance_data, fetch=False)
+
+
+def get_ai_bot_recent_decisions(bot_id, limit=10):
+    """Get recent decisions for an AI bot"""
+    query = """
+        SELECT * FROM ai_decisions
+        WHERE ai_bot_id = %s
+        ORDER BY created_at DESC
+        LIMIT %s
+    """
+    return execute_query(query, (bot_id, limit), fetch=True)
+
+
+def get_ai_bot_stats(bot_id):
+    """Get aggregated stats for an AI bot"""
+    query = """
+        SELECT
+            COUNT(*) as total_decisions,
+            COUNT(CASE WHEN action_taken = 'EXECUTED' THEN 1 END) as executed_count,
+            COUNT(CASE WHEN action_taken = 'SKIPPED' THEN 1 END) as skipped_count,
+            AVG(confidence) as avg_confidence,
+            SUM(api_cost) as total_api_cost,
+            AVG(response_time_ms) as avg_response_time
+        FROM ai_decisions
+        WHERE ai_bot_id = %s
+    """
+    results = execute_query(query, (bot_id,), fetch=True)
+    return results[0] if results else None
+
+
+def get_all_ai_models():
+    """Get all available AI model configurations"""
+    query = "SELECT * FROM ai_model_configs WHERE is_active = true ORDER BY name"
+    return execute_query(query, fetch=True)
