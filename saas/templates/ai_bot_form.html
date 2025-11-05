@@ -24,49 +24,77 @@
             <div class="form-group">
                 <label for="name">Bot Name</label>
                 <input type="text" id="name" name="name" required
-                       placeholder="BTC Long Bot"
+                       placeholder="My AI Trader"
                        maxlength="100">
-                <small style="color: var(--gray-500);">Model name will be appended automatically (e.g., "BTC Long Bot (GLM-4.5-Air)")</small>
+                <small style="color: var(--gray-500);">Model name will be appended automatically (e.g., "My AI Trader (GLM-4.5-Air)")</small>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="symbol">Symbol</label>
-                    <select id="symbol" name="symbol" required>
-                        <option value="BTCUSDT">BTC/USDT</option>
-                        <option value="ETHUSDT">ETH/USDT</option>
-                        <option value="SOLUSDT">SOL/USDT</option>
-                        <option value="BNBUSDT">BNB/USDT</option>
-                        <option value="XRPUSDT">XRP/USDT</option>
-                        <option value="ADAUSDT">ADA/USDT</option>
-                        <option value="DOGEUSDT">DOGE/USDT</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="side">Side</label>
-                    <select id="side" name="side" required>
-                        <option value="Long">Long (Buy)</option>
-                        <option value="Short">Short (Sell)</option>
-                    </select>
-                </div>
+            <!-- Risk Profile Selection -->
+            <div class="form-group">
+                <label for="risk_profile">Risk Profile</label>
+                <select id="risk_profile" name="risk_profile" required>
+                    <option value="conservative">🟢 Conservative (1-2x leverage, 1-3% position)</option>
+                    <option value="moderate" selected>🟡 Moderate (2-5x leverage, 2-5% position)</option>
+                    <option value="aggressive">🔴 Aggressive (5-10x leverage, 3-10% position)</option>
+                    <option value="custom">⚙️ Custom (set your own limits)</option>
+                </select>
+                <small style="color: var(--gray-500);">
+                    AI will decide actual leverage and position size per trade within these limits
+                </small>
             </div>
 
-            <div class="form-row">
+            <!-- Custom Limits (shown when Custom profile selected) -->
+            <div id="custom_limits" class="form-row" style="display: none;">
                 <div class="form-group">
-                    <label for="leverage">Leverage</label>
-                    <input type="number" id="leverage" name="leverage"
-                           value="5" min="1" max="20" required>
+                    <label for="max_leverage">Max Leverage</label>
+                    <input type="number" id="max_leverage" name="max_leverage"
+                           value="5" min="1" max="20">
+                    <small style="color: var(--gray-500);">AI can use up to this leverage</small>
                 </div>
 
                 <div class="form-group">
                     <label for="max_position_size">Max Position Size</label>
                     <input type="number" id="max_position_size" name="max_position_size"
-                           value="0.03" min="0.01" max="1" step="0.01" required>
-                    <small style="color: var(--gray-500);">% of balance (0.03 = 3%)</small>
+                           value="0.05" min="0.01" max="0.20" step="0.01">
+                    <small style="color: var(--gray-500);">% of balance (0.05 = 5%)</small>
                 </div>
             </div>
 
+            <!-- Trading Universe -->
+            <div class="form-group">
+                <label>Trading Universe (AI chooses which to trade and when)</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 0.5rem;">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="symbol_btc" name="allowed_symbols" value="BTCUSDT" checked>
+                        <label for="symbol_btc">BTC/USDT</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="symbol_eth" name="allowed_symbols" value="ETHUSDT">
+                        <label for="symbol_eth">ETH/USDT</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="symbol_sol" name="allowed_symbols" value="SOLUSDT">
+                        <label for="symbol_sol">SOL/USDT</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="symbol_bnb" name="allowed_symbols" value="BNBUSDT">
+                        <label for="symbol_bnb">BNB/USDT</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="symbol_xrp" name="allowed_symbols" value="XRPUSDT">
+                        <label for="symbol_xrp">XRP/USDT</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="symbol_ada" name="allowed_symbols" value="ADAUSDT">
+                        <label for="symbol_ada">ADA/USDT</label>
+                    </div>
+                </div>
+                <small style="color: var(--gray-500); display: block; margin-top: 0.75rem;">
+                    ✨ AI will analyze all selected symbols and decide which to trade based on market conditions
+                </small>
+            </div>
+
+            <!-- Automatic Mode -->
             <div class="form-group">
                 <div class="checkbox-group">
                     <input type="checkbox" id="automatic_mode" name="automatic_mode">
@@ -243,6 +271,22 @@
 document.addEventListener('DOMContentLoaded', function() {
     const providerCheckboxes = document.querySelectorAll('.provider-checkbox');
     const apiKeyInputs = document.querySelectorAll('.provider-api-key');
+
+    // Risk profile: Show/hide custom limits
+    const riskProfileSelect = document.getElementById('risk_profile');
+    const customLimitsDiv = document.getElementById('custom_limits');
+
+    riskProfileSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customLimitsDiv.style.display = 'grid';
+            document.getElementById('max_leverage').required = true;
+            document.getElementById('max_position_size').required = true;
+        } else {
+            customLimitsDiv.style.display = 'none';
+            document.getElementById('max_leverage').required = false;
+            document.getElementById('max_position_size').required = false;
+        }
+    });
 
     // Handle provider checkbox changes
     providerCheckboxes.forEach(checkbox => {

@@ -88,12 +88,33 @@ def register_ai_bot_routes(app):
         try:
             # Get form data
             bot_name_base = request.form.get('name', '').strip()
-            symbol = request.form.get('symbol', 'BTCUSDT').strip().upper()
-            side = request.form.get('side', 'Long').strip()
-            leverage = int(request.form.get('leverage', 5))
-            max_position_size = float(request.form.get('max_position_size', 0.03))
+            risk_profile = request.form.get('risk_profile', 'moderate').strip()
             automatic_mode = request.form.get('automatic_mode') == 'on'
             testnet = request.form.get('testnet') == 'on'
+
+            # Get allowed symbols (multi-select)
+            allowed_symbols = request.form.getlist('allowed_symbols')
+            if not allowed_symbols:
+                flash('Please select at least one trading symbol', 'error')
+                return redirect(url_for('create_ai_bot'))
+
+            # Set limits based on risk profile
+            risk_limits = {
+                'conservative': {'max_leverage': 2, 'max_position_size': 0.03},
+                'moderate': {'max_leverage': 5, 'max_position_size': 0.05},
+                'aggressive': {'max_leverage': 10, 'max_position_size': 0.10},
+            }
+
+            if risk_profile == 'custom':
+                max_leverage = int(request.form.get('max_leverage', 5))
+                max_position_size = float(request.form.get('max_position_size', 0.05))
+            else:
+                max_leverage = risk_limits[risk_profile]['max_leverage']
+                max_position_size = risk_limits[risk_profile]['max_position_size']
+
+            # For backward compatibility, use first symbol as primary
+            primary_symbol = allowed_symbols[0]
+            side = 'Long'  # AI will decide this per trade
 
             # Exchange credentials
             phemex_api_key = request.form.get('phemex_api_key', '').strip()
@@ -132,7 +153,7 @@ def register_ai_bot_routes(app):
 
             # Sanitize
             bot_name_base = sanitize_string(bot_name_base, max_length=100)
-            symbol = sanitize_string(symbol, max_length=20)
+            primary_symbol = sanitize_string(primary_symbol, max_length=20)
 
             # Encrypt exchange credentials
             phemex_key_encrypted = encrypt_api_key(phemex_api_key)
@@ -177,7 +198,8 @@ def register_ai_bot_routes(app):
                     cursor.execute("""
                         INSERT INTO ai_bots (
                             user_id, name, model_config_id,
-                            symbol, side, leverage, max_position_size,
+                            symbol, side, max_leverage, max_position_size,
+                            risk_profile, allowed_symbols,
                             is_active, automatic_mode,
                             exchange_api_key, exchange_api_secret, ai_api_key,
                             virtual_balance, initial_balance
@@ -185,13 +207,15 @@ def register_ai_bot_routes(app):
                             %s, %s, %s,
                             %s, %s, %s, %s,
                             %s, %s,
+                            %s, %s,
                             %s, %s, %s,
                             100.00, 100.00
                         )
                         RETURNING id
                     """, (
                         current_user.id, bot_name, model_id,
-                        symbol, side, leverage, max_position_size,
+                        primary_symbol, side, max_leverage, max_position_size,
+                        risk_profile, allowed_symbols,
                         True, automatic_mode,
                         phemex_key_encrypted, phemex_secret_encrypted, ai_api_key_encrypted
                     ))
