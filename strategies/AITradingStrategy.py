@@ -126,10 +126,36 @@ Current Price: ${price:,.2f}
 - 24h: {market_data['change_24h']:+.2f}%
 - 1h: {market_data['change_1h']:+.2f}%"""
 
-        # Format sentiment section
+        # Format sentiment section with all sources
+        sentiment_parts = []
+
+        # Fear & Greed Index
+        fear_greed = market_data.get('fear_greed_index')
+        if fear_greed is not None:
+            sentiment_parts.append(f"- Fear & Greed Index: {fear_greed}/100")
+
+        # Social sentiment (Twitter/LunarCrush)
+        social = market_data.get('social_sentiment')
+        if social:
+            sentiment_parts.append(f"- Social Media: {social}")
+
+        # Reddit sentiment
+        reddit = market_data.get('reddit_sentiment')
+        if reddit:
+            sentiment_parts.append(f"- Reddit: {reddit}")
+
+        # News headlines
+        news = market_data.get('news_headlines', [])
+        if news:
+            sentiment_parts.append(f"- Recent News ({len(news)} headlines):")
+            for headline in news[:3]:
+                sentiment_parts.append(f"  • {headline}")
+
+        sentiment_text = "\n".join(sentiment_parts) if sentiment_parts else "Limited sentiment data available"
+
         sentiment_section = f"""
 **MARKET SENTIMENT:**
-{market_data.get('sentiment', 'No sentiment data available')}"""
+{sentiment_text}"""
 
         # Format position section
         position_section = f"""

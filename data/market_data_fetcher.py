@@ -206,35 +206,67 @@ class MarketDataFetcher:
 
     def fetch_sentiment_data(self, symbol: str) -> Dict[str, Any]:
         """
-        Fetch sentiment indicators
+        Fetch sentiment indicators from multiple sources
 
-        Currently fetches:
+        Sources:
         - Fear & Greed Index (crypto-wide)
-        - Future: Twitter sentiment, Reddit sentiment
+        - LunarCrush API (Twitter/social sentiment)
+        - Reddit sentiment (r/CryptoCurrency, r/Bitcoin)
+        - CryptoPanic news headlines
 
         Returns:
-            Dict with sentiment data
+            Dict with comprehensive sentiment data
         """
         try:
-            # Fetch Fear & Greed Index
+            # 1. Fear & Greed Index
             fear_greed = self._get_fear_greed_index()
 
-            # TODO: Add Twitter/social sentiment
-            # TODO: Add Reddit sentiment
-            # TODO: Add Google Trends data
+            # 2. Social sentiment (LunarCrush)
+            social_sentiment = self._get_social_sentiment(symbol)
 
-            sentiment_description = self._format_sentiment_description(fear_greed)
+            # 3. Reddit sentiment
+            reddit_sentiment = self._get_reddit_sentiment(symbol)
+
+            # 4. News headlines
+            news_headlines = self._get_news_headlines(symbol, limit=3)
+
+            # Combine all sentiment data
+            sentiment_parts = []
+
+            # Fear & Greed
+            if fear_greed is not None:
+                fg_label = self._get_fear_greed_label(fear_greed)
+                sentiment_parts.append(f"Fear & Greed: {fear_greed}/100 ({fg_label})")
+
+            # Social sentiment
+            if social_sentiment:
+                sentiment_parts.append(f"Social: {social_sentiment}")
+
+            # Reddit
+            if reddit_sentiment:
+                sentiment_parts.append(f"Reddit: {reddit_sentiment}")
+
+            # News
+            if news_headlines:
+                sentiment_parts.append(f"Recent News: {len(news_headlines)} headlines")
+
+            sentiment_description = " | ".join(sentiment_parts) if sentiment_parts else "Limited sentiment data"
 
             return {
                 "fear_greed_index": fear_greed,
+                "social_sentiment": social_sentiment,
+                "reddit_sentiment": reddit_sentiment,
+                "news_headlines": news_headlines,
                 "sentiment": sentiment_description
             }
 
         except Exception as e:
             logger.warning(f"Error fetching sentiment data: {e}")
-            # Return neutral sentiment on error
             return {
                 "fear_greed_index": None,
+                "social_sentiment": None,
+                "reddit_sentiment": None,
+                "news_headlines": [],
                 "sentiment": "Sentiment data unavailable"
             }
 
@@ -260,23 +292,146 @@ class MarketDataFetcher:
             logger.warning(f"Error fetching Fear & Greed Index: {e}")
             return None
 
-    def _format_sentiment_description(self, fear_greed: Optional[int]) -> str:
-        """Format sentiment into human-readable description"""
-        if fear_greed is None:
-            return "Sentiment: N/A"
-
+    def _get_fear_greed_label(self, fear_greed: int) -> str:
+        """Get label for fear & greed score"""
         if fear_greed <= 20:
-            label = "EXTREME FEAR"
+            return "EXTREME FEAR"
         elif fear_greed <= 40:
-            label = "FEAR"
+            return "FEAR"
         elif fear_greed <= 60:
-            label = "NEUTRAL"
+            return "NEUTRAL"
         elif fear_greed <= 80:
-            label = "GREED"
+            return "GREED"
         else:
-            label = "EXTREME GREED"
+            return "EXTREME GREED"
 
-        return f"Fear & Greed: {fear_greed}/100 ({label})"
+    def _get_social_sentiment(self, symbol: str) -> Optional[str]:
+        """
+        Get social sentiment from LunarCrush API (free tier)
+
+        Note: LunarCrush free tier has rate limits
+        Falls back gracefully if unavailable
+        """
+        try:
+            # Extract coin name from symbol (e.g., BTCUSDT -> BTC)
+            coin = symbol.replace('USDT', '').replace('USD', '')
+
+            # LunarCrush API v2 (free tier)
+            response = requests.get(
+                f"https://api.lunarcrush.com/v2?data=assets&symbol={coin}",
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                if 'data' in data and data['data']:
+                    sentiment_score = data['data'][0].get('sentiment', None)
+                    if sentiment_score:
+                        # LunarCrush score is 0-5, convert to sentiment
+                        if sentiment_score >= 4:
+                            return "Very Bullish"
+                        elif sentiment_score >= 3:
+                            return "Bullish"
+                        elif sentiment_score >= 2:
+                            return "Neutral"
+                        else:
+                            return "Bearish"
+        except Exception as e:
+            logger.debug(f"LunarCrush sentiment unavailable: {e}")
+
+        return None
+
+    def _get_reddit_sentiment(self, symbol: str) -> Optional[str]:
+        """
+        Get Reddit sentiment by scraping r/CryptoCurrency and r/Bitcoin
+
+        Uses simple keyword matching without PRAW (no auth needed)
+        """
+        try:
+            coin = symbol.replace('USDT', '').replace('USD', '')
+            subreddits = ['CryptoCurrency', 'Bitcoin', 'ethtrader']
+
+            positive_keywords = ['bullish', 'moon', 'pump', 'buy', 'long', 'hodl']
+            negative_keywords = ['bearish', 'dump', 'sell', 'short', 'crash', 'drop']
+
+            positive_count = 0
+            negative_count = 0
+
+            for subreddit in subreddits:
+                try:
+                    # Use Reddit JSON API (no auth needed)
+                    response = requests.get(
+                        f"https://www.reddit.com/r/{subreddit}/search.json",
+                        params={'q': coin, 'sort': 'new', 'limit': 10},
+                        headers={'User-Agent': 'Mozilla/5.0'},
+                        timeout=5
+                    )
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        posts = data.get('data', {}).get('children', [])
+
+                        for post in posts:
+                            title = post.get('data', {}).get('title', '').lower()
+
+                            # Count sentiment keywords
+                            positive_count += sum(1 for kw in positive_keywords if kw in title)
+                            negative_count += sum(1 for kw in negative_keywords if kw in title)
+
+                except Exception as e:
+                    logger.debug(f"Reddit {subreddit} unavailable: {e}")
+                    continue
+
+            # Determine overall sentiment
+            if positive_count > negative_count * 1.5:
+                return "Bullish"
+            elif negative_count > positive_count * 1.5:
+                return "Bearish"
+            elif positive_count > 0 or negative_count > 0:
+                return "Mixed"
+
+        except Exception as e:
+            logger.debug(f"Reddit sentiment unavailable: {e}")
+
+        return None
+
+    def _get_news_headlines(self, symbol: str, limit: int = 3) -> list:
+        """
+        Get recent news headlines from CryptoPanic API (free tier)
+
+        Returns list of headline strings
+        """
+        try:
+            coin = symbol.replace('USDT', '').replace('USD', '')
+
+            # CryptoPanic API (free tier)
+            response = requests.get(
+                "https://cryptopanic.com/api/v1/posts/",
+                params={
+                    'auth_token': 'free',  # Public feed
+                    'currencies': coin,
+                    'kind': 'news',
+                    'filter': 'rising'
+                },
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+
+                headlines = []
+                for item in results[:limit]:
+                    title = item.get('title', '')
+                    if title:
+                        headlines.append(title)
+
+                return headlines
+
+        except Exception as e:
+            logger.debug(f"News headlines unavailable: {e}")
+
+        return []
 
     def _format_position(self, position: Dict) -> str:
         """Format current position info for prompt"""
@@ -296,22 +451,6 @@ class MarketDataFetcher:
         else:
             return f"{side} {size} @ ${entry_price:,.2f}"
 
-    def fetch_news_headlines(self, symbol: str, limit: int = 5) -> list:
-        """
-        Fetch recent news headlines for the symbol
-
-        TODO: Integrate with:
-        - CoinDesk API
-        - CoinTelegraph RSS
-        - CryptoPanic API
-        - NewsAPI
-
-        Returns:
-            List of headline strings
-        """
-        # Placeholder for future implementation
-        logger.info("News fetching not yet implemented")
-        return []
 
 
 # Example usage

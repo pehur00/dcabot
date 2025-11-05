@@ -163,6 +163,17 @@ class AIBotExecutor:
             decision_id = db.log_ai_decision(decision_data)
             logger.info(f"Decision logged: ID={decision_id}")
 
+            # Update virtual balance (subtract API cost)
+            api_cost = decision.get('api_cost', 0)
+            if api_cost > 0:
+                new_balance = db.update_virtual_balance(
+                    bot_id=bot_id,
+                    balance_change=-api_cost,  # Negative = cost
+                    change_reason='api_cost',
+                    decision_id=decision_id
+                )
+                logger.info(f"Virtual balance updated: ${new_balance:.4f} (-${api_cost:.6f} API cost)")
+
             # Step 6: Execute trade (if applicable)
             action_result = self.execute_decision(
                 bot, decision, phemex_client, decision_id
