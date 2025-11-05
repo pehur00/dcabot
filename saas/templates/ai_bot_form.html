@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Create AI Trading Bot - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <h1 class="card-header">Create AI Trading Bot</h1>
+
+        <div style="background: var(--blue-900); border: 1px solid var(--blue-700); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+            <p style="margin: 0; color: var(--gray-300); line-height: 1.6;">
+                <strong>Multi-Model Testing:</strong> Select multiple AI models to test simultaneously.
+                Each model will get its own bot instance with $100 virtual balance.
+                All bots share your exchange credentials but use separate AI API keys by provider.
+            </p>
+        </div>
+
+        <form method="POST">
+            <!-- Bot Configuration -->
+            <h3 style="margin-top: 0; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                📊 Bot Configuration
+            </h3>
+
+            <div class="form-group">
+                <label for="name">Bot Name</label>
+                <input type="text" id="name" name="name" required
+                       placeholder="BTC Long Bot"
+                       maxlength="100">
+                <small style="color: var(--gray-500);">Model name will be appended automatically (e.g., "BTC Long Bot (GLM-4.5-Air)")</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="symbol">Symbol</label>
+                    <select id="symbol" name="symbol" required>
+                        <option value="BTCUSDT">BTC/USDT</option>
+                        <option value="ETHUSDT">ETH/USDT</option>
+                        <option value="SOLUSDT">SOL/USDT</option>
+                        <option value="BNBUSDT">BNB/USDT</option>
+                        <option value="XRPUSDT">XRP/USDT</option>
+                        <option value="ADAUSDT">ADA/USDT</option>
+                        <option value="DOGEUSDT">DOGE/USDT</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="side">Side</label>
+                    <select id="side" name="side" required>
+                        <option value="Long">Long (Buy)</option>
+                        <option value="Short">Short (Sell)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="leverage">Leverage</label>
+                    <input type="number" id="leverage" name="leverage"
+                           value="5" min="1" max="20" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="max_position_size">Max Position Size</label>
+                    <input type="number" id="max_position_size" name="max_position_size"
+                           value="0.03" min="0.01" max="1" step="0.01" required>
+                    <small style="color: var(--gray-500);">% of balance (0.03 = 3%)</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="automatic_mode" name="automatic_mode">
+                    <label for="automatic_mode">Automatic Trading Mode</label>
+                </div>
+                <small style="color: var(--gray-500); display: block; margin-left: 1.8rem;">
+                    ⚠️ When enabled, bot will execute trades automatically. Leave unchecked for decision logging only.
+                </small>
+            </div>
+
+            <!-- Model Selection -->
+            <h3 style="margin-top: 2rem; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                🤖 Select AI Models
+            </h3>
+
+            <div style="background: var(--gray-800); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                {% for provider, models in models_by_provider.items() %}
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--gray-300); font-size: 1rem; margin-bottom: 1rem; text-transform: capitalize;">
+                        {{ provider }} Models
+                    </h4>
+
+                    {% for model in models %}
+                    <div class="checkbox-group" style="margin-bottom: 0.75rem; padding: 0.75rem; background: var(--gray-900); border-radius: 6px;">
+                        <input type="checkbox" id="model_{{ model['id'] }}"
+                               name="selected_models" value="{{ model['id'] }}"
+                               {% if model['is_active'] %}{% endif %}>
+                        <label for="model_{{ model['id'] }}" style="display: flex; align-items: center; flex: 1;">
+                            <img src="{{ model['logo_url'] }}"
+                                 alt="{{ model['name'] }}"
+                                 style="width: 24px; height: 24px; margin-right: 0.75rem; border-radius: 50%;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500; color: var(--gray-200);">{{ model['name'] }}</div>
+                                <div style="font-size: 0.85rem; color: var(--gray-500);">
+                                    Input: ${{ "%.2f"|format(model['cost_per_1m_input']) }}/M
+                                    • Output: ${{ "%.2f"|format(model['cost_per_1m_output']) }}/M
+                                    {% if model['cost_per_1m_input'] == 0 %}
+                                    <span style="color: var(--green); font-weight: 500; margin-left: 0.5rem;">FREE</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <small style="color: var(--gray-500); display: block; margin-top: 1rem;">
+                    💡 Select multiple models to compare their performance side-by-side
+                </small>
+            </div>
+
+            <!-- Exchange Credentials -->
+            <h3 style="margin-top: 2rem; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                🔑 Exchange Credentials
+            </h3>
+
+            <div class="form-group">
+                <label for="exchange">Exchange</label>
+                <select id="exchange" name="exchange" disabled>
+                    <option value="phemex">Phemex</option>
+                </select>
+                <small style="color: var(--gray-500);">More exchanges coming soon</small>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="testnet" name="testnet" checked>
+                    <label for="testnet">Use Testnet (recommended for testing)</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="phemex_api_key">Phemex API Key</label>
+                <input type="text" id="phemex_api_key" name="phemex_api_key" required
+                       placeholder="Your Phemex API key">
+                <small style="color: var(--gray-500);">🔒 Encrypted before storage</small>
+            </div>
+
+            <div class="form-group">
+                <label for="phemex_api_secret">Phemex API Secret</label>
+                <input type="password" id="phemex_api_secret" name="phemex_api_secret" required
+                       placeholder="Your Phemex API secret">
+                <small style="color: var(--gray-500);">🔒 Encrypted before storage</small>
+            </div>
+
+            <!-- AI Model Credentials -->
+            <h3 style="margin-top: 2rem; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">
+                🧠 AI Model API Keys
+            </h3>
+
+            <div style="background: var(--gray-800); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                <!-- z.ai (Zhipu) -->
+                <div class="form-group">
+                    <label for="zhipu_api_key">
+                        Zhipu AI API Key (z.ai)
+                    </label>
+                    <input type="text" id="zhipu_api_key" name="zhipu_api_key"
+                           placeholder="Your Zhipu AI API key">
+                    <small style="color: var(--gray-500);">
+                        🔒 For GLM-4.5-Air and GLM-4.5-Flash models
+                        <br>Get your key at: <a href="https://open.bigmodel.cn/" target="_blank" style="color: var(--blue);">open.bigmodel.cn</a>
+                    </small>
+                </div>
+
+                <!-- DeepSeek -->
+                <div class="form-group">
+                    <label for="deepseek_api_key">
+                        DeepSeek API Key
+                    </label>
+                    <input type="text" id="deepseek_api_key" name="deepseek_api_key"
+                           placeholder="Your DeepSeek API key">
+                    <small style="color: var(--gray-500);">
+                        🔒 For DeepSeek-Chat model
+                        <br>Get your key at: <a href="https://platform.deepseek.com/" target="_blank" style="color: var(--blue);">platform.deepseek.com</a>
+                    </small>
+                </div>
+
+                <!-- Anthropic -->
+                <div class="form-group">
+                    <label for="anthropic_api_key">
+                        Anthropic API Key (Optional)
+                    </label>
+                    <input type="text" id="anthropic_api_key" name="anthropic_api_key"
+                           placeholder="Your Anthropic API key">
+                    <small style="color: var(--gray-500);">
+                        🔒 For Claude-3.5-Sonnet model
+                        <br>Get your key at: <a href="https://console.anthropic.com/" target="_blank" style="color: var(--blue);">console.anthropic.com</a>
+                    </small>
+                </div>
+
+                <div style="background: var(--blue-900); border: 1px solid var(--blue-700); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+                    <small style="color: var(--gray-300); line-height: 1.6;">
+                        💡 <strong>Tip:</strong> Only provide API keys for the models you selected above.
+                        Keys are encrypted and stored securely.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    Create AI Bot(s)
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.checkbox-group label {
+    margin: 0;
+    cursor: pointer;
+    color: var(--gray-300);
+}
+</style>
+
+<script>
+// Show/hide API key fields based on selected models
+document.addEventListener('DOMContentLoaded', function() {
+    const modelCheckboxes = document.querySelectorAll('input[name="selected_models"]');
+    const zhipuField = document.getElementById('zhipu_api_key').closest('.form-group');
+    const deepseekField = document.getElementById('deepseek_api_key').closest('.form-group');
+    const anthropicField = document.getElementById('anthropic_api_key').closest('.form-group');
+
+    function updateRequiredFields() {
+        let needsZhipu = false;
+        let needsDeepseek = false;
+        let needsAnthropic = false;
+
+        modelCheckboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                const label = checkbox.nextElementSibling.textContent;
+                if (label.includes('GLM')) needsZhipu = true;
+                if (label.includes('DeepSeek')) needsDeepseek = true;
+                if (label.includes('Claude')) needsAnthropic = true;
+            }
+        });
+
+        // Update required attributes and visibility
+        document.getElementById('zhipu_api_key').required = needsZhipu;
+        document.getElementById('deepseek_api_key').required = needsDeepseek;
+        document.getElementById('anthropic_api_key').required = needsAnthropic;
+
+        zhipuField.style.opacity = needsZhipu ? '1' : '0.5';
+        deepseekField.style.opacity = needsDeepseek ? '1' : '0.5';
+        anthropicField.style.opacity = needsAnthropic ? '1' : '0.5';
+    }
+
+    modelCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateRequiredFields);
+    });
+
+    updateRequiredFields();
+});
+</script>
+{% endblock %}

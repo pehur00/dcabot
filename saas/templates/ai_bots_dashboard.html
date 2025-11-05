@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block title %}AI Trading Bots - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 style="margin: 0;">AI Trading Bots</h1>
+            <a href="{{ url_for('create_ai_bot') }}" class="btn btn-primary">+ Create AI Bot</a>
+        </div>
+
+        {% if not bots %}
+        <div style="text-align: center; padding: 4rem 2rem; background: var(--gray-900); border-radius: 12px;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🤖</div>
+            <h2 style="color: var(--gray-300); margin-bottom: 1rem;">No AI Bots Yet</h2>
+            <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                Create your first AI trading bot to start comparing different AI models.
+            </p>
+            <a href="{{ url_for('create_ai_bot') }}" class="btn btn-primary">Create AI Bot</a>
+        </div>
+        {% else %}
+
+        <!-- Filters and Controls -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 200px;">
+                <label for="model-filter" style="display: block; margin-bottom: 0.5rem; color: var(--gray-400); font-size: 0.9rem;">
+                    Filter by Model
+                </label>
+                <select id="model-filter" style="width: 100%; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 6px; color: var(--gray-200);">
+                    <option value="all">All Models</option>
+                    {% for model in available_models %}
+                    <option value="{{ model['id'] }}">{{ model['name'] }} ({{ model['provider'] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label for="time-range" style="display: block; margin-bottom: 0.5rem; color: var(--gray-400); font-size: 0.9rem;">
+                    Time Range
+                </label>
+                <select id="time-range" style="width: 100%; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 6px; color: var(--gray-200);">
+                    <option value="24">24 Hours</option>
+                    <option value="72" selected>72 Hours</option>
+                    <option value="168">7 Days</option>
+                    <option value="720">30 Days</option>
+                </select>
+            </div>
+
+            <div style="flex-shrink: 0; margin-top: 1.6rem;">
+                <button id="refresh-btn" class="btn btn-secondary" onclick="loadChartData()">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Multi-Line Chart -->
+        <div style="background: var(--gray-900); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; color: var(--gray-200); font-size: 1.3rem;">Total Account Value</h2>
+                <div id="multiplier" style="font-size: 1.5rem; font-weight: 700; color: var(--green);">
+                    1.0X
+                </div>
+            </div>
+
+            <div id="chart-container" style="position: relative; height: 400px;">
+                <canvas id="balance-chart"></canvas>
+            </div>
+
+            <div id="chart-legend" style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-800);">
+                <!-- Legend populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Tabbed Interface -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab active" data-tab="positions">POSITIONS</button>
+                <button class="tab" data-tab="trades">COMPLETED TRADES</button>
+                <button class="tab" data-tab="modelchat">MODELCHAT</button>
+                <button class="tab" data-tab="leaderboard">LEADERBOARD</button>
+            </div>
+
+            <!-- Positions Tab -->
+            <div class="tab-content active" id="tab-positions">
+                <div id="positions-content">
+                    <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                        Loading positions...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completed Trades Tab -->
+            <div class="tab-content" id="tab-trades">
+                <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                    No completed trades yet
+                </div>
+            </div>
+
+            <!-- ModelChat Tab -->
+            <div class="tab-content" id="tab-modelchat">
+                <div id="decisions-log">
+                    <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                        Loading AI decisions...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Tab -->
+            <div class="tab-content" id="tab-leaderboard">
+                {% if leaderboard %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Avg Balance</th>
+                                <th>Total Trades</th>
+                                <th>Avg PnL</th>
+                                <th>Signals</th>
+                                <th>Avg Confidence</th>
+                                <th>Total Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for model in leaderboard %}
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <img src="{{ model['logo_url'] }}" alt="{{ model['model_name'] }}"
+                                             style="width: 32px; height: 32px; border-radius: 50%;">
+                                        <div>
+                                            <div style="font-weight: 500;">{{ model['model_name'] }}</div>
+                                            <div style="font-size: 0.85rem; color: var(--gray-500);">{{ model['provider'] }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if model['avg_balance'] %}
+                                    <span style="color: {% if model['avg_balance'] > 100 %}var(--green){% elif model['avg_balance'] < 100 %}var(--red){% else %}var(--gray-400){% endif %};">
+                                        ${{ "%.2f"|format(model['avg_balance']) }}
+                                    </span>
+                                    {% else %}
+                                    <span style="color: var(--gray-500);">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ model['total_trades'] or 0 }}</td>
+                                <td>
+                                    {% if model['avg_pnl'] %}
+                                    <span style="color: {% if model['avg_pnl'] > 0 %}var(--green){% elif model['avg_pnl'] < 0 %}var(--red){% else %}var(--gray-400){% endif %};">
+                                        {{ "%+.2f"|format(model['avg_pnl']) }}
+                                    </span>
+                                    {% else %}
+                                    <span style="color: var(--gray-500);">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.85rem;">
+                                        <span style="color: var(--green);">↑{{ model['buy_signals'] or 0 }}</span>
+                                        <span style="color: var(--red); margin-left: 0.5rem;">↓{{ model['sell_signals'] or 0 }}</span>
+                                        <span style="color: var(--gray-500); margin-left: 0.5rem;">•{{ model['hold_signals'] or 0 }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if model['avg_confidence'] %}
+                                    {{ "%.1f"|format(model['avg_confidence']) }}%
+                                    {% else %}
+                                    <span style="color: var(--gray-500);">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if model['total_api_cost'] %}
+                                    ${{ "%.4f"|format(model['total_api_cost']) }}
+                                    {% else %}
+                                    <span style="color: var(--gray-500);">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                    No model data available yet
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Tabs */
+.tabs-container {
+    background: var(--gray-900);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tabs {
+    display: flex;
+    background: var(--gray-800);
+    border-bottom: 2px solid var(--gray-700);
+}
+
+.tab {
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    color: var(--gray-400);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+
+.tab:hover {
+    color: var(--gray-200);
+    background: var(--gray-750);
+}
+
+.tab.active {
+    color: var(--green);
+    border-bottom-color: var(--green);
+    background: var(--gray-900);
+}
+
+.tab-content {
+    display: none;
+    padding: 2rem;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Table */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table thead {
+    background: var(--gray-800);
+}
+
+.data-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray-300);
+    border-bottom: 2px solid var(--gray-700);
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--gray-800);
+}
+
+.data-table tbody tr:hover {
+    background: var(--gray-850);
+}
+
+@media (max-width: 768px) {
+    .tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .tab {
+        flex: 0 0 auto;
+        min-width: 120px;
+    }
+}
+</style>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+let chart = null;
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+
+        // Update active tab
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update active content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        // Load tab data if needed
+        if (tabName === 'modelchat') {
+            loadDecisionsLog();
+        } else if (tabName === 'positions') {
+            loadPositions();
+        }
+    });
+});
+
+// Load chart data
+function loadChartData() {
+    const modelFilter = document.getElementById('model-filter').value;
+    const hours = document.getElementById('time-range').value;
+
+    const url = `/api/ai-bots/chart-data?hours=${hours}&model=${modelFilter}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderChart(data.datasets);
+                updateMultiplier(data.datasets);
+            } else {
+                console.error('Error loading chart data:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+// Render chart with Chart.js
+function renderChart(datasets) {
+    const ctx = document.getElementById('balance-chart').getContext('2d');
+
+    // Destroy existing chart
+    if (chart) {
+        chart.destroy();
+    }
+
+    // Color palette
+    const colors = [
+        '#4A90E2',  // Blue (GLM)
+        '#A855F7',  // Purple (GLM-Flash)
+        '#FF6B35',  // Orange (DeepSeek)
+        '#CC9966',  // Brown (Claude)
+        '#10B981',  // Green
+        '#F59E0B',  // Yellow
+    ];
+
+    // Build Chart.js datasets
+    const chartDatasets = datasets.map((dataset, index) => ({
+        label: dataset.label,
+        data: dataset.data,
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length] + '20',
+        borderWidth: 3,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        tension: 0.4,
+        fill: false
+    }));
+
+    // Create chart
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: chartDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 35, 41, 0.95)',
+                    titleColor: '#E5E7EB',
+                    bodyColor: '#9CA3AF',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'hour',
+                        displayFormats: {
+                            hour: 'MMM d, HH:mm'
+                        }
+                    },
+                    grid: {
+                        color: '#374151',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#9CA3AF'
+                    }
+                },
+                y: {
+                    beginAtZero: false,
+                    grid: {
+                        color: '#374151',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#9CA3AF',
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Render legend with logos
+    renderLegend(datasets, colors);
+}
+
+// Render custom legend with model logos
+function renderLegend(datasets, colors) {
+    const legendContainer = document.getElementById('chart-legend');
+    legendContainer.innerHTML = '';
+
+    datasets.forEach((dataset, index) => {
+        const latestBalance = dataset.data[dataset.data.length - 1]?.y || 100;
+        const change = latestBalance - 100;
+        const changePercent = ((latestBalance / 100) - 1) * 100;
+
+        const legendItem = document.createElement('div');
+        legendItem.style.cssText = 'display: flex; align-items: center; gap: 0.75rem;';
+
+        legendItem.innerHTML = `
+            <div style="width: 3px; height: 32px; background: ${colors[index % colors.length]}; border-radius: 2px;"></div>
+            <img src="${dataset.logo_url}" alt="${dataset.label}"
+                 style="width: 32px; height: 32px; border-radius: 50%;">
+            <div>
+                <div style="font-weight: 500; color: var(--gray-200);">${dataset.label}</div>
+                <div style="font-size: 0.85rem;">
+                    <span style="color: ${latestBalance >= 100 ? 'var(--green)' : 'var(--red)'};">
+                        $${latestBalance.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%)
+                    </span>
+                </div>
+            </div>
+        `;
+
+        legendContainer.appendChild(legendItem);
+    });
+}
+
+// Update multiplier display
+function updateMultiplier(datasets) {
+    if (datasets.length === 0) return;
+
+    let totalBalance = 0;
+    let totalInitial = 0;
+
+    datasets.forEach(dataset => {
+        if (dataset.data.length > 0) {
+            totalBalance += dataset.data[dataset.data.length - 1].y;
+            totalInitial += 100; // Each bot starts with $100
+        }
+    });
+
+    const multiplier = totalInitial > 0 ? totalBalance / totalInitial : 1.0;
+    const multiplierEl = document.getElementById('multiplier');
+    multiplierEl.textContent = multiplier.toFixed(2) + 'X';
+    multiplierEl.style.color = multiplier >= 1 ? 'var(--green)' : 'var(--red)';
+}
+
+// Load positions (placeholder)
+function loadPositions() {
+    const content = document.getElementById('positions-content');
+    content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">No open positions</div>';
+}
+
+// Load decisions log (placeholder)
+function loadDecisionsLog() {
+    const log = document.getElementById('decisions-log');
+    log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">Loading decisions...</div>';
+
+    // TODO: Fetch decisions from API
+}
+
+// Event listeners
+document.getElementById('model-filter').addEventListener('change', loadChartData);
+document.getElementById('time-range').addEventListener('change', loadChartData);
+
+// Initial load
+document.addEventListener('DOMContentLoaded', () => {
+    {% if bots %}
+    loadChartData();
+    loadPositions();
+    {% endif %}
+});
+</script>
+
+{% endblock %}
