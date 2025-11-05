@@ -173,7 +173,14 @@ def main():
     logger.info("🤖 Starting bot execution cycle")
 
     try:
-        # Get all active bots from database
+        # ============================================
+        # Part 1: Execute Martingale Trading Bots
+        # ============================================
+        logger.info("\n" + "="*60)
+        logger.info("PART 1: Martingale Trading Bots")
+        logger.info("="*60)
+
+        # Get all active Martingale bots from database
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -185,19 +192,37 @@ def main():
             active_bots = cursor.fetchall()
 
         if not active_bots:
-            logger.info("No active bots to execute")
-            return
+            logger.info("No active Martingale bots to execute")
+        else:
+            logger.info(f"Found {len(active_bots)} active Martingale bot(s)")
 
-        logger.info(f"Found {len(active_bots)} active bots")
+            # Execute each Martingale bot
+            success_count = 0
+            for bot_id, bot_name, user_id in active_bots:
+                logger.info(f"Executing bot {bot_id} ({bot_name}) for user {user_id}")
+                if execute_bot(bot_id):
+                    success_count += 1
 
-        # Execute each bot
-        success_count = 0
-        for bot_id, bot_name, user_id in active_bots:
-            logger.info(f"Executing bot {bot_id} ({bot_name}) for user {user_id}")
-            if execute_bot(bot_id):
-                success_count += 1
+            logger.info(f"✅ Martingale bots complete: {success_count}/{len(active_bots)} successful")
 
-        logger.info(f"✅ Execution cycle complete: {success_count}/{len(active_bots)} successful")
+        # ============================================
+        # Part 2: Execute AI Trading Bots
+        # ============================================
+        logger.info("\n" + "="*60)
+        logger.info("PART 2: AI Trading Bots")
+        logger.info("="*60)
+
+        try:
+            from saas.execute_ai_bots import AIBotExecutor
+            ai_executor = AIBotExecutor()
+            ai_executor.execute_all_bots()
+        except Exception as e:
+            logger.error(f"❌ AI bot execution failed: {e}")
+            # Don't exit on AI bot failure - Martingale bots already ran successfully
+
+        logger.info("\n" + "="*60)
+        logger.info("✅ Full execution cycle complete")
+        logger.info("="*60)
 
     except Exception as e:
         logger.error(f"❌ Execution cycle failed: {e}")
