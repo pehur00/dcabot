@@ -83,6 +83,11 @@ def load_user(user_id):
     return None
 
 
+# Register AI bot routes
+from saas.ai_bot_routes import register_ai_bot_routes
+register_ai_bot_routes(app)
+
+
 # ============================================================================
 # Public Routes
 # ============================================================================

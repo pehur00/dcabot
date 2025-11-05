@@ -20,10 +20,10 @@ CREATE TABLE IF NOT EXISTS ai_model_configs (
 -- Seed AI model configurations
 INSERT INTO ai_model_configs (name, provider, api_endpoint, model_identifier, cost_per_1m_input, cost_per_1m_output, logo_url, is_active)
 VALUES
-    ('GLM-4.5-Air', 'z.ai', 'https://api.z.ai/api/paas/v4/chat/completions', 'glm-4.5-air', 0.20, 1.10, '/static/logos/zhipu.png', true),
-    ('GLM-4.5-Flash', 'z.ai', 'https://api.z.ai/api/paas/v4/chat/completions', 'glm-4.5-flash', 0.0, 0.0, '/static/logos/zhipu.png', true),
-    ('DeepSeek-Chat', 'deepseek', 'https://api.deepseek.com/v1/chat/completions', 'deepseek-chat', 0.27, 1.10, '/static/logos/deepseek.png', true),
-    ('Claude-3.5-Sonnet', 'anthropic', 'https://api.anthropic.com/v1/messages', 'claude-3-5-sonnet-20241022', 3.00, 15.00, '/static/logos/anthropic.png', false)
+    ('GLM-4.5-Air', 'z.ai', 'https://api.z.ai/api/paas/v4/chat/completions', 'glm-4.5-air', 0.20, 1.10, '/static/images/logos/zhipu.svg', true),
+    ('GLM-4.5-Flash', 'z.ai', 'https://api.z.ai/api/paas/v4/chat/completions', 'glm-4.5-flash', 0.0, 0.0, '/static/images/logos/zhipu.svg', true),
+    ('DeepSeek-Chat', 'deepseek', 'https://api.deepseek.com/v1/chat/completions', 'deepseek-chat', 0.27, 1.10, '/static/images/logos/deepseek.svg', true),
+    ('Claude-3.5-Sonnet', 'anthropic', 'https://api.anthropic.com/v1/messages', 'claude-3-5-sonnet-20241022', 3.00, 15.00, '/static/images/logos/anthropic.svg', false)
 ON CONFLICT (provider, model_identifier) DO NOTHING;
 
 -- Table 2: AI Bots

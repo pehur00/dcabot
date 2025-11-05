@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-GLM API Test Script for Trading Bot
-Tests z.ai (Zhipu GLM-4.5) API with real trading scenarios
+GLM API Test Script for Trading Bot (via z.ai)
+Tests GLM-4.6 API with real trading scenarios
 
 Usage:
-    export ZHIPU_API_KEY="your_api_key_here"
+    export GLM_API_KEY="your_api_key_here"
     python test_glm_api.py
 """
 
@@ -12,25 +12,137 @@ import os
 import sys
 import json
 import requests
+import pandas as pd
 from datetime import datetime
 from typing import Dict, Any
 
 
+def fetch_live_market_data(symbol: str) -> Dict[str, Any]:
+    """
+    Fetch real-time market data from Binance API
+    Returns technical indicators and price data
+    """
+    print(f"📡 Fetching live data for {symbol}...")
+
+    try:
+        # Binance API endpoints
+        base_url = "https://api.binance.com/api/v3"
+
+        # Get current price and 24h stats
+        ticker_url = f"{base_url}/ticker/24hr?symbol={symbol}"
+        ticker_response = requests.get(ticker_url, timeout=10)
+        ticker_data = ticker_response.json()
+
+        current_price = float(ticker_data['lastPrice'])
+        volume_24h = float(ticker_data['volume'])
+        price_change_24h = float(ticker_data['priceChangePercent'])
+
+        # Get klines for EMA calculation (1m, 5m, 1h)
+        def get_ema(interval: str, period: int) -> float:
+            klines_url = f"{base_url}/klines?symbol={symbol}&interval={interval}&limit={period + 50}"
+            klines_response = requests.get(klines_url, timeout=10)
+            klines = klines_response.json()
+            closes = [float(k[4]) for k in klines]  # Close prices
+
+            # Calculate EMA
+            df = pd.DataFrame({'close': closes})
+            ema = df['close'].ewm(span=period, adjust=False).mean().iloc[-1]
+            return float(ema)
+
+        # Calculate EMAs
+        ema20_1m = get_ema('1m', 20)
+        ema50_5m = get_ema('5m', 50)
+        ema100_1h = get_ema('1h', 100)
+
+        # Calculate RSI (14 period on 1m)
+        def calculate_rsi(interval: str = '1m', period: int = 14) -> float:
+            klines_url = f"{base_url}/klines?symbol={symbol}&interval={interval}&limit={period + 50}"
+            klines_response = requests.get(klines_url, timeout=10)
+            klines = klines_response.json()
+            closes = [float(k[4]) for k in klines]
+
+            # Calculate RSI
+            df = pd.DataFrame({'close': closes})
+            delta = df['close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            return float(rsi.iloc[-1])
+
+        rsi = calculate_rsi()
+
+        # Determine volume trend
+        klines_5m = requests.get(f"{base_url}/klines?symbol={symbol}&interval=5m&limit=20", timeout=10).json()
+        recent_volumes = [float(k[5]) for k in klines_5m[-5:]]
+        older_volumes = [float(k[5]) for k in klines_5m[-10:-5]]
+        avg_recent = sum(recent_volumes) / len(recent_volumes)
+        avg_older = sum(older_volumes) / len(older_volumes)
+        volume_trend = "INCREASING" if avg_recent > avg_older * 1.1 else "DECREASING" if avg_recent < avg_older * 0.9 else "STABLE"
+
+        # Determine trend
+        trend_parts = []
+        if ema20_1m > ema50_5m:
+            trend_parts.append("1m bullish")
+        else:
+            trend_parts.append("1m bearish")
+
+        if ema50_5m > ema100_1h:
+            trend_parts.append("5m bullish")
+        else:
+            trend_parts.append("5m bearish")
+
+        if current_price > ema100_1h:
+            trend_parts.append("above 1h EMA100")
+        else:
+            trend_parts.append("below 1h EMA100")
+
+        trend = ", ".join(trend_parts)
+
+        # Calculate 1h change
+        klines_1h = requests.get(f"{base_url}/klines?symbol={symbol}&interval=1h&limit=2", timeout=10).json()
+        price_1h_ago = float(klines_1h[-2][4])
+        change_1h = ((current_price - price_1h_ago) / price_1h_ago) * 100
+
+        print(f"✅ Live data fetched: ${current_price:,.2f}")
+
+        return {
+            "symbol": symbol,
+            "current_price": current_price,
+            "ema20_1m": ema20_1m,
+            "ema50_5m": ema50_5m,
+            "ema100_1h": ema100_1h,
+            "rsi": round(rsi, 1),
+            "volume_trend": volume_trend,
+            "trend": trend,
+            "change_24h": round(price_change_24h, 2),
+            "change_1h": round(change_1h, 2),
+            "fear_greed": "N/A (use sentiment API if needed)",
+            "position": "None"
+        }
+
+    except Exception as e:
+        print(f"❌ Error fetching live data: {e}")
+        return None
+
+
 class GLMTradingTest:
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("ZHIPU_API_KEY")
+        self.api_key = api_key or os.getenv("GLM_API_KEY")
         if not self.api_key:
-            print("❌ ERROR: ZHIPU_API_KEY not found!")
+            print("❌ ERROR: GLM_API_KEY not found!")
             print("\nPlease set your API key:")
-            print("  export ZHIPU_API_KEY='your_key_here'")
+            print("  export GLM_API_KEY='your_key_here'")
             sys.exit(1)
 
-        self.base_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-        self.model = "glm-4.6"  # Latest flagship model (Sept 2025)
+        self.base_url = "https://api.z.ai/api/paas/v4/chat/completions"
+        # Choose model: "glm-4.5-flash" (FREE but slower) or "glm-4.5-air" ($1.20/month, faster)
+        self.model = os.getenv("GLM_MODEL", "glm-4.5-air")  # Default to Air for speed
 
     def test_connection(self) -> bool:
         """Test if API key works"""
-        print("🔌 Testing GLM API connection...")
+        print(f"🔌 Testing GLM API connection...")
+        print(f"📊 Model: {self.model}")
 
         try:
             response = self._call_api(
@@ -60,14 +172,14 @@ class GLMTradingTest:
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": 1500
+            "max_tokens": 2000  # Increased to avoid truncation
         }
 
         response = requests.post(
             self.base_url,
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=90  # Increased for free tier queuing
         )
 
         if response.status_code != 200:
@@ -92,11 +204,13 @@ class GLMTradingTest:
 
 Analyze the provided market data and make a trading decision.
 
+IMPORTANT: Keep reasoning concise (2-3 sentences max).
+
 Output Format (JSON only, no markdown):
 {
   "decision": "HOLD|BUY|SELL",
   "confidence": 0-100,
-  "reasoning": "detailed explanation",
+  "reasoning": "brief 2-3 sentence explanation",
   "risk_level": "LOW|MEDIUM|HIGH",
   "stop_loss": price_level,
   "take_profit": price_level
@@ -152,7 +266,38 @@ Should I BUY, SELL, or HOLD? Provide your analysis in JSON format.
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
 
-            decision = json.loads(content)
+            # Try to parse JSON, handle truncation
+            try:
+                decision = json.loads(content)
+            except json.JSONDecodeError as e:
+                # If JSON is truncated, try to fix it
+                print(f"⚠️  JSON truncated, attempting to fix...")
+
+                # Add missing closing braces
+                if content.count("{") > content.count("}"):
+                    content = content + "}"
+
+                # Try to extract what we have and add placeholder reasoning
+                try:
+                    # Find the last complete field before truncation
+                    lines = content.split('\n')
+                    fixed_lines = []
+                    for line in lines:
+                        if '"reasoning"' in line and not line.strip().endswith(',') and not line.strip().endswith('"'):
+                            # Truncated reasoning, close it
+                            line = line.rstrip() + '..."'
+                        fixed_lines.append(line)
+
+                    content = '\n'.join(fixed_lines)
+                    if not content.endswith('}'):
+                        content = content + '\n}'
+
+                    decision = json.loads(content)
+                    decision['reasoning'] = decision.get('reasoning', '') + ' [Response truncated, increase max_tokens]'
+                except:
+                    # If still fails, create minimal response
+                    print(f"❌ Cannot parse JSON. Raw content:\n{content}")
+                    raise e
 
             # Display results
             print("\n" + "="*60)
@@ -172,8 +317,15 @@ Should I BUY, SELL, or HOLD? Provide your analysis in JSON format.
             input_tokens = usage.get("prompt_tokens", 0)
             output_tokens = usage.get("completion_tokens", 0)
 
-            # Calculate cost (GLM-4: $0.11/M input, $0.28/M output)
-            cost = (input_tokens * 0.11 / 1_000_000) + (output_tokens * 0.28 / 1_000_000)
+            # Calculate cost based on model
+            if "flash" in self.model.lower():
+                cost = 0.0  # FREE!
+            elif "air" in self.model.lower() and "airx" not in self.model.lower():
+                # GLM-4.5-Air: $0.2/M input + $1.1/M output
+                cost = (input_tokens * 0.2 / 1_000_000) + (output_tokens * 1.1 / 1_000_000)
+            else:
+                # Default GLM-4.6 pricing
+                cost = (input_tokens * 0.6 / 1_000_000) + (output_tokens * 2.2 / 1_000_000)
 
             print(f"\n💰 API Usage:")
             print(f"   Input Tokens:  {input_tokens}")
@@ -201,7 +353,7 @@ Should I BUY, SELL, or HOLD? Provide your analysis in JSON format.
 
 def main():
     print("="*60)
-    print("🤖 GLM API Trading Bot Test")
+    print("🤖 GLM API Trading Bot Test (via z.ai)")
     print("="*60)
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
@@ -214,44 +366,28 @@ def main():
         print("\n❌ Connection test failed. Please check your API key.")
         sys.exit(1)
 
-    # Test Scenario 1: BTCUSDT Bullish Setup
-    scenario1 = {
-        "symbol": "BTCUSDT",
-        "current_price": 42500.00,
-        "position": "None",
-        "ema20_1m": 42480,
-        "ema50_5m": 42350,
-        "ema100_1h": 42200,
-        "rsi": 65,
-        "volume_trend": "INCREASING",
-        "fear_greed": "72 (GREED)",
-        "trend": "BULLISH (all EMAs aligned up)",
-        "change_24h": +2.5,
-        "change_1h": +0.8
-    }
-
-    result1 = tester.test_trading_scenario("BTC Bullish Setup", scenario1)
-
-    # Test Scenario 2: SOLUSDT Crash (Nov 1-4 example)
+    # Test Scenario 1: BTCUSDT with LIVE data
     print("\n" + "="*60)
-    input("\nPress Enter to test next scenario (SOLUSDT Crash)...")
+    print("🔴 LIVE TEST: Fetching real-time market data...")
+    print("="*60)
 
-    scenario2 = {
-        "symbol": "SOLUSDT",
-        "current_price": 165.00,
-        "position": "0.5 SOL @ $185 (Underwater -10.8%)",
-        "ema20_1m": 166,
-        "ema50_5m": 172,
-        "ema100_1h": 180,
-        "rsi": 28,
-        "volume_trend": "HIGH (panic selling)",
-        "fear_greed": "25 (FEAR)",
-        "trend": "STRONG DOWNTREND (all EMAs pointing down)",
-        "change_24h": -12.5,
-        "change_1h": -3.2
-    }
+    scenario1 = fetch_live_market_data("BTCUSDT")
+    if not scenario1:
+        print("❌ Failed to fetch live data for BTCUSDT. Exiting.")
+        sys.exit(1)
 
-    result2 = tester.test_trading_scenario("SOL Crash Scenario", scenario2)
+    result1 = tester.test_trading_scenario("BTCUSDT (LIVE)", scenario1)
+
+    # Test Scenario 2: SOLUSDT with LIVE data
+    print("\n" + "="*60)
+    input("\nPress Enter to test next scenario (SOLUSDT LIVE)...")
+
+    scenario2 = fetch_live_market_data("SOLUSDT")
+    if not scenario2:
+        print("❌ Failed to fetch live data for SOLUSDT. Exiting.")
+        sys.exit(1)
+
+    result2 = tester.test_trading_scenario("SOLUSDT (LIVE)", scenario2)
 
     # Summary
     print("\n" + "="*60)
@@ -266,8 +402,10 @@ def main():
         print(f"\nTotal API Cost: ${total_cost:.6f}")
         print(f"Average Response Time: {avg_time:.2f}s")
         print(f"\n💡 Monthly Cost Estimate:")
-        print(f"   At 3,000 calls/month: ${total_cost * 1500:.2f}")
-        print(f"   (That's 97% cheaper than Claude at $150/month!)")
+        monthly_cost = total_cost * 1500
+        print(f"   At 3,000 calls/month: ${monthly_cost:.2f}")
+        savings = 150 - monthly_cost
+        print(f"   vs Claude ($150/month): Save ${savings:.2f}/month! 🎉")
 
         # Compare decisions
         print(f"\n🎯 GLM Trading Decisions:")
