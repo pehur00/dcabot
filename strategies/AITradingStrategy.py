@@ -267,6 +267,10 @@ Respond with ONLY the JSON, no other text."""
             "X-Title": "DCABot Trading Platform"    # Optional but recommended
         }
 
+        # Detect if this is a portfolio decision (needs more tokens)
+        is_portfolio = 'PORTFOLIO:' in prompt or 'portfolio_action' in prompt
+        max_tokens = 6000 if is_portfolio else 4000
+
         # OpenAI-compatible payload (supported by all models via OpenRouter)
         payload = {
             "model": self.model_identifier,  # e.g., "anthropic/claude-3.5-sonnet", "openai/gpt-4o-mini"
@@ -281,7 +285,7 @@ Respond with ONLY the JSON, no other text."""
                 }
             ],
             "temperature": 0.3,
-            "max_tokens": 4000  # Sufficient for both single and portfolio decisions
+            "max_tokens": max_tokens
         }
 
         # Make API call
@@ -547,12 +551,29 @@ Analyze the portfolio and provide a decision for each symbol.
 
             # Try to parse JSON
             try:
+                # Extract JSON from markdown code blocks
                 if '```json' in content:
                     json_str = content.split('```json')[1].split('```')[0].strip()
                 elif '```' in content:
                     json_str = content.split('```')[1].split('```')[0].strip()
                 else:
-                    json_str = content.strip()
+                    # Try to find JSON object in content
+                    start = content.find('{')
+                    if start != -1:
+                        # Find matching closing brace
+                        brace_count = 0
+                        for i in range(start, len(content)):
+                            if content[i] == '{':
+                                brace_count += 1
+                            elif content[i] == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    json_str = content[start:i+1]
+                                    break
+                        else:
+                            json_str = content[start:].strip()
+                    else:
+                        json_str = content.strip()
 
                 logger.info(f"Extracted JSON (first 300 chars): {json_str[:300]}")
                 decision = json.loads(json_str)
@@ -560,7 +581,7 @@ Analyze the portfolio and provide a decision for each symbol.
                 logger.error(f"JSON decode error: {e}")
                 logger.error(f"Failed JSON string: {json_str[:500]}")
                 # Try to fix truncated JSON
-                decision = self._fix_truncated_json(content)
+                decision = self._fix_truncated_json(json_str if 'json_str' in locals() else content)
 
             # Calculate cost
             input_tokens = usage.get('prompt_tokens', 0)
