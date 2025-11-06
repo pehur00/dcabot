@@ -943,7 +943,7 @@ def register_ai_bot_routes(app):
                 conn.commit()
 
                 status_text = 'resumed' if new_status else 'paused'
-                flash(f'Bot "{bot['name']}" {status_text}', 'success')
+                flash(f'Bot "{bot["name"]}" {status_text}', 'success')
                 return redirect(url_for('ai_bots_dashboard'))
 
         except Exception as e:
