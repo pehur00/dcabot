@@ -5,11 +5,6 @@
 {% block content %}
 <div class="container">
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h1 style="margin: 0;">AI Trading Bots</h1>
-            <a href="{{ url_for('create_ai_bot') }}" class="btn btn-primary">+ Create AI Bot</a>
-        </div>
-
         {% if not bots %}
         <div style="text-align: center; padding: 4rem 2rem; background: var(--gray-900); border-radius: 12px;">
             <div style="font-size: 4rem; margin-bottom: 1rem;">🤖</div>
@@ -21,172 +16,258 @@
         </div>
         {% else %}
 
-        <!-- Filters and Controls -->
-        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; align-items: center;">
-            <div style="flex: 1; min-width: 200px;">
-                <label for="model-filter" style="display: block; margin-bottom: 0.5rem; color: var(--gray-400); font-size: 0.9rem;">
-                    Filter by Model
-                </label>
-                <select id="model-filter" style="width: 100%; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 6px; color: var(--gray-200);">
-                    <option value="all">All Models</option>
-                    {% for model in available_models %}
-                    <option value="{{ model['id'] }}">{{ model['name'] }} ({{ model['provider'] }})</option>
-                    {% endfor %}
-                </select>
+        <!-- Crypto Price Ticker -->
+        <div style="background: var(--gray-950); border-radius: 8px; padding: 0.75rem 1.5rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 2rem; overflow-x: auto;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                <span style="color: #F7931A; font-weight: 700;">₿</span>
+                <span style="color: var(--gray-400); font-size: 0.75rem; font-weight: 600;">BTC</span>
+                <span id="price-btc" style="color: var(--gray-200); font-weight: 700; font-size: 0.9rem;">$102,639.50</span>
+                <span id="change-btc" style="color: var(--green); font-size: 0.75rem; font-weight: 600;">+0.12%</span>
             </div>
-
-            <div style="flex: 1; min-width: 200px;">
-                <label for="time-range" style="display: block; margin-bottom: 0.5rem; color: var(--gray-400); font-size: 0.9rem;">
-                    Time Range
-                </label>
-                <select id="time-range" style="width: 100%; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 6px; color: var(--gray-200);">
-                    <option value="24">24 Hours</option>
-                    <option value="72" selected>72 Hours</option>
-                    <option value="168">7 Days</option>
-                    <option value="720">30 Days</option>
-                </select>
+            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                <span style="color: #627EEA; font-weight: 700;">Ξ</span>
+                <span style="color: var(--gray-400); font-size: 0.75rem; font-weight: 600;">ETH</span>
+                <span id="price-eth" style="color: var(--gray-200); font-weight: 700; font-size: 0.9rem;">$3,338.35</span>
+                <span id="change-eth" style="color: var(--green); font-size: 0.75rem; font-weight: 600;">+0.08%</span>
             </div>
-
-            <div style="flex-shrink: 0; margin-top: 1.6rem;">
-                <button id="refresh-btn" class="btn btn-secondary" onclick="loadChartData()">
-                    🔄 Refresh
-                </button>
+            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                <span style="color: #14F195; font-weight: 700;">◎</span>
+                <span style="color: var(--gray-400); font-size: 0.75rem; font-weight: 600;">SOL</span>
+                <span id="price-sol" style="color: var(--gray-200); font-weight: 700; font-size: 0.9rem;">$157.96</span>
+                <span id="change-sol" style="color: var(--green); font-size: 0.75rem; font-weight: 600;">+0.05%</span>
             </div>
-        </div>
-
-        <!-- Multi-Line Chart -->
-        <div style="background: var(--gray-900); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0; color: var(--gray-200); font-size: 1.3rem;">Total Account Value</h2>
-                <div id="multiplier" style="font-size: 1.5rem; font-weight: 700; color: var(--green);">
-                    1.0X
-                </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                <span style="color: #F3BA2F; font-weight: 700;">◇</span>
+                <span style="color: var(--gray-400); font-size: 0.75rem; font-weight: 600;">BNB</span>
+                <span id="price-bnb" style="color: var(--gray-200); font-weight: 700; font-size: 0.9rem;">$954.14</span>
+                <span id="change-bnb" style="color: var(--green); font-size: 0.75rem; font-weight: 600;">+0.15%</span>
             </div>
-
-            <div id="chart-container" style="position: relative; height: 400px;">
-                <canvas id="balance-chart"></canvas>
+            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                <span style="color: #00D1FF; font-weight: 700;">Ð</span>
+                <span style="color: var(--gray-400); font-size: 0.75rem; font-weight: 600;">DOGE</span>
+                <span id="price-doge" style="color: var(--gray-200); font-weight: 700; font-size: 0.9rem;">$0.1641</span>
+                <span id="change-doge" style="color: var(--red); font-size: 0.75rem; font-weight: 600;">-0.03%</span>
             </div>
-
-            <div id="chart-legend" style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-800);">
-                <!-- Legend populated by JavaScript -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;">
+                <span style="color: #23292F; font-weight: 700;">✕</span>
+                <span style="color: var(--gray-400); font-size: 0.75rem; font-weight: 600;">XRP</span>
+                <span id="price-xrp" style="color: var(--gray-200); font-weight: 700; font-size: 0.9rem;">$2.25</span>
+                <span id="change-xrp" style="color: var(--green); font-size: 0.75rem; font-weight: 600;">+0.09%</span>
             </div>
         </div>
 
-        <!-- Tabbed Interface -->
-        <div class="tabs-container">
-            <div class="tabs">
-                <button class="tab active" data-tab="positions">POSITIONS</button>
-                <button class="tab" data-tab="trades">COMPLETED TRADES</button>
-                <button class="tab" data-tab="modelchat">MODELCHAT</button>
-                <button class="tab" data-tab="leaderboard">LEADERBOARD</button>
-            </div>
-
-            <!-- Positions Tab -->
-            <div class="tab-content active" id="tab-positions">
-                <div id="positions-content">
-                    <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
-                        Loading positions...
+        <!-- Compact My Bots Carousel -->
+        <div style="margin-bottom: 1rem; overflow-x: auto; white-space: nowrap; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
+            <div style="display: inline-flex; gap: 0.75rem;">
+                {% for bot in bots %}
+                <div class="bot-card" data-bot-id="{{ bot['id'] }}" data-model="{{ bot['model_name'] }}" style="background: var(--gray-900); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.65rem 1rem; display: inline-flex; align-items: center; gap: 0.75rem; min-width: 220px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                    <img src="" alt="{{ bot['name'] }}" style="width: 32px; height: 32px; border-radius: 50%;" class="bot-avatar" data-bot-id="{{ bot['id'] }}" data-bot-name="{{ bot['name'] }}">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.15rem;">
+                            <div style="font-size: 0.8rem; font-weight: 700; color: var(--gray-200); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02em;" class="bot-name">{{ bot['name'] }}</div>
+                            {% if bot['testnet'] %}
+                            <span style="background: var(--blue-900); color: var(--blue); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">TEST</span>
+                            {% else %}
+                            <span style="background: rgba(246, 70, 93, 0.1); color: var(--red); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">LIVE</span>
+                            {% endif %}
+                        </div>
+                        {% if bot['balance_status'] == 'success' %}
+                        <div style="font-size: 0.7rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                            <span style="color: var(--gray-300);">${{ "%.2f"|format(bot['current_balance']) }}</span>
+                            {% if bot['total_upnl'] != 0 %}
+                            <span style="color: {{ 'var(--green)' if bot['total_upnl'] >= 0 else 'var(--red)' }}; font-size: 0.65rem;">{{ "+" if bot['total_upnl'] >= 0 else "" }}${{ "%.2f"|format(bot['total_upnl']|abs) }}</span>
+                            <span style="color: var(--gray-500); font-size: 0.65rem;">=</span>
+                            <span style="color: {{ 'var(--green)' if bot['balance_with_upnl'] >= bot['current_balance'] else 'var(--red)' }};">${{ "%.2f"|format(bot['balance_with_upnl']) }}</span>
+                            {% else %}
+                            <span style="color: {{ 'var(--green)' if bot['pnl_percentage'] >= 0 else 'var(--red)' }}; font-size: 0.65rem;">({{ "+" if bot['pnl_percentage'] >= 0 else "" }}{{ "%.1f"|format(bot['pnl_percentage']) }}%)</span>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div style="font-size: 0.65rem; color: var(--red); font-weight: 500;">⚠️ Balance unavailable</div>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; gap: 0.35rem; align-items: center;">
+                        {% if bot['is_active'] %}
+                        <span style="background: var(--green); width: 8px; height: 8px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px var(--green);"></span>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('toggle_ai_bot', bot_id=bot['id']) }}" style="display: inline; margin: 0;">
+                            <button type="submit" style="background: transparent; border: none; color: var(--gray-500); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="{{ 'Pause' if bot['is_active'] else 'Resume' }}">
+                                {% if bot['is_active'] %}⏸{% else %}▶️{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_ai_bot', bot_id=bot['id']) }}" onsubmit="return confirm(&quot;Delete bot?&quot;)" style="display: inline; margin: 0;">
+                            <button type="submit" style="background: transparent; border: none; color: var(--red); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="Delete">🗑️</button>
+                        </form>
                     </div>
                 </div>
-            </div>
+                {% endfor %}
 
-            <!-- Completed Trades Tab -->
-            <div class="tab-content" id="tab-trades">
-                <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
-                    No completed trades yet
-                </div>
+                <!-- Add Bot Button -->
+                <a href="{{ url_for('create_ai_bot') }}" style="text-decoration: none;">
+                    <div style="background: var(--gray-900); border: 2px dashed var(--gray-700); border-radius: 8px; padding: 0.65rem 1rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 120px; height: 73px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#06B6D4'; this.querySelector('span').style.color='#06B6D4'; this.querySelector('svg').style.color='#06B6D4'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--gray-700)'; this.querySelector('span').style.color='var(--gray-500)'; this.querySelector('svg').style.color='var(--gray-500)'">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gray-500); transition: color 0.2s;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; transition: color 0.2s;">Add Bot</span>
+                    </div>
+                </a>
             </div>
+        </div>
 
-            <!-- ModelChat Tab -->
-            <div class="tab-content" id="tab-modelchat">
-                <div id="decisions-log">
-                    <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
-                        Loading AI decisions...
+        <!-- Chart + Tabs Side-by-Side (70/30 split) -->
+        <div style="display: grid; grid-template-columns: 1fr 420px; gap: 1rem; margin-bottom: 1.5rem;">
+
+            <!-- Chart Section (Left - 70%) -->
+            <div style="background: var(--gray-900); border-radius: 12px; padding: 1.5rem; min-width: 0; height: fit-content;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                    <h2 style="margin: 0; color: var(--gray-100); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">TOTAL ACCOUNT VALUE</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="time-btn active" data-hours="72" style="padding: 0.5rem 1rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 6px; color: var(--gray-300); font-size: 0.75rem; cursor: pointer; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s;">ALL</button>
+                        <button class="time-btn" data-hours="72" style="padding: 0.5rem 1rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 6px; color: var(--gray-500); font-size: 0.75rem; cursor: pointer; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s;">72H</button>
                     </div>
                 </div>
+
+                <div id="chart-container" style="position: relative; height: 520px;">
+                    <canvas id="balance-chart"></canvas>
+                </div>
+
+                <div id="chart-legend" style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-800); font-size: 0.8rem;">
+                    <!-- Legend populated by JavaScript -->
+                </div>
             </div>
 
-            <!-- Leaderboard Tab -->
-            <div class="tab-content" id="tab-leaderboard">
-                {% if leaderboard %}
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>Avg Balance</th>
-                                <th>Total Trades</th>
-                                <th>Avg PnL</th>
-                                <th>Signals</th>
-                                <th>Avg Confidence</th>
-                                <th>Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for model in leaderboard %}
-                            <tr>
-                                <td>
-                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <img src="{{ model['logo_url'] }}" alt="{{ model['model_name'] }}"
-                                             style="width: 32px; height: 32px; border-radius: 50%;">
-                                        <div>
-                                            <div style="font-weight: 500;">{{ model['model_name'] }}</div>
-                                            <div style="font-size: 0.85rem; color: var(--gray-500);">{{ model['provider'] }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    {% if model['avg_balance'] %}
-                                    <span style="color: {% if model['avg_balance'] > 100 %}var(--green){% elif model['avg_balance'] < 100 %}var(--red){% else %}var(--gray-400){% endif %};">
-                                        ${{ "%.2f"|format(model['avg_balance']) }}
-                                    </span>
-                                    {% else %}
-                                    <span style="color: var(--gray-500);">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ model['total_trades'] or 0 }}</td>
-                                <td>
-                                    {% if model['avg_pnl'] %}
-                                    <span style="color: {% if model['avg_pnl'] > 0 %}var(--green){% elif model['avg_pnl'] < 0 %}var(--red){% else %}var(--gray-400){% endif %};">
-                                        {{ "%+.2f"|format(model['avg_pnl']) }}
-                                    </span>
-                                    {% else %}
-                                    <span style="color: var(--gray-500);">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div style="font-size: 0.85rem;">
-                                        <span style="color: var(--green);">↑{{ model['buy_signals'] or 0 }}</span>
-                                        <span style="color: var(--red); margin-left: 0.5rem;">↓{{ model['sell_signals'] or 0 }}</span>
-                                        <span style="color: var(--gray-500); margin-left: 0.5rem;">•{{ model['hold_signals'] or 0 }}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    {% if model['avg_confidence'] %}
-                                    {{ "%.1f"|format(model['avg_confidence']) }}%
-                                    {% else %}
-                                    <span style="color: var(--gray-500);">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if model['total_api_cost'] %}
-                                    ${{ "%.4f"|format(model['total_api_cost']) }}
-                                    {% else %}
-                                    <span style="color: var(--gray-500);">-</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
+            <!-- Tabbed Interface (Right - 30%) -->
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab" data-tab="positions" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">POSITIONS</button>
+                    <button class="tab" data-tab="trades" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">TRADES</button>
+                    <button class="tab active" data-tab="modelchat" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">BOT CHAT</button>
+                    <button class="tab" data-tab="leaderboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">LEADERBOARD</button>
+                </div>
+
+                <!-- Positions Tab -->
+                <div class="tab-content" id="tab-positions">
+                    <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">FILTER:</label>
+                        <select id="position-filter" style="flex: 1; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-200); font-size: 0.85rem;">
+                            <option value="all">All Models</option>
+                            {% for model in available_models %}
+                            <option value="{{ model['id'] }}">{{ model['name'] }}</option>
                             {% endfor %}
-                        </tbody>
-                    </table>
+                        </select>
+                        <button onclick="document.getElementById('position-filter').value='all'; loadPositions();" style="padding: 0.5rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-400); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;">CLEAR</button>
+                    </div>
+                    <div id="positions-content">
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                            No open positions
+                        </div>
+                    </div>
                 </div>
-                {% else %}
-                <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
-                    No model data available yet
+
+                <!-- Completed Trades Tab -->
+                <div class="tab-content" id="tab-trades">
+                    <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">FILTER:</label>
+                        <select id="trades-filter" style="flex: 1; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-200); font-size: 0.85rem;">
+                            <option value="all">All Bots</option>
+                            {% for bot in bots %}
+                            <option value="{{ bot['id'] }}">{{ bot['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="document.getElementById('trades-filter').value='all'; loadTrades();" style="padding: 0.5rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-400); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;">CLEAR</button>
+                    </div>
+                    <div id="trades-content" style="overflow-y: auto; max-height: 520px;">
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                            Loading trades...
+                        </div>
+                    </div>
                 </div>
-                {% endif %}
+
+                <!-- ModelChat Tab -->
+                <div class="tab-content active" id="tab-modelchat">
+                    <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">FILTER:</label>
+                        <select id="bot-filter" style="flex: 1; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-200); font-size: 0.85rem;">
+                            <option value="all">All Bots</option>
+                            {% for bot in bots %}
+                            <option value="{{ bot['id'] }}">{{ bot['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="document.getElementById('bot-filter').value='all'; loadChartData(); loadDecisionsLog();" style="padding: 0.5rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-400); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;">CLEAR</button>
+                    </div>
+                    <div id="decisions-log">
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                            Loading AI decisions...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Tab -->
+                <div class="tab-content" id="tab-leaderboard">
+                    {% if leaderboard %}
+                    <div class="table-responsive">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em;">
+                                    <th>Bot</th>
+                                    <th>Avg Balance</th>
+                                    <th>Signals</th>
+                                    <th>Confidence</th>
+                                    <th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bot in leaderboard %}
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <span class="leaderboard-avatar" data-bot-id="{{ bot['bot_id'] }}" data-bot-name="{{ bot['bot_name'] }}" style="width: 20px; height: 20px; border-radius: 50%; display: inline-block;"></span>
+                                            <span style="font-weight: 600;">{{ bot['bot_name'] }}</span>
+                                        </div>
+                                    </td>
+                                    <td style="color: {{ 'var(--green)' if bot['avg_balance'] and bot['avg_balance'] >= 100 else 'var(--red)' }}; font-weight: 600;">
+                                        {% if bot['avg_balance'] %}
+                                        ${{ "%.2f"|format(bot['avg_balance']) }}
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if bot['total_decisions'] %}
+                                        {{ bot['total_decisions'] }}
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if bot['avg_confidence'] %}
+                                        {{ "%.1f"|format(bot['avg_confidence']) }}%
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if bot['total_api_cost'] %}
+                                        ${{ "%.4f"|format(bot['total_api_cost']) }}
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                        No model data available yet
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-        </div>
+        </div> <!-- End chart + tabs grid -->
 
         {% endif %}
     </div>
@@ -196,27 +277,33 @@
 /* Tabs */
 .tabs-container {
     background: var(--gray-900);
-    border-radius: 12px;
+    border-radius: 8px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 550px;
 }
 
 .tabs {
     display: flex;
-    background: var(--gray-800);
+    background: transparent;
     border-bottom: 2px solid var(--gray-700);
 }
 
 .tab {
     flex: 1;
-    padding: 1rem;
-    background: transparent;
-    border: none;
+    padding: 0.75rem 1rem;
+    background: var(--gray-800);
+    border: 1px solid var(--gray-700);
+    border-bottom: none;
     color: var(--gray-400);
-    font-weight: 500;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.75rem;
     cursor: pointer;
-    transition: all 0.2s;
-    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 1px;
 }
 
 .tab:hover {
@@ -225,14 +312,18 @@
 }
 
 .tab.active {
-    color: var(--green);
-    border-bottom-color: var(--green);
-    background: var(--gray-900);
+    color: var(--gray-100);
+    background: #000;
+    border-color: #000;
+    position: relative;
+    z-index: 1;
 }
 
 .tab-content {
     display: none;
-    padding: 2rem;
+    padding: 1.25rem;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .tab-content.active {
@@ -249,42 +340,72 @@
     border-collapse: collapse;
 }
 
-.data-table thead {
-    background: var(--gray-800);
-}
-
-.data-table th {
-    padding: 1rem;
-    text-align: left;
-    font-weight: 600;
-    color: var(--gray-300);
-    border-bottom: 2px solid var(--gray-700);
-}
-
+.data-table th,
 .data-table td {
-    padding: 1rem;
+    padding: 0.75rem 0.5rem;
+    text-align: left;
     border-bottom: 1px solid var(--gray-800);
 }
 
-.data-table tbody tr:hover {
+.data-table th {
+    color: var(--gray-500);
+    font-weight: 600;
     background: var(--gray-850);
 }
 
-@media (max-width: 768px) {
-    .tabs {
-        overflow-x: auto;
-        white-space: nowrap;
+.data-table tr:hover {
+    background: var(--gray-850);
+}
+
+/* Time range buttons */
+.time-btn.active {
+    background: var(--green) !important;
+    color: var(--gray-900) !important;
+    border-color: var(--green) !important;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    [style*="grid-template-columns: 1fr 500px"] {
+        grid-template-columns: 1fr 450px !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    [style*="grid-template-columns: 1fr 500px"],
+    [style*="grid-template-columns: 1fr 450px"] {
+        grid-template-columns: 1fr !important;
     }
 
+    .tab-content {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
     .tab {
-        flex: 0 0 auto;
-        min-width: 120px;
+        font-size: 0.7rem;
+        padding: 0.6rem 0.4rem;
+    }
+
+    .tab-content {
+        padding: 0.75rem;
+    }
+
+    #chart-container {
+        height: 250px !important;
+    }
+
+    .tabs-container {
+        max-height: 400px;
     }
 }
 </style>
 
 <!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js Date Adapter (required for time scale) -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <script>
 let chart = null;
@@ -309,21 +430,39 @@ document.querySelectorAll('.tab').forEach(tab => {
             loadDecisionsLog();
         } else if (tabName === 'positions') {
             loadPositions();
+        } else if (tabName === 'trades') {
+            loadTrades();
         }
+    });
+});
+
+// Time range buttons
+document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadChartData();
     });
 });
 
 // Load chart data
 function loadChartData() {
-    const modelFilter = document.getElementById('model-filter').value;
-    const hours = document.getElementById('time-range').value;
+    const activeTimeBtn = document.querySelector('.time-btn.active');
+    const hours = activeTimeBtn ? activeTimeBtn.dataset.hours : '72';
+    const botFilter = document.getElementById('bot-filter')?.value || 'all';
 
-    const url = `/api/ai-bots/chart-data?hours=${hours}&model=${modelFilter}`;
+    const url = `/api/ai-bots/chart-data?hours=${hours}&bot=${botFilter}`;
+    console.log('[DEBUG] Loading chart data from:', url);
 
     fetch(url)
-        .then(response => response.json())
+        .then(response => {
+            console.log('[DEBUG] Response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('[DEBUG] Data received:', data);
             if (data.success) {
+                console.log('[DEBUG] Datasets count:', data.datasets.length);
                 renderChart(data.datasets);
                 updateMultiplier(data.datasets);
             } else {
@@ -331,13 +470,24 @@ function loadChartData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('[ERROR] Fetch failed:', error);
         });
 }
 
 // Render chart with Chart.js
 function renderChart(datasets) {
-    const ctx = document.getElementById('balance-chart').getContext('2d');
+    console.log('[DEBUG] renderChart called with datasets:', datasets);
+
+    if (typeof Chart === 'undefined') {
+        console.error('[ERROR] Chart.js not loaded!');
+        return;
+    }
+
+    const ctx = document.getElementById('balance-chart')?.getContext('2d');
+    if (!ctx) {
+        console.error('[ERROR] Canvas element not found!');
+        return;
+    }
 
     // Destroy existing chart
     if (chart) {
@@ -345,140 +495,197 @@ function renderChart(datasets) {
     }
 
     // Color palette
-    const colors = [
-        '#4A90E2',  // Blue (GLM)
-        '#A855F7',  // Purple (GLM-Flash)
-        '#FF6B35',  // Orange (DeepSeek)
-        '#CC9966',  // Brown (Claude)
-        '#10B981',  // Green
-        '#F59E0B',  // Yellow
-    ];
+    // Filter out datasets with no history data points
+    datasets = datasets.filter(dataset => {
+        console.log('[DEBUG] Processing dataset:', dataset.label, 'data points:', dataset.data.length);
+        return dataset.data.length > 0; // Only show bots with actual balance history
+    });
 
-    // Build Chart.js datasets
-    const chartDatasets = datasets.map((dataset, index) => ({
-        label: dataset.label,
-        data: dataset.data,
-        borderColor: colors[index % colors.length],
-        backgroundColor: colors[index % colors.length] + '20',
-        borderWidth: 3,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        tension: 0.4,
-        fill: false
-    }));
+    // Build Chart.js datasets with bot-specific colors
+    const chartDatasets = datasets.map((dataset, index) => {
+        const botColor = getBotColor(dataset.bot_id);
+        return {
+            label: dataset.label,
+            data: dataset.data,
+            borderColor: botColor,
+            backgroundColor: botColor + '20',
+            borderWidth: 3,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointBackgroundColor: botColor,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            tension: 0.4,
+            fill: false,
+            // Store bot metadata for icon plugin
+            bot_id: dataset.bot_id,
+            bot_name: dataset.bot_name,
+            model_name: dataset.model_name
+        };
+    });
+
+    // Custom plugin to draw bot avatars at end of lines
+    const iconPlugin = {
+        id: 'lineEndIcons',
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const imageCache = iconPlugin.imageCache || {};
+
+            chart.data.datasets.forEach((dataset, i) => {
+                if (!dataset.bot_id || dataset.data.length === 0) return;
+
+                const meta = chart.getDatasetMeta(i);
+                if (!meta.visible) return;
+
+                // Get last point
+                const lastPoint = meta.data[meta.data.length - 1];
+                if (!lastPoint) return;
+
+                const x = lastPoint.x;
+                const y = lastPoint.y;
+
+                // Icon size
+                const iconSize = 24;
+
+                // Draw white circle background
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x, y, iconSize / 2 + 2, 0, 2 * Math.PI);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.restore();
+
+                // Draw colored circle border
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x, y, iconSize / 2 + 2, 0, 2 * Math.PI);
+                ctx.strokeStyle = dataset.borderColor;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+
+                // Generate and draw bot avatar
+                const cacheKey = `${dataset.bot_id}_${iconSize}`;
+                if (!imageCache[cacheKey]) {
+                    // Generate avatar data URL
+                    const avatarDataUrl = getBotAvatar(dataset.bot_name, dataset.bot_id, iconSize);
+                    const img = new Image();
+                    img.onload = () => {
+                        imageCache[cacheKey] = img;
+                        chart.render();
+                    };
+                    img.src = avatarDataUrl;
+                } else {
+                    // Draw cached avatar
+                    const img = imageCache[cacheKey];
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(x, y, iconSize / 2, 0, 2 * Math.PI);
+                    ctx.clip();
+                    ctx.drawImage(img, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
+                    ctx.restore();
+                }
+            });
+
+            iconPlugin.imageCache = imageCache;
+        }
+    };
 
     // Create chart
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            datasets: chartDatasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: {
-                    display: false
+    try {
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: chartDatasets },
+            plugins: [iconPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
                 },
-                tooltip: {
-                    backgroundColor: 'rgba(30, 35, 41, 0.95)',
-                    titleColor: '#E5E7EB',
-                    bodyColor: '#9CA3AF',
-                    borderColor: '#374151',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    type: 'time',
-                    time: {
-                        unit: 'hour',
-                        displayFormats: {
-                            hour: 'MMM d, HH:mm'
-                        }
-                    },
-                    grid: {
-                        color: '#374151',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#9CA3AF'
+                layout: {
+                    padding: {
+                        right: 35  // Add padding to prevent icon clipping at right edge
                     }
                 },
-                y: {
-                    beginAtZero: false,
-                    grid: {
-                        color: '#374151',
-                        drawBorder: false
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        titleColor: '#aaa',
+                        bodyColor: '#fff',
+                        borderColor: '#444',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'hour', displayFormats: { hour: 'MMM d, HH:mm' } },
+                        grid: { color: '#1a1d24', drawBorder: false },
+                        ticks: { color: '#666', font: { size: 10 } }
                     },
-                    ticks: {
-                        color: '#9CA3AF',
-                        callback: function(value) {
-                            return '$' + value.toFixed(0);
+                    y: {
+                        beginAtZero: false,
+                        suggestedMin: 95,  // Give some breathing room below $100
+                        suggestedMax: 105, // Give some breathing room above $100
+                        grid: { color: '#1a1d24', drawBorder: false },
+                        ticks: {
+                            color: '#666',
+                            font: { size: 10 },
+                            callback: function(value) { return '$' + value.toFixed(0); }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+        console.log('[DEBUG] Chart created successfully!');
+    } catch (error) {
+        console.error('[ERROR] Failed to create chart:', error);
+    }
 
-    // Render legend with logos
-    renderLegend(datasets, colors);
-}
-
-// Render custom legend with model logos
-function renderLegend(datasets, colors) {
+    // Update legend with bot-specific colors and avatars
     const legendContainer = document.getElementById('chart-legend');
     legendContainer.innerHTML = '';
 
     datasets.forEach((dataset, index) => {
-        const latestBalance = dataset.data[dataset.data.length - 1]?.y || 100;
-        const change = latestBalance - 100;
-        const changePercent = ((latestBalance / 100) - 1) * 100;
+        const currentBalance = dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 100;
+        const change = currentBalance - 100;
+        const changePercent = ((change / 100) * 100).toFixed(2);
+        const botColor = getBotColor(dataset.bot_id);
+        const botAvatar = getBotAvatar(dataset.bot_name, dataset.bot_id, 24);
 
         const legendItem = document.createElement('div');
-        legendItem.style.cssText = 'display: flex; align-items: center; gap: 0.75rem;';
-
+        legendItem.style.display = 'flex';
+        legendItem.style.alignItems = 'center';
+        legendItem.style.gap = '0.6rem';
         legendItem.innerHTML = `
-            <div style="width: 3px; height: 32px; background: ${colors[index % colors.length]}; border-radius: 2px;"></div>
-            <img src="${dataset.logo_url}" alt="${dataset.label}"
-                 style="width: 32px; height: 32px; border-radius: 50%;">
-            <div>
-                <div style="font-weight: 500; color: var(--gray-200);">${dataset.label}</div>
-                <div style="font-size: 0.85rem;">
-                    <span style="color: ${latestBalance >= 100 ? 'var(--green)' : 'var(--red)'};">
-                        $${latestBalance.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%)
-                    </span>
-                </div>
-            </div>
+            <img src="${botAvatar}" alt="${dataset.label}" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${botColor};">
+            <span style="color: ${botColor}; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em;">${dataset.label}</span>
+            <span style="color: ${change >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight: 700; font-size: 0.85rem;">$${currentBalance.toFixed(2)} (${change >= 0 ? '+' : ''}${changePercent}%)</span>
         `;
-
         legendContainer.appendChild(legendItem);
     });
 }
 
 // Update multiplier display
 function updateMultiplier(datasets) {
-    if (datasets.length === 0) return;
-
     let totalBalance = 0;
     let totalInitial = 0;
 
     datasets.forEach(dataset => {
         if (dataset.data.length > 0) {
-            totalBalance += dataset.data[dataset.data.length - 1].y;
-            totalInitial += 100; // Each bot starts with $100
+            const latestBalance = dataset.data[dataset.data.length - 1].y;
+            totalBalance += latestBalance;
+            totalInitial += 100;
         }
     });
 
@@ -488,31 +695,454 @@ function updateMultiplier(datasets) {
     multiplierEl.style.color = multiplier >= 1 ? 'var(--green)' : 'var(--red)';
 }
 
-// Load positions (placeholder)
+// Load positions from API
 function loadPositions() {
     const content = document.getElementById('positions-content');
-    content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">No open positions</div>';
+    const modelFilter = document.getElementById('position-filter').value;
+
+    // Show loading state
+    content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">Loading positions...</div>';
+
+    // Fetch positions from API
+    fetch(`/api/ai-bots/positions?model=${modelFilter}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || !data.bot_groups || data.bot_groups.length === 0) {
+                content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">No open positions</div>';
+                return;
+            }
+
+            // Build positions HTML grouped by bot - clean nof1.ai style
+            let html = '<div style="display: flex; flex-direction: column; gap: 1px; background: rgba(255,255,255,0.05); padding: 1px; border-radius: 4px;">';
+
+            data.bot_groups.forEach(bot => {
+                const modelColor = getModelColor(bot.model_name);
+                const upnlColor = bot.total_upnl >= 0 ? 'var(--green)' : 'var(--red)';
+                const upnlSign = bot.total_upnl >= 0 ? '+' : '';
+
+                html += `
+                    <div style="background: var(--gray-900); padding: 0.5rem; border-left: 2px solid ${modelColor};">
+                        <!-- Bot Header - Compact -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; padding-bottom: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <span style="color: ${modelColor}; font-weight: 600; font-size: 0.75rem;">${bot.bot_name}</span>
+                                ${bot.testnet ? '<span style="background: rgba(59, 130, 246, 0.15); color: var(--blue); padding: 0.05rem 0.25rem; border-radius: 2px; font-size: 0.6rem; font-weight: 600;">TEST</span>' : ''}
+                            </div>
+                            <div style="color: var(--gray-400); font-size: 0.7rem;">
+                                PNL: <span style="color: ${upnlColor}; font-weight: 700;">${upnlSign}$${bot.total_upnl.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <!-- Clean Table -->
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--gray-500); text-transform: uppercase; font-size: 0.6rem;">
+                                    <th style="padding: 0.3rem 0.4rem; text-align: left; font-weight: 600;">SIDE</th>
+                                    <th style="padding: 0.3rem 0.4rem; text-align: left; font-weight: 600;">COIN</th>
+                                    <th style="padding: 0.3rem 0.4rem; text-align: left; font-weight: 600;">LEV</th>
+                                    <th style="padding: 0.3rem 0.4rem; text-align: right; font-weight: 600;">NOTIONAL</th>
+                                    <th style="padding: 0.3rem 0.4rem; text-align: center; font-weight: 600;">EXIT</th>
+                                    <th style="padding: 0.3rem 0.4rem; text-align: right; font-weight: 600;">PNL</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                bot.positions.forEach(pos => {
+                    const sideColor = pos.side === 'Long' ? 'var(--green)' : 'var(--red)';
+                    const pnlColor = pos.unrealised_pnl >= 0 ? 'var(--green)' : 'var(--red)';
+                    const pnlSign = pos.unrealised_pnl >= 0 ? '+' : '';
+                    const symbol = pos.symbol.replace('USDT', '');
+
+                    html += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 0.35rem 0.4rem; color: ${sideColor}; font-weight: 700; text-transform: uppercase; font-size: 0.65rem;">${pos.side.substring(0,1)}</td>
+                            <td style="padding: 0.35rem 0.4rem; color: var(--gray-200); font-weight: 600;">${symbol}</td>
+                            <td style="padding: 0.35rem 0.4rem; color: var(--gray-400);">${pos.leverage}X</td>
+                            <td style="padding: 0.35rem 0.4rem; text-align: right; color: var(--gray-300); font-weight: 600;">$${pos.notional.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</td>
+                            <td style="padding: 0.35rem 0.4rem; text-align: center;">
+                                <button style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--gray-400); padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.6rem; cursor: pointer; font-weight: 600;" onclick="alert('Exit plan for ${symbol}')">VIEW</button>
+                            </td>
+                            <td style="padding: 0.35rem 0.4rem; text-align: right; color: ${pnlColor}; font-weight: 700;">${pnlSign}$${pos.unrealised_pnl.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+
+                        <!-- Available Cash -->
+                        <div style="margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.1); color: var(--gray-400); font-size: 0.65rem;">
+                            AVAILABLE: <span style="color: var(--gray-200); font-weight: 600;">$${bot.available_balance.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            content.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading positions:', error);
+            content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading positions</div>';
+        });
 }
 
-// Load decisions log (placeholder)
+// Get model-specific color based on provider
+function getModelColor(modelName) {
+    const name = modelName.toLowerCase();
+
+    // Claude models - Orange/Coral
+    if (name.includes('claude') || name.includes('sonnet') || name.includes('haiku') || name.includes('opus')) {
+        return '#FF6B35'; // Vibrant orange
+    }
+    // Gemini models - Blue
+    if (name.includes('gemini')) {
+        return '#4285F4'; // Google blue
+    }
+    // OpenAI models - Green/Teal
+    if (name.includes('gpt') || name.includes('openai')) {
+        return '#10A37F'; // OpenAI green
+    }
+    // DeepSeek models - Purple
+    if (name.includes('deepseek')) {
+        return '#9333EA'; // Purple
+    }
+    // GLM models - Cyan
+    if (name.includes('glm')) {
+        return '#06B6D4'; // Cyan
+    }
+    // Qwen models - Red
+    if (name.includes('qwen')) {
+        return '#EF4444'; // Red
+    }
+    // Default - Gray
+    return '#6B7280';
+}
+
+// Generate deterministic color for bot based on bot ID
+function getBotColor(botId) {
+    const colors = [
+        '#FF6B35', // Orange
+        '#4285F4', // Blue
+        '#10A37F', // Teal
+        '#22C55E', // Green (replaced purple)
+        '#06B6D4', // Cyan
+        '#EF4444', // Red
+        '#F59E0B', // Amber
+        '#A855F7', // Brighter Violet
+        '#EC4899', // Pink
+        '#14B8A6'  // Teal
+    ];
+    return colors[botId % colors.length];
+}
+
+// Get initials from bot name (first 2 letters or first letter of first 2 words)
+function getBotInitials(botName) {
+    if (!botName) return 'B';
+
+    // Remove common words
+    const cleaned = botName.replace(/bot|trader|trading|ai/gi, '').trim();
+    const words = cleaned.split(/[\s-_]+/).filter(w => w.length > 0);
+
+    if (words.length >= 2) {
+        // Take first letter of first two words
+        return (words[0][0] + words[1][0]).toUpperCase();
+    } else if (words.length === 1 && words[0].length >= 2) {
+        // Take first 2 letters of single word
+        return words[0].substring(0, 2).toUpperCase();
+    } else {
+        // Fallback
+        return botName.substring(0, 2).toUpperCase();
+    }
+}
+
+// Generate bot avatar as data URL
+function generateBotAvatar(botName, botId, size = 32) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const color = getBotColor(botId);
+    const initials = getBotInitials(botName);
+
+    // Draw circle background
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Draw initials
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${size * 0.45}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initials, size / 2, size / 2);
+
+    return canvas.toDataURL();
+}
+
+// Cache for bot avatars
+const botAvatarCache = {};
+
+// Get or generate bot avatar
+function getBotAvatar(botName, botId, size = 32) {
+    const cacheKey = `${botId}_${size}`;
+    if (!botAvatarCache[cacheKey]) {
+        botAvatarCache[cacheKey] = generateBotAvatar(botName, botId, size);
+    }
+    return botAvatarCache[cacheKey];
+}
+
+// Load portfolio-level decisions log with bot-specific colored boxes
 function loadDecisionsLog() {
     const log = document.getElementById('decisions-log');
-    log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500);">Loading decisions...</div>';
+    const botFilter = document.getElementById('bot-filter')?.value || 'all';
 
-    // TODO: Fetch decisions from API
+    log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">Loading decisions...</div>';
+
+    fetch(`/api/ai-bots/decisions?bot=${botFilter}&limit=50`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.decisions.length > 0) {
+                let html = '<div style="display: flex; flex-direction: column; gap: 0.875rem;">';
+
+                data.decisions.forEach(d => {
+                    const modelColor = getModelColor(d.model_name);
+                    const actionColor = d.portfolio_action === 'ERROR' ? 'var(--red)' :
+                                       d.portfolio_action === 'REBALANCE' ? 'var(--orange)' :
+                                       d.portfolio_action === 'EXPAND' ? 'var(--green)' :
+                                       d.portfolio_action === 'LIQUIDATE' ? 'var(--red)' :
+                                       'var(--gray-400)';
+
+                    // Build symbol decisions summary
+                    let symbolsHtml = '';
+                    if (d.symbols && d.symbols.length > 0) {
+                        symbolsHtml = '<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-800);">';
+                        symbolsHtml += '<div style="color: var(--gray-400); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Symbol Decisions:</div>';
+
+                        d.symbols.forEach(sym => {
+                            const symDecisionColor = sym.decision === 'BUY' ? 'var(--green)' :
+                                                    (sym.decision === 'SELL' ? 'var(--red)' :
+                                                    (sym.decision === 'CLOSE' ? 'var(--red)' :
+                                                    (sym.decision === 'REDUCE' ? 'var(--orange)' : 'var(--gray-400)')));
+                            const symActionBadge = sym.action_taken === 'EXECUTED' ?
+                                '<span style="background: var(--green); color: #fff; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">EXECUTED</span>' :
+                                '<span style="background: var(--gray-700); color: var(--gray-400); padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">SKIPPED</span>';
+
+                            symbolsHtml += `
+                                <div style="background: var(--gray-800); border-radius: 4px; padding: 0.6rem; margin-bottom: 0.5rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; flex-wrap: wrap;">
+                                        <span style="color: var(--gray-300); font-weight: 700; font-size: 0.75rem;">${sym.symbol}</span>
+                                        <span style="color: ${symDecisionColor}; font-weight: 800; font-size: 0.75rem; text-transform: uppercase;">${sym.decision}</span>
+                                        <span style="color: var(--gray-400); font-size: 0.7rem;">${sym.confidence}%</span>
+                                        ${symActionBadge}
+                                    </div>
+                                    <div style="color: var(--gray-400); font-size: 0.72rem; line-height: 1.4;">
+                                        ${sym.reasoning}
+                                    </div>
+                                    ${sym.skip_reason ? `<div style="color: var(--gray-500); font-size: 0.65rem; font-style: italic; margin-top: 0.25rem;">Skip: ${sym.skip_reason}</div>` : ''}
+                                </div>
+                            `;
+                        });
+                        symbolsHtml += '</div>';
+                    }
+
+                    html += `
+                        <div style="background: var(--gray-850); border: 1px solid var(--gray-750); border-left: 4px solid ${modelColor}; border-radius: 8px; padding: 1rem; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='var(--gray-800)'; this.style.borderColor='${modelColor}'" onmouseout="this.style.background='var(--gray-850)'; this.style.borderColor='var(--gray-750)'; this.style.borderLeft='4px solid ${modelColor}'">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem; flex-wrap: wrap;">
+                                        <span style="color: ${modelColor}; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em;">${d.model_name}</span>
+                                        <span style="color: ${actionColor}; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">${d.portfolio_action}</span>
+                                        <span style="background: var(--gray-800); color: var(--gray-400); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600;">${d.symbols.length} symbols</span>
+                                    </div>
+                                    <div style="color: var(--gray-500); font-size: 0.7rem; font-weight: 500;">
+                                        Portfolio: $${d.total_balance.toFixed(2)} (${((d.used_balance/d.total_balance)*100).toFixed(1)}% deployed) · ${new Date(d.created_at).toLocaleString()} · <span style="color: var(--gray-400);">${d.response_time_ms}ms</span> · <span style="color: var(--gray-400);">$${d.api_cost.toFixed(6)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="color: var(--gray-350); font-size: 0.8rem; line-height: 1.5; margin-bottom: 0.5rem; padding-left: 0.25rem;">
+                                <strong style="color: var(--gray-300);">Portfolio Reasoning:</strong> ${d.reasoning}
+                            </div>
+                            ${d.risk_assessment ? `<div style="background: var(--gray-800); border-radius: 4px; padding: 0.5rem; color: var(--gray-400); font-size: 0.72rem; border-left: 2px solid ${modelColor}; margin-bottom: 0.5rem;"><strong>Risk:</strong> ${d.risk_assessment}</div>` : ''}
+                            ${symbolsHtml}
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                log.innerHTML = html;
+            } else {
+                log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">No AI decisions yet. Run the executor to generate data.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('[ERROR] Failed to load decisions:', error);
+            log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading decisions</div>';
+        });
+}
+
+// Load trades with bot filtering
+function loadTrades() {
+    const tradesContent = document.getElementById('trades-content');
+    const botFilter = document.getElementById('trades-filter')?.value || 'all';
+
+    tradesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">Loading trades...</div>';
+
+    fetch(`/api/ai-bots/trades?bot=${botFilter}&limit=100`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.trades.length > 0) {
+                let html = '<div style="display: flex; flex-direction: column; gap: 0.65rem;">';
+
+                data.trades.forEach(trade => {
+                    const botColor = getBotColor(trade.bot_id);
+                    const sideColor = trade.side === 'Buy' ? 'var(--green)' : 'var(--red)';
+                    const actionColor = trade.action === 'BUY' ? 'var(--green)' :
+                                       (trade.action === 'SELL' ? 'var(--red)' :
+                                       (trade.action === 'REDUCE' ? 'var(--orange)' :
+                                       (trade.action === 'CLOSE' ? 'var(--red)' : 'var(--gray-400)')));
+
+                    // Parse details JSON to get Phemex trade data
+                    let details = {};
+                    try {
+                        details = JSON.parse(trade.details || '{}');
+                    } catch (e) {
+                        console.error('Failed to parse trade details:', e);
+                    }
+
+                    // Use Phemex's calculated closed P&L (already includes fees)
+                    const entryPrice = details.entry_price || 0;
+                    const exitPrice = details.exit_price || trade.price;
+                    const closedPnl = details.closed_pnl || 0;
+                    const pnlColor = closedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+                    const pnlSign = closedPnl >= 0 ? '+' : '';
+
+                    html += `
+                        <div style="background: var(--gray-850); border: 1px solid var(--gray-750); border-left: 3px solid ${botColor}; border-radius: 6px; padding: 0.75rem; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.background='var(--gray-800)'; this.style.borderColor='${botColor}'" onmouseout="this.style.background='var(--gray-850)'; this.style.borderColor='var(--gray-750)'; this.style.borderLeft='3px solid ${botColor}'">
+                            <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
+                                <img src="${getBotAvatar(trade.bot_name, trade.bot_id, 24)}" alt="${trade.bot_name}" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${botColor}; margin-top: 0.1rem;">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
+                                        <span style="color: var(--gray-200); font-weight: 700; font-size: 0.8rem;">${trade.symbol}</span>
+                                        <span style="color: ${sideColor}; font-weight: 800; font-size: 0.75rem; text-transform: uppercase;">${trade.side === 'Buy' ? 'LONG' : 'SHORT'}</span>
+                                        <span style="background: ${actionColor}20; color: ${actionColor}; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.65rem; font-weight: 700; border: 1px solid ${actionColor}40;">${trade.action}</span>
+                                    </div>
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <div style="color: var(--gray-300); font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">
+                                            Price: <span style="color: var(--gray-400);">${entryPrice > 0 ? '$' + entryPrice.toFixed(2) : 'N/A'}</span> → <span style="color: var(--gray-200); font-weight: 700;">${exitPrice.toFixed(2)}</span>
+                                        </div>
+                                        <div style="color: var(--gray-300); font-size: 0.75rem; font-weight: 600;">
+                                            Quantity: <span style="color: var(--gray-200);">${trade.quantity.toFixed(4)}</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: auto auto; gap: 0.5rem 1rem; color: var(--gray-400); font-size: 0.7rem; margin-bottom: 0.35rem;">
+                                        <div><span style="color: var(--gray-500);">Notional:</span> <span style="color: var(--gray-200); font-weight: 600;">$${trade.position_value_usd.toFixed(2)}</span></div>
+                                        <div><span style="color: var(--gray-500);">Leverage:</span> <span style="color: var(--gray-200); font-weight: 600;">${trade.leverage}x</span></div>
+                                        <div><span style="color: var(--gray-500);">Fee:</span> <span style="color: var(--gray-400);">$${trade.trading_fee.toFixed(2)}</span></div>
+                                        <div><span style="color: var(--gray-500);">Closed P&L:</span> <span style="color: ${pnlColor}; font-weight: 700; font-size: 0.75rem;">${pnlSign}$${closedPnl.toFixed(2)}</span></div>
+                                    </div>
+                                    <div style="color: var(--gray-500); font-size: 0.65rem;">
+                                        ${new Date(trade.executed_at).toLocaleString()} · ${trade.order_id}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                tradesContent.innerHTML = html;
+            } else {
+                tradesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">No trades yet. Execute AI bot decisions to generate trades.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('[ERROR] Failed to load trades:', error);
+            tradesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading trades</div>';
+        });
 }
 
 // Event listeners
-document.getElementById('model-filter').addEventListener('change', loadChartData);
-document.getElementById('time-range').addEventListener('change', loadChartData);
+if (document.getElementById('bot-filter')) {
+    document.getElementById('bot-filter').addEventListener('change', () => {
+        loadChartData();
+        loadDecisionsLog();
+    });
+}
+
+// Position filter event listener
+if (document.getElementById('position-filter')) {
+    document.getElementById('position-filter').addEventListener('change', () => {
+        loadPositions();
+    });
+}
+
+// Trades filter event listener
+if (document.getElementById('trades-filter')) {
+    document.getElementById('trades-filter').addEventListener('change', () => {
+        loadTrades();
+    });
+}
 
 // Initial load
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('[DEBUG] DOMContentLoaded fired');
+
+    // Apply bot-specific colors and generate avatars for bot cards
+    document.querySelectorAll('.bot-card').forEach(card => {
+        const botId = parseInt(card.getAttribute('data-bot-id'));
+        const botColor = getBotColor(botId);
+
+        // Apply colored border
+        card.style.borderLeft = `3px solid ${botColor}`;
+
+        // Generate and set bot avatar
+        const avatar = card.querySelector('.bot-avatar');
+        if (avatar) {
+            const botName = avatar.getAttribute('data-bot-name');
+            avatar.src = getBotAvatar(botName, botId, 32);
+            avatar.style.border = `2px solid ${botColor}`;
+        }
+
+        // Apply colored bot name
+        const name = card.querySelector('.bot-name');
+        if (name) {
+            name.style.color = botColor;
+        }
+    });
+
+    // Generate avatars for leaderboard
+    document.querySelectorAll('.leaderboard-avatar').forEach(avatarSpan => {
+        const botId = parseInt(avatarSpan.getAttribute('data-bot-id'));
+        const botName = avatarSpan.getAttribute('data-bot-name');
+        const botColor = getBotColor(botId);
+
+        // Create img element
+        const img = document.createElement('img');
+        img.src = getBotAvatar(botName, botId, 20);
+        img.style.width = '20px';
+        img.style.height = '20px';
+        img.style.borderRadius = '50%';
+        img.style.border = `2px solid ${botColor}`;
+
+        // Replace span with img
+        avatarSpan.replaceWith(img);
+    });
+
     {% if bots %}
+    console.log('[DEBUG] Bots exist, loading data...');
     loadChartData();
     loadPositions();
+    loadDecisionsLog();
+    {% else %}
+    console.log('[DEBUG] No bots, skipping data load');
     {% endif %}
 });
+
+console.log('[DEBUG] Script loaded, Chart.js available:', typeof Chart !== 'undefined');
 </script>
 
 {% endblock %}

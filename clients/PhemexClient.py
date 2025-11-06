@@ -154,6 +154,9 @@ class PhemexClient(TradingClient):
                     'upnlPercentage': upnl_percentage,
                     'size': size,
                     'posSide': position["posSide"],
+                    'side': position["side"],  # Added for display
+                    'avgEntryPriceRp': position.get('avgEntryPriceRp', 0),  # Added for entry price display
+                    'markPriceRp': position.get('markPriceRp', 0),  # Added for current price display
                     'margin_level': margin_level
                 }
             else:
@@ -516,6 +519,9 @@ class PhemexClient(TradingClient):
                     }
                 })
 
+            # Return the response so caller can check success
+            return response
+
         except PhemexAPIException as e:
             self.logger.error(
                 "Failed to place order",
@@ -591,3 +597,77 @@ class PhemexClient(TradingClient):
                 logging.error("unresolved error:", e)
             # Re-raise the exception so it propagates to main.py error handler
             raise
+
+    def get_trade_history(self, symbol=None, start_time=None, end_time=None, limit=200):
+        """
+        Get trade history from Phemex
+
+        Args:
+            symbol: Filter by symbol (optional, None = all symbols)
+            start_time: Start timestamp in seconds (optional)
+            end_time: End timestamp in seconds (optional)
+            limit: Max number of trades to return (default 200, max 200)
+
+        Returns:
+            List of trades with details (price, qty, fee, PnL, etc.)
+
+        API Endpoint: GET /g-api-data/futures/trades
+        Reference: https://phemex-docs.github.io/#query-user-trade
+        """
+        try:
+            params = {
+                'currency': 'USDT',
+                'limit': min(limit, 200)  # Phemex max is 200
+            }
+
+            if symbol:
+                params['symbol'] = symbol
+            if start_time:
+                params['start'] = int(start_time)
+            if end_time:
+                params['end'] = int(end_time)
+
+            response = self._send_request("GET", "/g-api-data/futures/trades", params=params)
+
+            # Check if response has data
+            if 'data' not in response or 'rows' not in response['data']:
+                self.logger.warning("No trade history data in response")
+                return []
+
+            trades = response['data']['rows']
+
+            # Parse trades into usable format
+            parsed_trades = []
+            for trade in trades:
+                parsed_trades.append({
+                    'orderId': trade.get('orderID'),
+                    'tradeId': trade.get('execID'),
+                    'symbol': trade.get('symbol'),
+                    'side': trade.get('side'),
+                    'price': float(trade.get('execPriceRp', 0)),
+                    'qty': float(trade.get('execQtyRq', 0)),
+                    'fee': float(trade.get('execFeeRv', 0)),
+                    'closedPnl': float(trade.get('closedPnlRv', 0)),
+                    'transactTime': trade.get('transactTimeNs'),
+                    'action': trade.get('action')  # 'New', 'PartialFill', 'Fill'
+                })
+
+            self.logger.debug(
+                f"Fetched trade history: {len(parsed_trades)} trades",
+                extra={
+                    "symbol": symbol,
+                    "trades_count": len(parsed_trades)
+                }
+            )
+
+            return parsed_trades
+
+        except PhemexAPIException as e:
+            self.logger.error(
+                "Failed to get trade history",
+                extra={
+                    "symbol": symbol,
+                    "error_details": str(e)
+                }
+            )
+            return []

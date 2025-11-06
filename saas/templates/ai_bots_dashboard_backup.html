@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+
+{% block title %}AI Trading Bots - DCA Bot SaaS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        {% if not bots %}
+        <div style="text-align: center; padding: 4rem 2rem; background: var(--gray-900); border-radius: 12px;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🤖</div>
+            <h2 style="color: var(--gray-300); margin-bottom: 1rem;">No AI Bots Yet</h2>
+            <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                Create your first AI trading bot to start comparing different AI models.
+            </p>
+            <a href="{{ url_for('create_ai_bot') }}" class="btn btn-primary">Create AI Bot</a>
+        </div>
+        {% else %}
+
+        <!-- Top Performance Banner -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center;">
+            <div style="flex: 1; background: var(--gray-900); border-radius: 6px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Highest:</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: var(--gray-300); font-weight: 600; font-size: 0.9rem;">{{ leaderboard[0]['name'] if leaderboard else 'N/A' }}</span>
+                    <span style="color: var(--green); font-weight: 700; font-size: 0.9rem;">{{ "$%.2f"|format(leaderboard[0]['avg_balance']|float) if leaderboard and leaderboard[0]['avg_balance'] else '$100.00' }}</span>
+                    <span style="color: var(--green); font-weight: 600; font-size: 0.85rem;">+{{ "%.2f"|format((leaderboard[0]['avg_balance']|float - 100)) if leaderboard and leaderboard[0]['avg_balance'] else '0.00' }}%</span>
+                </div>
+            </div>
+            <div id="multiplier" style="background: var(--gray-900); border-radius: 50%; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; color: var(--green); flex-shrink: 0;">
+                1.0X
+            </div>
+            <div style="flex: 1; background: var(--gray-900); border-radius: 6px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Lowest:</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: var(--gray-300); font-weight: 600; font-size: 0.9rem;">{{ leaderboard[-1]['name'] if leaderboard and leaderboard|length > 1 else leaderboard[0]['name'] if leaderboard else 'N/A' }}</span>
+                    <span style="color: var(--red); font-weight: 700; font-size: 0.9rem;">{{ "$%.2f"|format(leaderboard[-1]['avg_balance']|float) if leaderboard and leaderboard|length > 1 and leaderboard[-1]['avg_balance'] else '$100.00' }}</span>
+                    <span style="color: var(--red); font-weight: 600; font-size: 0.85rem;">{{ "%.2f"|format((leaderboard[-1]['avg_balance']|float - 100)) if leaderboard and leaderboard|length > 1 and leaderboard[-1]['avg_balance'] else '0.00' }}%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Bar -->
+        <div style="display: flex; gap: 3rem; margin-bottom: 1rem; align-items: center; padding-bottom: 0.75rem;">
+            <a href="#" style="color: var(--gray-200); font-weight: 700; text-decoration: none; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 3px solid var(--green); padding-bottom: 0.75rem;">LIVE</a>
+            <a href="#leaderboard-tab" onclick="document.querySelector('[data-tab=leaderboard]').click(); return false;" style="color: var(--gray-500); font-weight: 700; text-decoration: none; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">LEADERBOARD</a>
+            <a href="{{ url_for('create_ai_bot') }}" style="color: var(--gray-500); font-weight: 700; text-decoration: none; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">MODELS</a>
+            <a href="{{ url_for('create_ai_bot') }}" class="btn btn-primary" style="margin-left: auto; padding: 0.5rem 1.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">+ CREATE BOT</a>
+        </div>
+
+        <!-- Compact My Bots Carousel -->
+        <div style="margin-bottom: 1rem; overflow-x: auto; white-space: nowrap; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
+            <div style="display: inline-flex; gap: 0.75rem;">
+                {% for bot in bots %}
+                <div style="background: var(--gray-900); border: 1px solid {{ 'var(--green)' if bot['is_active'] else 'var(--gray-700)' }}; border-radius: 6px; padding: 0.6rem 1rem; display: inline-flex; align-items: center; gap: 0.75rem; min-width: 180px;">
+                    <img src="{{ bot['logo_url'] }}" alt="{{ bot['model_name'] }}" style="width: 28px; height: 28px; border-radius: 50%;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--gray-200); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ bot['model_name'] }}</div>
+                        <div style="font-size: 0.7rem; color: {{ 'var(--green)' if bot['virtual_balance'] >= 100 else 'var(--red)' }}; font-weight: 600;">${{ "%.2f"|format(bot['virtual_balance']) }}</div>
+                    </div>
+                    <div style="display: flex; gap: 0.35rem; align-items: center;">
+                        <form method="POST" action="{{ url_for('toggle_ai_bot', bot_id=bot['id']) }}" style="display: inline; margin: 0;">
+                            <button type="submit" style="background: transparent; border: none; color: var(--gray-500); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="{{ 'Pause' if bot['is_active'] else 'Resume' }}">
+                                {% if bot['is_active'] %}⏸{% else %}▶️{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_ai_bot', bot_id=bot['id']) }}" onsubmit="return confirm(&quot;Delete bot?&quot;)" style="display: inline; margin: 0;">
+                            <button type="submit" style="background: transparent; border: none; color: var(--red); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="Delete">🗑️</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Chart + Tabs Side-by-Side Layout -->
+        <div style="display: grid; grid-template-columns: 1fr 500px; gap: 1rem; margin-bottom: 1.5rem;">
+
+            <!-- Chart Section (Left) -->
+            <div style="background: var(--gray-900); border-radius: 8px; padding: 1.25rem; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <h2 style="margin: 0; color: var(--gray-200); font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Total Account Value</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="time-btn active" data-hours="72" style="padding: 0.35rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-300); font-size: 0.75rem; cursor: pointer; font-weight: 600;">ALL</button>
+                        <button class="time-btn" data-hours="72" style="padding: 0.35rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-500); font-size: 0.75rem; cursor: pointer; font-weight: 600;">72H</button>
+                    </div>
+                </div>
+
+                <div id="chart-container" style="position: relative; height: 320px;">
+                    <canvas id="balance-chart"></canvas>
+                </div>
+
+                <div id="chart-legend" style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-800); font-size: 0.8rem;">
+                    <!-- Legend populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Tabbed Interface (Right) -->
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab" data-tab="positions" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">POSITIONS</button>
+                    <button class="tab" data-tab="trades" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">TRADES</button>
+                    <button class="tab active" data-tab="modelchat" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">MODELCHAT</button>
+                    <button class="tab" data-tab="leaderboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">LEADERBOARD</button>
+                </div>
+
+                <!-- Positions Tab -->
+                <div class="tab-content" id="tab-positions">
+                    <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">FILTER:</label>
+                        <select id="position-filter" style="flex: 1; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-200); font-size: 0.85rem;">
+                            <option value="all">All Models</option>
+                            {% for model in available_models %}
+                            <option value="{{ model['id'] }}">{{ model['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="document.getElementById('position-filter').value='all'; loadPositions();" style="padding: 0.5rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-400); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;">CLEAR</button>
+                    </div>
+                    <div id="positions-content">
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                            No open positions
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completed Trades Tab -->
+                <div class="tab-content" id="tab-trades">
+                    <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                        No completed trades yet
+                    </div>
+                </div>
+
+                <!-- ModelChat Tab -->
+                <div class="tab-content active" id="tab-modelchat">
+                    <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="color: var(--gray-500); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">FILTER:</label>
+                        <select id="model-filter" style="flex: 1; padding: 0.5rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-200); font-size: 0.85rem;">
+                            <option value="all">All Models</option>
+                            {% for model in available_models %}
+                            <option value="{{ model['id'] }}">{{ model['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="document.getElementById('model-filter').value='all'; loadDecisionsLog();" style="padding: 0.5rem 0.75rem; background: var(--gray-800); border: 1px solid var(--gray-700); border-radius: 4px; color: var(--gray-400); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;">CLEAR</button>
+                    </div>
+                    <div id="decisions-log">
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                            Loading AI decisions...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Tab -->
+                <div class="tab-content" id="tab-leaderboard">
+                    {% if leaderboard %}
+                    <div class="table-responsive">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em;">
+                                    <th>Model</th>
+                                    <th>Avg Balance</th>
+                                    <th>Signals</th>
+                                    <th>Confidence</th>
+                                    <th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for model in leaderboard %}
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <img src="{{ model['logo_url'] }}" alt="{{ model['model_name'] }}" style="width: 20px; height: 20px; border-radius: 50%;">
+                                            <span style="font-weight: 600;">{{ model['model_name'] }}</span>
+                                        </div>
+                                    </td>
+                                    <td style="color: {{ 'var(--green)' if model['avg_balance'] and model['avg_balance'] >= 100 else 'var(--red)' }}; font-weight: 600;">
+                                        {% if model['avg_balance'] %}
+                                        ${{ "%.2f"|format(model['avg_balance']) }}
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if model['total_decisions'] %}
+                                        {{ model['total_decisions'] }}
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if model['avg_confidence'] %}
+                                        {{ "%.1f"|format(model['avg_confidence']) }}%
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if model['total_api_cost'] %}
+                                        ${{ "%.4f"|format(model['total_api_cost']) }}
+                                        {% else %}
+                                        <span style="color: var(--gray-500);">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
+                        No model data available yet
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div> <!-- End grid layout -->
+
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Tabs */
+.tabs-container {
+    background: var(--gray-900);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 550px;
+}
+
+.tabs {
+    display: flex;
+    background: transparent;
+    border-bottom: 2px solid var(--gray-700);
+}
+
+.tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: var(--gray-800);
+    border: 1px solid var(--gray-700);
+    border-bottom: none;
+    color: var(--gray-400);
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 1px;
+}
+
+.tab:hover {
+    color: var(--gray-200);
+    background: var(--gray-750);
+}
+
+.tab.active {
+    color: var(--gray-100);
+    background: #000;
+    border-color: #000;
+    position: relative;
+    z-index: 1;
+}
+
+.tab-content {
+    display: none;
+    padding: 1.25rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Table */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-800);
+}
+
+.data-table th {
+    color: var(--gray-500);
+    font-weight: 600;
+    background: var(--gray-850);
+}
+
+.data-table tr:hover {
+    background: var(--gray-850);
+}
+
+/* Time range buttons */
+.time-btn.active {
+    background: var(--green) !important;
+    color: var(--gray-900) !important;
+    border-color: var(--green) !important;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    [style*="grid-template-columns: 1fr 500px"] {
+        grid-template-columns: 1fr 450px !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    [style*="grid-template-columns: 1fr 500px"],
+    [style*="grid-template-columns: 1fr 450px"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tab-content {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .tab {
+        font-size: 0.7rem;
+        padding: 0.6rem 0.4rem;
+    }
+
+    .tab-content {
+        padding: 0.75rem;
+    }
+
+    #chart-container {
+        height: 250px !important;
+    }
+
+    .tabs-container {
+        max-height: 400px;
+    }
+}
+</style>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js Date Adapter (required for time scale) -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+let chart = null;
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+
+        // Update active tab
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update active content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        // Load tab data if needed
+        if (tabName === 'modelchat') {
+            loadDecisionsLog();
+        } else if (tabName === 'positions') {
+            loadPositions();
+        }
+    });
+});
+
+// Time range buttons
+document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadChartData();
+    });
+});
+
+// Load chart data
+function loadChartData() {
+    const activeTimeBtn = document.querySelector('.time-btn.active');
+    const hours = activeTimeBtn ? activeTimeBtn.dataset.hours : '72';
+    const modelFilter = document.getElementById('model-filter')?.value || 'all';
+
+    const url = `/api/ai-bots/chart-data?hours=${hours}&model=${modelFilter}`;
+    console.log('[DEBUG] Loading chart data from:', url);
+
+    fetch(url)
+        .then(response => {
+            console.log('[DEBUG] Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('[DEBUG] Data received:', data);
+            if (data.success) {
+                console.log('[DEBUG] Datasets count:', data.datasets.length);
+                renderChart(data.datasets);
+                updateMultiplier(data.datasets);
+            } else {
+                console.error('Error loading chart data:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('[ERROR] Fetch failed:', error);
+        });
+}
+
+// Render chart with Chart.js
+function renderChart(datasets) {
+    console.log('[DEBUG] renderChart called with datasets:', datasets);
+
+    if (typeof Chart === 'undefined') {
+        console.error('[ERROR] Chart.js not loaded!');
+        return;
+    }
+
+    const ctx = document.getElementById('balance-chart')?.getContext('2d');
+    if (!ctx) {
+        console.error('[ERROR] Canvas element not found!');
+        return;
+    }
+
+    // Destroy existing chart
+    if (chart) {
+        chart.destroy();
+    }
+
+    // Color palette
+    const colors = [
+        '#4A90E2',  // Blue
+        '#A855F7',  // Purple
+        '#FF6B35',  // Orange
+        '#CC9966',  // Brown
+        '#10B981',  // Green
+        '#F59E0B',  // Yellow
+    ];
+
+    // Ensure each dataset has at least the initial balance point
+    datasets.forEach(dataset => {
+        console.log('[DEBUG] Processing dataset:', dataset.label, 'data points:', dataset.data.length);
+        if (dataset.data.length === 0) {
+            const now = new Date().toISOString();
+            dataset.data = [{ x: now, y: 100 }];
+        } else if (dataset.data.length === 1) {
+            const firstPoint = dataset.data[0];
+            const firstTime = new Date(firstPoint.x);
+            const beforeTime = new Date(firstTime.getTime() - 60000);
+            dataset.data.unshift({ x: beforeTime.toISOString(), y: 100 });
+        }
+    });
+
+    // Build Chart.js datasets
+    const chartDatasets = datasets.map((dataset, index) => ({
+        label: dataset.label,
+        data: dataset.data,
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length] + '20',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        tension: 0.4,
+        fill: false,
+        // Store metadata for icon plugin
+        logo_url: dataset.logo_url,
+        provider: dataset.provider
+    }));
+
+    // Custom plugin to draw model icons at end of lines
+    const iconPlugin = {
+        id: 'lineEndIcons',
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const imageCache = iconPlugin.imageCache || {};
+
+            chart.data.datasets.forEach((dataset, i) => {
+                if (!dataset.logo_url || dataset.data.length === 0) return;
+
+                const meta = chart.getDatasetMeta(i);
+                if (!meta.visible) return;
+
+                // Get last point
+                const lastPoint = meta.data[meta.data.length - 1];
+                if (!lastPoint) return;
+
+                const x = lastPoint.x;
+                const y = lastPoint.y;
+
+                // Icon size
+                const iconSize = 24;
+
+                // Draw white circle background
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x, y, iconSize / 2 + 2, 0, 2 * Math.PI);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.restore();
+
+                // Draw colored circle border
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(x, y, iconSize / 2 + 2, 0, 2 * Math.PI);
+                ctx.strokeStyle = dataset.borderColor;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+
+                // Draw icon image if loaded
+                if (imageCache[dataset.logo_url]) {
+                    const img = imageCache[dataset.logo_url];
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(x, y, iconSize / 2, 0, 2 * Math.PI);
+                    ctx.clip();
+                    ctx.drawImage(img, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize);
+                    ctx.restore();
+                } else {
+                    // Load image
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        imageCache[dataset.logo_url] = img;
+                        chart.render();
+                    };
+                    img.src = dataset.logo_url;
+                }
+            });
+
+            iconPlugin.imageCache = imageCache;
+        }
+    };
+
+    // Create chart
+    try {
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets: chartDatasets },
+            plugins: [iconPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        titleColor: '#aaa',
+                        bodyColor: '#fff',
+                        borderColor: '#444',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'hour', displayFormats: { hour: 'MMM d, HH:mm' } },
+                        grid: { color: '#1a1d24', drawBorder: false },
+                        ticks: { color: '#666', font: { size: 10 } }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        suggestedMin: 95,  // Give some breathing room below $100
+                        suggestedMax: 105, // Give some breathing room above $100
+                        grid: { color: '#1a1d24', drawBorder: false },
+                        ticks: {
+                            color: '#666',
+                            font: { size: 10 },
+                            callback: function(value) { return '$' + value.toFixed(0); }
+                        }
+                    }
+                }
+            }
+        });
+        console.log('[DEBUG] Chart created successfully!');
+    } catch (error) {
+        console.error('[ERROR] Failed to create chart:', error);
+    }
+
+    // Update legend
+    const legendContainer = document.getElementById('chart-legend');
+    legendContainer.innerHTML = '';
+
+    datasets.forEach((dataset, index) => {
+        const currentBalance = dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 100;
+        const change = currentBalance - 100;
+        const changePercent = ((change / 100) * 100).toFixed(2);
+        const color = colors[index % colors.length];
+
+        const legendItem = document.createElement('div');
+        legendItem.style.display = 'flex';
+        legendItem.style.alignItems = 'center';
+        legendItem.style.gap = '0.5rem';
+        legendItem.innerHTML = `
+            <div style="width: 12px; height: 12px; background: ${color}; border-radius: 2px;"></div>
+            <span style="color: var(--gray-300); font-weight: 600; font-size: 0.85rem;">${dataset.label}</span>
+            <span style="color: ${change >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight: 600; font-size: 0.85rem;">$${currentBalance.toFixed(2)} (${change >= 0 ? '+' : ''}${changePercent}%)</span>
+        `;
+        legendContainer.appendChild(legendItem);
+    });
+}
+
+// Update multiplier display
+function updateMultiplier(datasets) {
+    let totalBalance = 0;
+    let totalInitial = 0;
+
+    datasets.forEach(dataset => {
+        if (dataset.data.length > 0) {
+            const latestBalance = dataset.data[dataset.data.length - 1].y;
+            totalBalance += latestBalance;
+            totalInitial += 100;
+        }
+    });
+
+    const multiplier = totalInitial > 0 ? totalBalance / totalInitial : 1.0;
+    const multiplierEl = document.getElementById('multiplier');
+    multiplierEl.textContent = multiplier.toFixed(2) + 'X';
+    multiplierEl.style.color = multiplier >= 1 ? 'var(--green)' : 'var(--red)';
+}
+
+// Load positions (placeholder)
+function loadPositions() {
+    const content = document.getElementById('positions-content');
+    content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">No open positions</div>';
+}
+
+// Load decisions log (placeholder)
+function loadDecisionsLog() {
+    const log = document.getElementById('decisions-log');
+    const modelFilter = document.getElementById('model-filter')?.value || 'all';
+
+    log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">Loading decisions...</div>';
+
+    fetch(`/api/ai-bots/decisions?model=${modelFilter}&limit=50`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.decisions.length > 0) {
+                let html = '<div style="display: flex; flex-direction: column; gap: 0.75rem;">';
+
+                data.decisions.forEach(d => {
+                    const decisionColor = d.decision === 'BUY' ? 'var(--green)' : (d.decision === 'SELL' ? 'var(--red)' : 'var(--gray-400)');
+                    const actionBadge = d.action_taken === 'EXECUTED' ?
+                        '<span style="background: var(--green); color: #fff; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">EXECUTED</span>' :
+                        '<span style="background: var(--gray-700); color: var(--gray-400); padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.65rem; font-weight: 700;">SKIPPED</span>';
+
+                    html += `
+                        <div style="background: var(--gray-850); border: 1px solid var(--gray-700); border-radius: 6px; padding: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                <img src="${d.logo_url}" alt="${d.model_name}" style="width: 24px; height: 24px; border-radius: 50%;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                        <span style="color: var(--gray-300); font-weight: 600; font-size: 0.8rem;">${d.model_name}</span>
+                                        <span style="color: ${decisionColor}; font-weight: 700; font-size: 0.8rem;">${d.decision}</span>
+                                        <span style="color: var(--gray-400); font-size: 0.75rem;">${d.confidence}%</span>
+                                        ${actionBadge}
+                                    </div>
+                                    <div style="color: var(--gray-500); font-size: 0.7rem;">
+                                        ${d.symbol} · ${new Date(d.created_at).toLocaleString()} · ${d.response_time_ms}ms · $${d.api_cost.toFixed(6)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="color: var(--gray-400); font-size: 0.75rem; line-height: 1.4; margin-bottom: 0.5rem;">
+                                ${d.reasoning}
+                            </div>
+                            ${d.skip_reason ? `<div style="color: var(--gray-500); font-size: 0.7rem; font-style: italic;">Skip reason: ${d.skip_reason}</div>` : ''}
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                log.innerHTML = html;
+            } else {
+                log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">No AI decisions yet. Run the executor to generate data.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('[ERROR] Failed to load decisions:', error);
+            log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading decisions</div>';
+        });
+}
+
+// Event listeners
+if (document.getElementById('model-filter')) {
+    document.getElementById('model-filter').addEventListener('change', () => {
+        loadChartData();
+        loadDecisionsLog();
+    });
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('[DEBUG] DOMContentLoaded fired');
+    {% if bots %}
+    console.log('[DEBUG] Bots exist, loading data...');
+    loadChartData();
+    loadPositions();
+    loadDecisionsLog();
+    {% else %}
+    console.log('[DEBUG] No bots, skipping data load');
+    {% endif %}
+});
+
+console.log('[DEBUG] Script loaded, Chart.js available:', typeof Chart !== 'undefined');
+</script>
+
+{% endblock %}

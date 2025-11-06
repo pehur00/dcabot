@@ -1,5 +1,7 @@
 # Database Migrations
 
+**Last Updated:** November 6, 2025
+
 This document describes the database migration strategy for the DCA Bot SaaS platform.
 
 ## Overview
@@ -36,6 +38,10 @@ When you need to change the database schema:
 
 3. Test locally:
    ```bash
+   # Option 1: Using helper script (recommended)
+   ./scripts/run_migrations.sh
+
+   # Option 2: Direct command
    export DATABASE_URL="postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev"
    python saas/migrate.py
    ```
@@ -72,6 +78,13 @@ This ensures your database is always up-to-date before the new code runs.
 ## Migration Commands
 
 ### Run Pending Migrations
+
+**Using helper script (recommended):**
+```bash
+./scripts/run_migrations.sh
+```
+
+**Or run directly:**
 ```bash
 export DATABASE_URL="postgresql://..."
 python saas/migrate.py
@@ -90,6 +103,13 @@ Output:
 ```
 
 ### Check Migration Status
+
+**Using helper script:**
+```bash
+./scripts/run_migrations.sh --status
+```
+
+**Or run directly:**
 ```bash
 python saas/migrate.py --status
 ```
@@ -333,4 +353,14 @@ The migration system is designed to be:
 - ✅ **Trackable**: Git history + database tracking
 - ✅ **Idempotent**: Can run multiple times safely
 
+## Related Documentation
+
+- **[CHANGELOG.md](CHANGELOG.md)** - See migration history and what changed
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Database schema overview
+- **[scripts/README.md](../scripts/README.md)** - Helper script documentation
+
 For questions or issues, check the migration logs or create an issue.
+
+---
+
+**Last Updated:** November 6, 2025

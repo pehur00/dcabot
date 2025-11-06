@@ -28,7 +28,7 @@
             <div class="form-group">
                 <label for="name">Bot Name</label>
                 <input type="text" id="name" name="name" required
-                       placeholder="My AI Trader (Qwen3 Max)"
+                       placeholder="My AI Trader (GLM-4.5-Air)"
                        maxlength="100">
                 <small style="color: var(--gray-500);">Give your bot a descriptive name (include model name for clarity)</small>
             </div>
@@ -109,64 +109,64 @@
                 </small>
             </div>
 
-            <!-- AI Model Selection -->
+            <!-- Provider & Model Selection -->
             <h3 style="margin-top: 2rem; color: var(--gray-200); font-size: 1.2rem; border-bottom: 2px solid var(--gray-700); padding-bottom: 0.5rem; margin-bottom: 1rem;">
-                🤖 AI Model (via OpenRouter.ai)
+                🤖 AI Model <small style="font-weight: normal; color: var(--gray-500); font-size: 0.85rem;">Check provider → Enter key → Select ONE model</small>
             </h3>
 
-            <div class="form-group">
-                <label for="openrouter_api_key">OpenRouter API Key</label>
-                <input type="text" id="openrouter_api_key" name="openrouter_api_key" required
-                       placeholder="sk-or-v1-...">
-                <small style="color: var(--gray-500);">
-                    🔒 Encrypted before storage | 🆓 Get your free API key at <a href="https://openrouter.ai/keys" target="_blank" style="color: var(--blue);">openrouter.ai/keys</a>
-                </small>
-            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                {% for provider, models in models_by_provider.items() %}
+                <div class="provider-card" data-provider="{{ provider }}" style="background: var(--gray-800); border-radius: 8px; border: 1px solid var(--gray-700); padding: 1rem;">
+                    <!-- Provider Header -->
+                    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="provider_{{ provider }}" class="provider-checkbox"
+                               data-provider="{{ provider }}">
+                        <label for="provider_{{ provider }}" style="font-size: 1rem; font-weight: 600; color: var(--gray-200); margin: 0;">
+                            {{ provider|title }}{% if provider == 'z.ai' %} (Zhipu){% endif %}
+                        </label>
+                    </div>
 
-            <div class="form-group">
-                <label for="selected_model">Select AI Model</label>
-                <select id="selected_model" name="selected_model" required>
-                    <option value="">-- Choose a model --</option>
+                    <!-- API Key Field (hidden by default) -->
+                    <div class="api-key-field" id="api_key_field_{{ provider }}" style="display: none; margin-bottom: 0.75rem;">
+                        <input type="text" id="{{ provider }}_api_key" name="{{ provider }}_api_key"
+                               class="provider-api-key"
+                               data-provider="{{ provider }}"
+                               placeholder="API key"
+                               style="width: 100%; font-size: 0.9rem;">
+                        <small style="color: var(--gray-500); display: block; margin-top: 0.25rem; font-size: 0.8rem;">
+                            {% if provider == 'z.ai' %}
+                            <a href="https://open.bigmodel.cn/" target="_blank" style="color: var(--blue);">Get key →</a>
+                            {% elif provider == 'deepseek' %}
+                            <a href="https://platform.deepseek.com/" target="_blank" style="color: var(--blue);">Get key →</a>
+                            {% elif provider == 'anthropic' %}
+                            <a href="https://console.anthropic.com/" target="_blank" style="color: var(--blue);">Get key →</a>
+                            {% endif %}
+                        </small>
+                    </div>
 
-                    {% if models_by_category.get('recommended') %}
-                    <optgroup label="⭐ Recommended ($1-10/1M tokens) - Best value for trading">
-                        {% for model in models_by_category['recommended'] | sort(attribute='cost_per_1m_output') %}
-                        <option value="{{ model.id }}"
-                                data-input-cost="{{ model.cost_per_1m_input }}"
-                                data-output-cost="{{ model.cost_per_1m_output }}">
-                            {{ model.name }} - ${{ "%.2f"|format(model.cost_per_1m_input) }}/in, ${{ "%.2f"|format(model.cost_per_1m_output) }}/out per 1M
-                        </option>
+                    <!-- Model Selection (hidden by default) -->
+                    <div class="model-selection" id="models_{{ provider }}" style="display: none;">
+                        {% for model in models %}
+                        <div class="checkbox-group" style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--gray-900); border-radius: 4px;">
+                            <input type="checkbox" id="model_{{ model['id'] }}"
+                                   name="selected_models" value="{{ model['id'] }}"
+                                   class="model-checkbox"
+                                   data-provider="{{ provider }}"
+                                   disabled>
+                            <label for="model_{{ model['id'] }}" style="display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.9rem;">
+                                <img src="{{ model['logo_url'] }}"
+                                     alt="{{ model['name'] }}"
+                                     style="width: 20px; height: 20px; border-radius: 50%;">
+                                <span style="color: var(--gray-200);">{{ model['name'] }}</span>
+                                {% if model['cost_per_1m_input'] == 0 %}
+                                <span style="color: var(--green); font-weight: 500; font-size: 0.75rem; margin-left: auto;">FREE</span>
+                                {% endif %}
+                            </label>
+                        </div>
                         {% endfor %}
-                    </optgroup>
-                    {% endif %}
-
-                    {% if models_by_category.get('budget') %}
-                    <optgroup label="💰 Budget (< $1/1M tokens) - Most affordable">
-                        {% for model in models_by_category['budget'] | sort(attribute='cost_per_1m_output') %}
-                        <option value="{{ model.id }}"
-                                data-input-cost="{{ model.cost_per_1m_input }}"
-                                data-output-cost="{{ model.cost_per_1m_output }}">
-                            {{ model.name }} {% if model.cost_per_1m_input == 0 and model.cost_per_1m_output == 0 %}(FREE){% else %}- ${{ "%.2f"|format(model.cost_per_1m_input) }}/in, ${{ "%.2f"|format(model.cost_per_1m_output) }}/out per 1M{% endif %}
-                        </option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endif %}
-
-                    {% if models_by_category.get('premium') %}
-                    <optgroup label="💎 Premium (> $10/1M tokens) - Highest quality">
-                        {% for model in models_by_category['premium'] | sort(attribute='cost_per_1m_output') %}
-                        <option value="{{ model.id }}"
-                                data-input-cost="{{ model.cost_per_1m_input }}"
-                                data-output-cost="{{ model.cost_per_1m_output }}">
-                            {{ model.name }} - ${{ "%.2f"|format(model.cost_per_1m_input) }}/in, ${{ "%.2f"|format(model.cost_per_1m_output) }}/out per 1M
-                        </option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endif %}
-                </select>
-                <small style="color: var(--gray-500);">
-                    Select from 228 available models. Prices shown are per 1 million tokens.
-                </small>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
 
             <!-- Exchange Credentials -->
@@ -251,10 +251,136 @@
 </style>
 
 <script>
-// Show/hide custom limits based on risk profile selection
-document.getElementById('risk_profile').addEventListener('change', function() {
-    const customLimits = document.getElementById('custom_limits');
-    customLimits.style.display = this.value === 'custom' ? 'grid' : 'none';
+// Provider-first flow: Check provider → Enter API key → Select models
+document.addEventListener('DOMContentLoaded', function() {
+    const providerCheckboxes = document.querySelectorAll('.provider-checkbox');
+    const apiKeyInputs = document.querySelectorAll('.provider-api-key');
+
+    // Risk profile: Show/hide custom limits
+    const riskProfileSelect = document.getElementById('risk_profile');
+    const customLimitsDiv = document.getElementById('custom_limits');
+
+    riskProfileSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customLimitsDiv.style.display = 'grid';
+            document.getElementById('max_leverage').required = true;
+            document.getElementById('max_position_size').required = true;
+        } else {
+            customLimitsDiv.style.display = 'none';
+            document.getElementById('max_leverage').required = false;
+            document.getElementById('max_position_size').required = false;
+        }
+    });
+
+    // Handle provider checkbox changes
+    providerCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const provider = this.getAttribute('data-provider');
+            const apiKeyField = document.getElementById(`api_key_field_${provider}`);
+            const modelSelection = document.getElementById(`models_${provider}`);
+            const apiKeyInput = document.getElementById(`${provider}_api_key`);
+            const modelCheckboxes = document.querySelectorAll(`.model-checkbox[data-provider="${provider}"]`);
+
+            if (this.checked) {
+                // Show API key field
+                apiKeyField.style.display = 'block';
+                apiKeyInput.required = true;
+
+                // Check if API key is already filled
+                if (apiKeyInput.value.trim()) {
+                    modelSelection.style.display = 'block';
+                    modelCheckboxes.forEach(cb => cb.disabled = false);
+                }
+            } else {
+                // Hide API key field and models
+                apiKeyField.style.display = 'none';
+                modelSelection.style.display = 'none';
+                apiKeyInput.required = false;
+
+                // Uncheck and disable all models for this provider
+                modelCheckboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.disabled = true;
+                });
+            }
+        });
+    });
+
+    // Handle API key input changes
+    apiKeyInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const provider = this.getAttribute('data-provider');
+            const modelSelection = document.getElementById(`models_${provider}`);
+            const modelCheckboxes = document.querySelectorAll(`.model-checkbox[data-provider="${provider}"]`);
+            const providerCheckbox = document.getElementById(`provider_${provider}`);
+
+            if (providerCheckbox.checked && this.value.trim()) {
+                // Show model selection and enable checkboxes
+                modelSelection.style.display = 'block';
+                modelCheckboxes.forEach(cb => cb.disabled = false);
+            } else {
+                // Hide model selection and disable checkboxes
+                modelSelection.style.display = 'none';
+                modelCheckboxes.forEach(cb => {
+                    cb.disabled = true;
+                    if (!this.value.trim()) {
+                        cb.checked = false;
+                    }
+                });
+            }
+        });
+    });
+
+    // Enforce single model selection (radio button behavior)
+    const allModelCheckboxes = document.querySelectorAll('.model-checkbox');
+    allModelCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                // Uncheck all other model checkboxes
+                allModelCheckboxes.forEach(cb => {
+                    if (cb !== this) {
+                        cb.checked = false;
+                    }
+                });
+            }
+        });
+    });
+
+    // Form submission validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const selectedModels = document.querySelectorAll('.model-checkbox:checked');
+
+        if (selectedModels.length === 0) {
+            e.preventDefault();
+            alert('Please select exactly ONE AI model');
+            return false;
+        }
+
+        if (selectedModels.length > 1) {
+            e.preventDefault();
+            alert('Please select only ONE AI model per bot (1 Bot = 1 Phemex Account = 1 AI Model)');
+            return false;
+        }
+
+        // Check that all selected providers have API keys
+        const checkedProviders = document.querySelectorAll('.provider-checkbox:checked');
+        let missingKeys = false;
+
+        checkedProviders.forEach(checkbox => {
+            const provider = checkbox.getAttribute('data-provider');
+            const apiKey = document.getElementById(`${provider}_api_key`).value.trim();
+
+            if (!apiKey) {
+                alert(`Please enter API key for ${provider}`);
+                missingKeys = true;
+            }
+        });
+
+        if (missingKeys) {
+            e.preventDefault();
+            return false;
+        }
+    });
 });
 </script>
 {% endblock %}

@@ -1,392 +1,466 @@
-# DCA Bot - Martingale Trading Platform
+# DCABot - Multi-User Cryptocurrency Trading Platform
 
-A sophisticated cryptocurrency trading bot implementing a Martingale-style averaging strategy. Available as both a standalone bot and a multi-user SaaS platform.
+**Last Updated:** November 6, 2025
 
-## 🎯 Two Deployment Modes
+A SaaS platform for cryptocurrency trading with two powerful strategies:
+- **AI Trading Bots** - LLM-powered decision making (GLM, DeepSeek, Claude, Gemini)
+- **Martingale Strategy** - EMA-based dip-buying with intelligent risk management
 
-### 1. Standalone Bot (Original)
-Single-user bot running on your own infrastructure. Perfect for personal use.
+**Status:** Production on Render.com | **Branch:** `feature/saas-transformation`
 
-- Deploy to Render, VPS, or run locally
-- Configured via environment variables
-- One bot per deployment
-- See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+---
 
-### 2. SaaS Platform (New!)
-Multi-user web platform with dashboard and bot management UI.
+## Table of Contents
 
-- **Web Dashboard**: Manage bots through a UI
-- **Multi-User**: User registration and admin approval
-- **Multiple Bots**: Each user can run multiple bots
-- **Performance Charts**: Real-time metrics visualization
-- **Admin Panel**: User management and registration control
-- **Google OAuth**: Sign in with Google
-- **Auto-Migrations**: Database schema updates on deploy
-- **Cost**: ~$22/month (Render + Database)
+- [Quick Start](#quick-start)
+- [Key Features](#key-features)
+- [Architecture Overview](#architecture-overview)
+- [Trading Strategies](#trading-strategies)
+- [Local Development](#local-development)
+- [Production Deployment](#production-deployment)
+- [Configuration](#configuration)
+- [Documentation](#documentation)
+- [Cost Breakdown](#cost-breakdown)
+- [Risk Warning](#risk-warning)
 
-See [🚀 SaaS Platform](#-saas-platform) section below for details.
-**Next**: [Backtest Integration →](ROADMAP.md#-phase-2-backtesting-integration-next-priority)
+---
 
-## Features
+## Quick Start
 
-- **Martingale Strategy**: Systematic position averaging with EMA-based trend filtering
-- **Volatility Protection**: Automatically pauses trading during high volatility
-- **Telegram Notifications**: Real-time alerts for positions, profits, warnings
-- **Risk Management**: Margin monitoring, position limits, liquidation protection
-- **Multi-Symbol Support**: Trade multiple pairs simultaneously
-- **Backtesting Framework**: Validate strategies on historical data
-- **Cloud Ready**: Docker support and one-click deployment
+### Prerequisites
+- Python 3.10+
+- PostgreSQL 14+ (local or managed)
+- Phemex account (testnet recommended for testing)
+- Git and GitHub account (for deployment)
 
-## Quick Start (Standalone Mode)
-
-### 1. Installation
+### Local Development Setup
 
 ```bash
-git clone https://github.com/pehur00/dcabot.git
+# 1. Clone and create virtual environment
+git clone https://github.com/pehur00/dcabot
 cd dcabot
-pip install -r requirements.txt
-```
+python -m venv dcabot-env
+source dcabot-env/bin/activate  # On Windows: dcabot-env\Scripts\activate
 
-### 2. Configuration
+# 2. Install dependencies
+pip install -r requirements.txt -r requirements-saas.txt
 
-Create a `.env` file:
-
-```bash
-API_KEY=your_phemex_api_key
-API_SECRET=your_phemex_api_secret
-SYMBOL=BTCUSDT:Long:True
-EMA_INTERVAL=1
-TESTNET=True
-
-# Optional: Telegram notifications
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
-```
-
-### 3. Run Locally
-
-```bash
-dcabot-env/bin/python main.py
-```
-
-## 🚀 SaaS Platform
-
-The SaaS platform transforms the standalone bot into a multi-user web application.
-
-### Architecture
-
-```
-┌──────────────────────────────────────────────┐
-│ Flask Web Dashboard (Render - $7/month)      │
-│ • User authentication & registration         │
-│ • Bot management UI                          │
-│ • Trading pair configuration                 │
-│ • Performance charts & analytics             │
-│ • Admin panel                                │
-└──────────────────────────────────────────────┘
-              │
-              ├─────────────────────────────────┐
-              │                                 │
-┌─────────────▼──────────┐   ┌─────────────────▼────────┐
-│ Cron Scheduler (FREE)  │   │ PostgreSQL Database      │
-│ • Runs every 5 minutes │   │ • Users & bots           │
-│ • Executes all active  │   │ • Trading pairs          │
-│   bots sequentially    │   │ • Metrics & logs         │
-│ • Logs to database     │   │ • Trades history         │
-└────────────────────────┘   └──────────────────────────┘
-```
-
-### Key Features
-
-**Multi-User Management**
-- User registration with admin approval
-- Google OAuth 2.0 integration
-- Password-based authentication (bcrypt)
-- Encrypted API credentials (Fernet encryption)
-- Password reset functionality
-- Admin panel for user management
-
-**Bot Dashboard**
-- Create and manage multiple bots per user
-- Configure trading pairs with different strategies
-- Start/stop bots individually
-- Real-time status monitoring
-
-**Performance Analytics**
-- Balance & Position overview charts
-- Unrealized PnL tracking
-- Margin level monitoring
-- Trade history and activity logs
-
-**Database-Driven Configuration**
-- No environment variables per bot
-- All configuration stored securely
-- Easy bot cloning and management
-- Automatic migration system
-
-### Local Testing (SaaS Platform)
-
-#### 1. Setup Local Database
-
-```bash
-# Start PostgreSQL (Docker)
-docker run -d \
-  --name dcabot-db \
+# 3. Start PostgreSQL
+docker run -d --name dcabot-db \
   -e POSTGRES_USER=dcabot \
   -e POSTGRES_PASSWORD=dcabot_dev_password \
   -e POSTGRES_DB=dcabot_dev \
-  -p 5435:5432 \
-  postgres:15
+  -p 5435:5432 postgres:15
 
-# Set environment variables
-export DATABASE_URL="postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev"
-export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-export SECRET_KEY="dev-secret-key-change-in-production"
+# 4. Create environment files
+cp .env.example .env.local
+# Edit .env.local with your configuration:
+# - DATABASE_URL=postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev
+# - SECRET_KEY=your-secret-key-here
+# - ENCRYPTION_KEY=<generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+# - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (for OAuth)
 
-# Run database migrations
-python saas/migrate.py
+# 5. Run migrations
+./scripts/run_migrations.sh
+
+# 6. Start web application
+./scripts/run_local_app.sh
+# Visit: http://localhost:3030
 ```
 
-#### 2. Run Flask Web Server
+**See [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) for detailed instructions.**
+
+### Deploy to Production
 
 ```bash
-# Terminal 1: Start Flask app
-export FLASK_APP=saas.app
-export FLASK_ENV=development
-dcabot-env/bin/python -m flask run --port 3030
-
-# Access at: http://localhost:3030
-```
-
-#### 3. Test Bot Execution
-
-```bash
-# Terminal 2: Execute all active bots once
-export DATABASE_URL="postgresql://dcabot:dcabot_dev_password@localhost:5435/dcabot_dev"
-python saas/execute_all_bots.py
-
-# Or test a specific bot
-export BOT_ID=1
-python main.py
-```
-
-#### 4. Test Scripts
-
-Located in `scripts/` directory:
-
-```bash
-# List and execute a specific bot
-./scripts/test_bot_run.sh
-
-# Continuous execution (simulates cron)
-./scripts/run_bot_loop.sh
-```
-
-See [scripts/README.md](scripts/README.md) for details.
-
-### Deployment Strategy
-
-**Current Setup**:
-- **Platform**: Render.com
-- **Region**: Frankfurt (EU)
-- **Branch**: `feature/saas-transformation`
-- **Cost**: ~$22/month
-
-**Services**:
-1. **Web Service** (`dcabot-saas-web`)
-   - Flask application with Gunicorn
-   - Health checks and API endpoints
-   - Automatic migrations on deploy
-   - Cost: $7/month
-
-2. **Cron Job** (`dcabot-saas-scheduler`)
-   - Executes every 5 minutes
-   - Runs all active bots sequentially
-   - Logs results to database
-   - Cost: FREE
-
-3. **PostgreSQL Database** (Digital Ocean)
-   - Stores users, bots, configurations
-   - Tracks metrics and execution history
-   - SSL-enabled connections
-   - Cost: ~$15/month
-
-**Migration System**:
-- SQL-based migrations in `saas/migrations/`
-- Automatic execution on deployment
-- Version tracking in `schema_migrations` table
-- Idempotent and safe for production
-- See [saas/migrations/README.md](saas/migrations/README.md)
-
-**Deployment Flow**:
-```bash
-# 1. Make changes
-git add .
-git commit -m "Add feature"
-
-# 2. Push to GitHub
 git push origin feature/saas-transformation
-
-# 3. Render auto-deploys
-# - Runs migrations
-# - Builds app
-# - Zero downtime
 ```
 
-**Documentation**:
-- **[Render Deployment Guide](docs/RENDER_DEPLOYMENT.md)** - Complete setup walkthrough
-- **[Database Migrations](docs/DATABASE_MIGRATIONS.md)** - Schema management
-- **[SaaS Platform Details](docs/SAAS.md)** - Architecture and implementation
+Render Blueprint (`render.yaml`) automatically deploys all services:
+- Web Service ($7/month) - Flask dashboard
+- AI Bot Executor (FREE) - Runs every 5 minutes
+- Martingale Executor (FREE) - Runs every 5 minutes
 
-## Strategy Overview
+**See [docs/RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md) for complete deployment guide.**
 
-The bot implements a **Martingale averaging strategy**:
+---
 
-1. **Entry**: Opens positions when price is trending (EMA filter)
-2. **Averaging**: Adds to losing positions with increasing size
-3. **Profit Taking**: Systematically closes profitable positions
-4. **Volatility Protection**: Pauses during high volatility
-5. **Risk Management**: Maintains safe margin levels
+## Key Features
 
-See [docs/STRATEGY.md](docs/STRATEGY.md) for detailed explanation.
+### AI Trading Bots
+- **Multi-Model Support**: Compare GLM-4.5-Air ($2.50/mo), DeepSeek ($3.50/mo), Claude ($150/mo), Gemini side-by-side
+- **Real Balance Tracking**: Each bot uses dedicated Phemex account (1 Bot = 1 Account = 1 AI Model)
+- **Comprehensive Analysis**: Technical indicators + sentiment data (Fear & Greed Index)
+- **Live Execution**: Automated trading every 5 minutes with confidence threshold (70%)
+- **Performance Tracking**: Model-specific colored dashboards with PnL, trade history, and decision logs
+- **Trade Logging**: Complete audit trail of all trades with entry/exit prices, PnL, and fees
 
-## Backtesting
+### Martingale Strategy
+- **EMA-Based Entry**: Only enters when price is below/above EMA100 (dip-buying strategy)
+- **Intelligent Averaging**: Adds to positions systematically when down 4%
+- **Volatility Protection**: Pauses during dangerous market conditions (CRASH/FAST_DECLINE)
+- **Dynamic Position Sizing**: Exponential tapering prevents margin exhaustion
+- **Decline Velocity Detection**: Distinguishes crashes from safe pullbacks
+- **Margin Protection**: 50% hard cap with pre-order validation
 
-Comprehensive backtesting framework to validate strategy performance:
+### Platform Features
+- **Multi-User SaaS**: User registration with Google OAuth
+- **Web Dashboard**: Real-time performance visualization with Chart.js
+- **Encrypted Credentials**: Fernet encryption for all API keys
+- **Auto-Migrations**: Database schema updates on every deploy
+- **Telegram Notifications**: Real-time alerts per user
+- **Multi-Symbol Trading**: Trade multiple pairs independently per bot
+- **Timezone Support**: Display times in 50+ country timezones
 
-```bash
-# Basic backtest
-dcabot-env/bin/python backtest/backtest.py \
-  --symbol BTCUSDT \
-  --days 30 \
-  --balance 200 \
-  --side Long
+---
 
-# Test multiple leverages
-./test_leverages.sh BTCUSDT 30 200 Long
-
-# Test top volume coins
-dcabot-env/bin/python test_top_coins.py \
-  --leverage 10 \
-  --days 7 \
-  --balance 200
-```
-
-Results include:
-- 5-panel performance charts
-- Balance history CSV
-- Trade log CSV
-- Detailed statistics
-
-See [Backtesting section](#backtesting) in docs for more details.
-
-## Documentation
-
-### Platform Documentation
-- **[Product Roadmap](ROADMAP.md)** - 🚀 Future features and development plans
-- **[SaaS Platform](docs/SAAS.md)** - Multi-user platform overview
-- **[Render Deployment](docs/RENDER_DEPLOYMENT.md)** - Complete deployment guide
-- **[Database Migrations](saas/migrations/README.md)** - Schema management
-- **[Local Testing](scripts/README.md)** - Development and testing
-
-### Bot Documentation
-- **[Strategy Explanation](docs/STRATEGY.md)** - How the Martingale strategy works
-- **[Setup Guide](docs/SETUP.md)** - Local and remote installation
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy standalone bot
-- **[Telegram Setup](docs/TELEGRAM_SETUP.md)** - Configure notifications
-
-## Architecture
+## Architecture Overview
 
 ```
-dcabot/
-├── saas/                 # SaaS platform
-│   ├── app.py           # Flask web application
-│   ├── database.py      # Database utilities
-│   ├── security.py      # Encryption & auth
-│   ├── migrate.py       # Migration runner
-│   ├── execute_all_bots.py  # Cron executor
-│   ├── migrations/      # SQL migration files
-│   └── templates/       # HTML templates
-├── clients/             # Exchange API clients
-├── strategies/          # Trading strategies
-├── workflows/           # Execution workflows
-├── notifications/       # Telegram notifier
-├── indicators/          # Technical indicators
-├── backtest/           # Backtesting framework
-├── scripts/            # Testing & deployment scripts
-└── docs/               # Documentation
-
+┌─────────────────────────────────────────────────────────┐
+│                 Flask Web Application                    │
+│  • Google OAuth Authentication                           │
+│  • Bot Management (Create, Configure, Start/Stop)       │
+│  • Real-time Dashboards (Chart.js)                      │
+│  • Admin Panel (User Approval)                          │
+│  • Cost: $7/month (Render Starter)                      │
+└────────────┬───────────────────────┬────────────────────┘
+             │                       │
+    ┌────────▼────────┐    ┌────────▼────────┐
+    │ AI Bot Executor │    │ Martingale Bot  │
+    │  (Cron: */5)    │    │  Executor       │
+    │  FREE           │    │  (Cron: */5)    │
+    └────────┬────────┘    └────────┬────────┘
+             │                       │
+             └───────────┬───────────┘
+                         │
+            ┌────────────▼────────────┐
+            │  PostgreSQL Database    │
+            │  • Users & bots config  │
+            │  • Trade history        │
+            │  • Performance metrics  │
+            │  Cost: ~$15/month       │
+            └─────────────────────────┘
 ```
 
-## Configuration
+**See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture.**
 
-Key strategy parameters (`strategies/MartingaleTradingStrategy.py`):
+---
 
+## Trading Strategies
+
+### AI Trading Bots
+
+**How it works:**
+1. Fetch market data every 5 minutes (price, EMAs, RSI, volume, Fear & Greed Index)
+2. Send comprehensive prompt to AI model for analysis
+3. AI returns decision: BUY/SELL/HOLD with confidence % and reasoning
+4. Execute trade if confidence ≥ 70% and `automatic_mode` is enabled
+5. Log decision and trade to database
+6. Track performance metrics per model
+
+**Architecture:** 1 Bot = 1 Phemex Account = 1 AI Model (true isolation)
+
+**AI Prompt includes:**
+- Technical indicators (EMAs, RSI, volume trends, price changes)
+- Market sentiment (Fear & Greed Index)
+- Current position details (size, PnL, entry price)
+- Trading rules (max position size, leverage, stop-loss)
+
+**Decision threshold:** Confidence ≥ 70% required to execute
+
+### Martingale Strategy
+
+**How it works:**
+1. **Entry**: Open position when price < EMA100 (Long) or > EMA100 (Short)
+2. **Averaging**: Add to position when down 4%, increasing size exponentially
+3. **Profit Taking**: Close when ≥ 0.3% profit or 10% PnL target reached
+4. **Risk Management**: 50% margin cap with dynamic position tapering
+
+**Key Parameters:**
 ```python
 CONFIG = {
-    'leverage': 10,                   # Trading leverage
-    'begin_size_of_balance': 0.006,   # Initial position: 0.6%
-    'buy_until_limit': 0.05,          # Max position: 5%
-    'profit_threshold': 0.003,        # Min profit: 0.3%
-    'profit_pnl': 0.1,                # Target: 10% profit
-    'max_margin_pct': 0.50,           # Margin cap: 50%
+    'buy_until_limit': 0.02,           # Max 2% of balance in position
+    'profit_threshold': 0.003,         # Min 0.3% profit to close
+    'profit_pnl': 0.1,                 # 10% PnL target
+    'leverage': 10,                    # 10x leverage
+    'begin_size_of_balance': 0.006,    # Start with 0.6% of balance
+    'max_margin_pct': 0.50,            # Max 50% margin
+    'buy_below_percentage': 0.04,      # Buy when down 4%
 }
 ```
 
-## Safety Features
+**Safety Features:**
+- Volatility protection (pauses during CRASH/FAST_DECLINE)
+- Decline velocity detection (safe during SLOW/MODERATE declines)
+- Dynamic position tapering (exponential decrease as margin increases)
+- Margin level monitoring (stops at 50% to prevent liquidation)
+- Pre-order validation (checks margin before placing orders)
 
-- ✅ Testnet support for safe testing
-- ✅ Rate limiting to prevent API bans
-- ✅ Retry logic for failed requests
-- ✅ Margin level monitoring
-- ✅ Volatility detection and pausing
-- ✅ Position size limits
-- ✅ Emergency liquidation protection
-- ✅ Dynamic position tapering
-- ✅ Encrypted API credentials (SaaS)
-- ✅ User authentication (SaaS)
-- ✅ Admin approval system (SaaS)
+**See [docs/STRATEGY.md](docs/STRATEGY.md) for detailed strategy explanation.**
 
-## Requirements
+---
 
-- Python 3.8+
-- Phemex account with API access
-- (Optional) Telegram bot for notifications
-- (SaaS) PostgreSQL database
+## Local Development
+
+### Running the Application
+
+```bash
+# Start web application
+./scripts/run_local_app.sh
+# Visit: http://localhost:3030
+
+# Run migrations
+./scripts/run_migrations.sh
+
+# Execute AI bots manually (for testing)
+./scripts/run_executor.sh
+
+# Execute all bots (Martingale + AI) manually
+./run_all_bots.sh
+```
+
+### Helper Scripts
+
+All scripts are located in `/scripts` directory:
+- `run_local_app.sh` - Start Flask app on port 3030
+- `run_migrations.sh` - Apply database migrations
+- `test_bot_run.sh` - Test single bot execution
+- `run_bot_loop.sh` - Continuous execution loop (simulates production)
+
+**See [scripts/README.md](scripts/README.md) for complete script documentation.**
+
+### Testing
+
+```bash
+# Test single bot
+./scripts/test_bot_run.sh <bot_id>
+
+# Run continuous execution (5 minute interval)
+./scripts/run_bot_loop.sh
+
+# Test with custom interval (60 seconds)
+./scripts/run_bot_loop.sh 60
+```
+
+### Project Structure
+
+```
+dcabot/
+├── README.md                    # This file
+├── render.yaml                  # Render Blueprint (automated deployment)
+├── saas/                        # SaaS Platform
+│   ├── app.py                   # Flask routes & authentication
+│   ├── database.py              # PostgreSQL layer
+│   ├── execute_all_bots.py      # Martingale executor (cron)
+│   ├── execute_ai_bots.py       # AI bot executor (cron)
+│   ├── security.py              # Encryption & auth
+│   ├── validation.py            # OWASP input validation
+│   ├── migrations/              # SQL migration files
+│   └── templates/               # HTML templates
+├── strategies/
+│   ├── MartingaleTradingStrategy.py  # Martingale logic
+│   └── AITradingStrategy.py          # AI model integration
+├── data/
+│   └── market_data_fetcher.py   # Technical + sentiment data
+├── clients/
+│   └── PhemexClient.py          # Phemex API wrapper
+├── indicators/
+│   └── volatility.py            # ATR, Bollinger, decline velocity
+├── notifications/
+│   └── TelegramNotifier.py      # Telegram alerts
+├── backtest/
+│   └── backtest.py              # Backtesting framework
+├── scripts/                     # Helper scripts
+│   ├── run_local_app.sh
+│   ├── run_migrations.sh
+│   ├── test_bot_run.sh
+│   └── README.md
+└── docs/                        # Documentation
+    ├── ARCHITECTURE.md          # System architecture
+    ├── ROADMAP.md               # Future plans
+    └── RENDER_DEPLOYMENT.md     # Deployment guide
+```
+
+---
+
+## Production Deployment
+
+### Render Blueprint Deployment
+
+The project uses Render Blueprint (`render.yaml`) for automated deployment:
+
+**Services:**
+- **Web Service** ($7/month) - Flask dashboard and API
+- **AI Bot Executor** (FREE) - Runs every 5 minutes
+- **Martingale Executor** (FREE) - Runs every 5 minutes
+- **Weekly Backtests** (FREE) - Runs Sunday 2 AM UTC
+
+**Deployment Steps:**
+1. Push code to `feature/saas-transformation` branch
+2. Render auto-detects `render.yaml` blueprint
+3. Migrations run during build phase
+4. All services deploy automatically
+5. No manual configuration needed
+
+**See [docs/RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md) for complete guide.**
+
+### Environment Variables (Production)
+
+Required environment variables in Render:
+
+```bash
+DATABASE_URL=postgresql://user:pass@host:port/db?sslmode=require
+SECRET_KEY=<auto-generated-by-render>
+ENCRYPTION_KEY=<fernet-key>
+FLASK_ENV=production
+DEBUG=False
+```
+
+**Generate encryption key:**
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+### Monitoring
+
+```bash
+# View web service logs
+render logs -s dcabot-saas-web --tail
+
+# View AI executor logs
+render logs -s dcabot-ai-executor --tail
+
+# View Martingale executor logs
+render logs -s dcabot-saas-scheduler --tail
+
+# Check service status
+render services list
+```
+
+---
+
+## Configuration
+
+### API Keys (Stored in Database, Encrypted)
+
+All API keys are entered through the web dashboard and encrypted before storage:
+
+**For Martingale Bots:**
+- Phemex API Key/Secret → Entered when creating bot
+
+**For AI Bots:**
+- Phemex API Key/Secret → Per bot (unique account per model)
+- GLM API Key → User Settings page
+- DeepSeek API Key → User Settings page
+- Claude API Key → User Settings page
+- Gemini API Key → User Settings page
+
+**Telegram (Optional):**
+- Bot Token + Chat ID → User Settings page
+
+**Security:** All credentials encrypted with Fernet before database storage.
+
+### Database Migration System
+
+Migrations are SQL-based and run automatically on deployment:
+- Sequential naming: `001_`, `002_`, `003_`, etc.
+- Tracked in `schema_migrations` table
+- Idempotent (use `IF NOT EXISTS`)
+- No edits after deployment (create new migration)
+
+**See [docs/DATABASE_MIGRATIONS.md](docs/DATABASE_MIGRATIONS.md) for details.**
+
+---
+
+## Documentation
+
+### Essential Reading
+1. [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture and components
+2. [RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md) - Production deployment guide
+3. [LOCAL_SETUP.md](docs/LOCAL_SETUP.md) - Local development setup
+4. [STRATEGY.md](docs/STRATEGY.md) - Trading strategy details
+
+### Advanced Topics
+- [DATABASE_MIGRATIONS.md](docs/DATABASE_MIGRATIONS.md) - Schema management system
+- [ROADMAP.md](docs/ROADMAP.md) - Future features and enhancements
+- [scripts/README.md](scripts/README.md) - Helper script documentation
+
+### Setup Guides
+- [TELEGRAM_SETUP.md](docs/TELEGRAM_SETUP.md) - Configure Telegram notifications
+- [GLM_SIGNUP_GUIDE.md](docs/GLM_SIGNUP_GUIDE.md) - Sign up for GLM API
+- [GOOGLE_OAUTH_SETUP.md](saas/GOOGLE_OAUTH_SETUP.md) - Configure Google OAuth
+
+---
+
+## Cost Breakdown
+
+| Component | Type | Cost |
+|-----------|------|------|
+| Web Service | Render Starter | $7/month |
+| Cron Jobs (3x) | Render Free tier | $0/month |
+| PostgreSQL | External (managed) | ~$15/month |
+| **Total Infrastructure** | | **~$22/month** |
+| AI Bot (GLM-4.5-Flash) | z.ai | **FREE** |
+| AI Bot (GLM-4.5-Air) | z.ai | $2.50/month |
+| AI Bot (DeepSeek-Chat) | DeepSeek | $3.50/month |
+| AI Bot (Claude-3.5-Sonnet) | Anthropic | ~$150/month |
+
+**Total: $22-180/month depending on AI models used**
+
+---
 
 ## Risk Warning
 
-⚠️ **WARNING**: Martingale strategies carry significant risk of large losses. This bot:
-- Can experience extended drawdowns
-- Requires sufficient capital for averaging
-- Uses leverage (amplifies both gains and losses)
-- May lose your entire trading account in extreme conditions
+**IMPORTANT**: Both trading strategies carry significant risk:
+
+- **AI Trading Bots**: Relies on LLM decision quality; no guarantee of profitability
+- **Martingale Strategy**: Can experience extended drawdowns; may lose entire account in extreme conditions
+- **Leverage**: Amplifies both gains and losses (10x leverage = 10x risk)
+- **Cryptocurrency**: Highly volatile asset class with 24/7 markets
 
 **Only use funds you can afford to lose completely.**
+
+### Best Practices
+1. **Start with testnet** - Use Phemex testnet before risking real funds
+2. **Start small** - Use only 10-20% of your trading capital initially
+3. **Monitor frequently** - Check positions and logs daily
+4. **Set API restrictions** - Disable withdrawals on Phemex API keys
+5. **Use Telegram alerts** - Stay informed of all trading actions
+6. **Keep reserves** - Don't allocate 100% of account balance to bots
+7. **Test thoroughly** - Backtest strategies before going live
+
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/pehur00/dcabot/issues)
+- **Documentation**: `docs/` directory
+- **Render Logs**: `render logs -s <service-name> --tail`
+
+---
+
+## Repository Information
+
+**Repository:** https://github.com/pehur00/dcabot
+
+**Branches:**
+- `main` - Standalone bot (legacy, deprecated)
+- `feature/saas-transformation` - Production SaaS platform (active)
+- `feature/ai-glm-trading-bot` - AI bot development (merged)
+
+**Key Dependencies:**
+- Flask 3.0.0, PostgreSQL 14+
+- pandas 2.2.0, numpy 1.26.3
+- pytz 2023.3 (timezone support)
+- cryptography 41.0.7 (encryption)
+
+---
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Support
-
-- **Issues**: Report bugs via GitHub Issues
-- **Documentation**: See `docs/` directory
-- **Strategy Questions**: See [STRATEGY.md](docs/STRATEGY.md)
-- **Deployment Help**: See [RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md)
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for planned features and development priorities.
-
-**Next up**: Backtest integration in web dashboard - test your strategies before going live!
-
-## Changelog
-
-See [CHANGELOG.md](docs/CHANGELOG.md) for version history.
-
-## Disclaimer
-
-This software is provided for educational purposes. Cryptocurrency trading carries significant risk. Past performance does not guarantee future results. The authors are not responsible for any financial losses incurred using this bot.
+---
 
 **Trade responsibly. Start small. Test thoroughly.**

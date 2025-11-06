@@ -341,6 +341,29 @@ def get_ai_bot_stats(bot_id):
     return results[0] if results else None
 
 
+def get_ai_bot_trade_stats(bot_id):
+    """
+    Get trade statistics for an AI bot
+
+    Note: Currently we count executed trades from ai_decisions.
+    Winning vs losing trades would require tracking individual trade PnL,
+    which is planned for future enhancement.
+
+    Returns:
+        dict with total_trades, winning_trades, losing_trades
+    """
+    query = """
+        SELECT
+            COUNT(CASE WHEN action_taken = 'EXECUTED' THEN 1 END) as total_trades,
+            0 as winning_trades,
+            0 as losing_trades
+        FROM ai_decisions
+        WHERE ai_bot_id = %s
+    """
+    results = execute_query(query, (bot_id,), fetch=True)
+    return results[0] if results else {'total_trades': 0, 'winning_trades': 0, 'losing_trades': 0}
+
+
 def get_all_ai_models():
     """Get all available AI model configurations"""
     query = "SELECT * FROM ai_model_configs WHERE is_active = true ORDER BY name"
@@ -425,29 +448,37 @@ def get_balance_history_for_chart(bot_ids=None, model_config_ids=None, hours=72)
     return execute_query(query, tuple(params) if params else None, fetch=True)
 
 
-def get_ai_bot_leaderboard():
-    """Get leaderboard stats for all AI bots/models"""
+def get_ai_bot_leaderboard(user_id):
+    """Get leaderboard stats for user's AI bots (bot-centric, not model-centric)"""
     query = """
         SELECT
+            ab.id as bot_id,
+            ab.name as bot_name,
             amc.id as model_config_id,
             amc.name as model_name,
             amc.provider,
             amc.logo_url,
-            COUNT(DISTINCT ab.id) as bot_count,
-            AVG(ab.virtual_balance) as avg_balance,
-            SUM(ab.total_trades_executed) as total_trades,
-            AVG(ab.total_realized_pnl) as avg_pnl,
+            amp.balance as avg_balance,
+            COUNT(ad.id) as total_decisions,
             COUNT(CASE WHEN ad.decision = 'BUY' THEN 1 END) as buy_signals,
             COUNT(CASE WHEN ad.decision = 'SELL' THEN 1 END) as sell_signals,
             COUNT(CASE WHEN ad.decision = 'HOLD' THEN 1 END) as hold_signals,
+            COUNT(CASE WHEN ad.action_taken = 'EXECUTED' THEN 1 END) as total_trades,
             AVG(ad.confidence) as avg_confidence,
             SUM(ad.api_cost) as total_api_cost,
             AVG(ad.response_time_ms) as avg_response_time
-        FROM ai_model_configs amc
-        LEFT JOIN ai_bots ab ON amc.id = ab.model_config_id AND ab.is_active = true
+        FROM ai_bots ab
+        JOIN ai_model_configs amc ON amc.id = ab.model_config_id
         LEFT JOIN ai_decisions ad ON ab.id = ad.ai_bot_id
-        WHERE amc.is_active = true
-        GROUP BY amc.id, amc.name, amc.provider, amc.logo_url
-        ORDER BY avg_balance DESC NULLS LAST
+        LEFT JOIN LATERAL (
+            SELECT balance
+            FROM ai_model_performance
+            WHERE ai_bot_id = ab.id
+            ORDER BY snapshot_at DESC
+            LIMIT 1
+        ) amp ON true
+        WHERE ab.user_id = %s AND ab.is_active = true
+        GROUP BY ab.id, ab.name, amc.id, amc.name, amc.provider, amc.logo_url, amp.balance
+        ORDER BY total_decisions DESC NULLS LAST
     """
-    return execute_query(query, fetch=True)
+    return execute_query(query, (user_id,), fetch=True)
