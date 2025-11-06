@@ -1,6 +1,6 @@
--- Migration 017: Create ai_trades table
+-- Migration 019: Create ai_trades table
 -- Created: 2025-11-06
--- Reason: Track all executed trades for AI bots
+-- Reason: Track all executed trades for AI bots (renamed from 017 to run after portfolio_multi_symbol)
 
 CREATE TABLE IF NOT EXISTS ai_trades (
     id SERIAL PRIMARY KEY,
