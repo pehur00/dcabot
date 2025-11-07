@@ -316,6 +316,7 @@ def register_ai_bot_routes(app):
     def ai_bots_chart_data():
         """API endpoint for multi-line chart data (uses ai_model_performance snapshots)"""
         from saas import database as db
+        from saas.security import decrypt_api_key
         from datetime import datetime, timedelta
         from collections import defaultdict
 
@@ -389,7 +390,10 @@ def register_ai_bot_routes(app):
                             amc.provider,
                             amc.logo_url,
                             ab.created_at as bot_created_at,
-                            ab.initial_balance_snapshot
+                            ab.initial_balance_snapshot,
+                            ab.exchange_api_key,
+                            ab.exchange_api_secret,
+                            ab.testnet
                         FROM ai_bots ab
                         JOIN ai_model_configs amc ON ab.model_config_id = amc.id
                         WHERE ab.user_id = %s AND ab.id = %s AND ab.is_active = true
@@ -404,7 +408,10 @@ def register_ai_bot_routes(app):
                             amc.provider,
                             amc.logo_url,
                             ab.created_at as bot_created_at,
-                            ab.initial_balance_snapshot
+                            ab.initial_balance_snapshot,
+                            ab.exchange_api_key,
+                            ab.exchange_api_secret,
+                            ab.testnet
                         FROM ai_bots ab
                         JOIN ai_model_configs amc ON ab.model_config_id = amc.id
                         WHERE ab.user_id = %s AND ab.is_active = true
@@ -455,16 +462,46 @@ def register_ai_bot_routes(app):
                             'y': point['balance_with_upnl']  # Plot balance + unrealised PnL
                         })
 
-                datasets.append({
+                # Fetch real-time balance for this bot (for chart legend AND final data point)
+                current_balance = None
+                try:
+                    from clients.PhemexClient import PhemexClient
+                    logger.info(f"[BALANCE DEBUG] Fetching real-time balance for bot {bot_id} ({bot['bot_name']})")
+                    phemex_key = decrypt_api_key(bot['exchange_api_key'])
+                    phemex_secret = decrypt_api_key(bot['exchange_api_secret'])
+                    phemex = PhemexClient(phemex_key, phemex_secret, logger, testnet=bot['testnet'])
+                    balance_info = phemex.get_account_balance()
+                    logger.info(f"[BALANCE DEBUG] Phemex returned: {balance_info}")
+                    if balance_info and balance_info[0] is not None:
+                        current_balance = float(balance_info[0])
+                        logger.info(f"[BALANCE DEBUG] Successfully got real-time balance: ${current_balance:.2f}")
+
+                        # Add real-time balance as final data point on chart
+                        data_points.append({
+                            'x': now.isoformat(),
+                            'y': current_balance
+                        })
+                        logger.info(f"[BALANCE DEBUG] Added real-time balance as final chart point")
+                    else:
+                        logger.warning(f"[BALANCE DEBUG] Phemex returned invalid balance_info: {balance_info}")
+                except Exception as e:
+                    logger.error(f"[BALANCE DEBUG] Failed to fetch real-time balance for bot {bot_id}: {e}", exc_info=True)
+
+                dataset_info = {
                     'label': bot['bot_name'],  # Use bot name instead of model name
                     'bot_id': bot_id,
                     'bot_name': bot['bot_name'],
                     'model_name': bot['model_name'],
                     'provider': bot['provider'],
                     'logo_url': bot['logo_url'],
-                    'data': data_points
-                })
+                    'data': data_points,
+                    'currentBalance': current_balance,  # Real-time balance for legend
+                    'initialBalance': initial_balance   # For PnL calculation
+                }
+                logger.info(f"[BALANCE DEBUG] Adding dataset for {bot['bot_name']}: currentBalance={current_balance}, initialBalance={initial_balance}")
+                datasets.append(dataset_info)
 
+            logger.info(f"[BALANCE DEBUG] Returning {len(datasets)} datasets to frontend")
             return jsonify({
                 'success': True,
                 'datasets': datasets
@@ -1061,8 +1098,8 @@ def register_ai_bot_routes(app):
                 # Parse credits response
                 credits_data = response_json.get('data', {})
                 total_credits = float(credits_data.get('total_credits', 0))
-                used_credits = float(credits_data.get('used_credits', 0))
-                remaining_credits = float(credits_data.get('remaining_credits', 0) or (total_credits - used_credits))
+                total_usage = float(credits_data.get('total_usage', 0))
+                remaining_credits = total_credits - total_usage
 
                 # Calculate usage stats from recent decisions
                 cursor.execute("""
@@ -1100,7 +1137,7 @@ def register_ai_bot_routes(app):
                 return jsonify({
                     'credits': {
                         'total': total_credits,
-                        'used': used_credits,
+                        'used': total_usage,
                         'remaining': remaining_credits
                     },
                     'bot_usage': {

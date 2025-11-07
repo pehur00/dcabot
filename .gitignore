@@ -37,3 +37,8 @@ dcabot-env/
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Tailwind CSS
+/tailwindcss
+/tailwindcss-*
+/saas/static/css/tailwind.output.css

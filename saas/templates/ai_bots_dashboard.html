@@ -129,7 +129,7 @@
                     </div>
                 </div>
 
-                <div id="chart-container" style="position: relative; height: 380px;">
+                <div class="relative h-[380px] bg-gray-900 rounded-xl border border-gray-700 p-4 shadow-lg">
                     <canvas id="balance-chart"></canvas>
                 </div>
 
@@ -140,12 +140,27 @@
 
             <!-- Tabbed Interface (Right - 30%) -->
             <div class="tabs-container">
-                <div class="tabs">
-                    <button class="tab" data-tab="positions" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">POSITIONS</button>
-                    <button class="tab" data-tab="trades" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">TRADES</button>
-                    <button class="tab active" data-tab="modelchat" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">BOT CHAT</button>
-                    <button class="tab" data-tab="apiusage" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">API USAGE</button>
-                    <button class="tab" data-tab="leaderboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">LEADERBOARD</button>
+                <div class="flex border-b border-gray-700 bg-gray-900 rounded-t-xl overflow-x-auto scrollbar-hide">
+                    <button class="tab-modern group relative flex-shrink-0 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-200 text-gray-400 hover:text-cyan-400 hover:bg-gray-800/70 whitespace-nowrap" data-tab="positions">
+                        <span class="relative z-10">Positions</span>
+                        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200"></div>
+                    </button>
+                    <button class="tab-modern group relative flex-shrink-0 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-200 text-gray-400 hover:text-cyan-400 hover:bg-gray-800/70 whitespace-nowrap" data-tab="trades">
+                        <span class="relative z-10">Trades</span>
+                        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200"></div>
+                    </button>
+                    <button class="tab-modern group relative flex-shrink-0 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-200 text-cyan-400 bg-gray-800 active whitespace-nowrap" data-tab="modelchat">
+                        <span class="relative z-10">Bot Chat</span>
+                        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 transform scale-x-100"></div>
+                    </button>
+                    <button class="tab-modern group relative flex-shrink-0 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-200 text-gray-400 hover:text-cyan-400 hover:bg-gray-800/70 whitespace-nowrap" data-tab="apiusage">
+                        <span class="relative z-10">API Usage</span>
+                        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200"></div>
+                    </button>
+                    <button class="tab-modern group relative flex-shrink-0 px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide transition-all duration-200 text-gray-400 hover:text-cyan-400 hover:bg-gray-800/70 whitespace-nowrap" data-tab="leaderboard">
+                        <span class="relative z-10">Leaderboard</span>
+                        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200"></div>
+                    </button>
                 </div>
 
                 <!-- Positions Tab -->
@@ -300,7 +315,9 @@
     border-bottom: 2px solid var(--gray-700);
 }
 
+/* Old tab styles - replaced with Tailwind */
 .tab {
+    /* Keeping for backwards compatibility with other pages */
     flex: 1;
     padding: 0.75rem 1rem;
     background: var(--gray-800);
@@ -327,6 +344,11 @@
     border-color: #000;
     position: relative;
     z-index: 1;
+}
+
+/* New Tailwind tabs - modern look */
+.tab-modern {
+    cursor: pointer;
 }
 
 .tab-content {
@@ -421,13 +443,30 @@
 let chart = null;
 
 // Tab switching
-document.querySelectorAll('.tab').forEach(tab => {
+document.querySelectorAll('.tab-modern').forEach(tab => {
     tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
 
-        // Update active tab
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
+        // Update active tab styles (Tailwind - Cyan accent)
+        document.querySelectorAll('.tab-modern').forEach(t => {
+            t.classList.remove('active', 'bg-gray-800', 'text-cyan-400');
+            t.classList.add('text-gray-400');
+            // Reset underline
+            const underline = t.querySelector('.absolute.bottom-0');
+            if (underline) {
+                underline.classList.remove('scale-x-100');
+                underline.classList.add('scale-x-0', 'group-hover:scale-x-100');
+            }
+        });
+
+        tab.classList.add('active', 'bg-gray-800', 'text-cyan-400');
+        tab.classList.remove('text-gray-400');
+        // Active underline
+        const activeUnderline = tab.querySelector('.absolute.bottom-0');
+        if (activeUnderline) {
+            activeUnderline.classList.add('scale-x-100');
+            activeUnderline.classList.remove('scale-x-0', 'group-hover:scale-x-100');
+        }
 
         // Update active content
         document.querySelectorAll('.tab-content').forEach(content => {
@@ -669,9 +708,25 @@ function renderChart(datasets) {
     legendContainer.innerHTML = '';
 
     datasets.forEach((dataset, index) => {
-        const currentBalance = dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 100;
-        const change = currentBalance - 100;
-        const changePercent = ((change / 100) * 100).toFixed(2);
+        // Debug: Log what we received from API
+        console.log('[DEBUG] Legend update for bot:', dataset.label);
+        console.log('[DEBUG] currentBalance from API:', dataset.currentBalance);
+        console.log('[DEBUG] initialBalance from API:', dataset.initialBalance);
+        console.log('[DEBUG] Last snapshot balance:', dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 'no data');
+
+        // Use real-time balance from API if available, otherwise use last snapshot
+        const currentBalance = dataset.currentBalance !== null && dataset.currentBalance !== undefined
+            ? dataset.currentBalance
+            : (dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : (dataset.initialBalance || 100));
+
+        const initialBalance = dataset.initialBalance || (dataset.data.length > 0 ? dataset.data[0].y : 100);
+        const change = currentBalance - initialBalance;
+        const changePercent = initialBalance > 0 ? ((change / initialBalance) * 100).toFixed(2) : '0.00';
+
+        console.log('[DEBUG] Using currentBalance:', currentBalance);
+        console.log('[DEBUG] Using initialBalance:', initialBalance);
+        console.log('[DEBUG] Calculated change: $' + change.toFixed(2), '(' + changePercent + '%)');
+
         const botColor = getBotColor(dataset.bot_id);
         const botAvatar = getBotAvatar(dataset.bot_name, dataset.bot_id, 24);
 
@@ -703,8 +758,10 @@ function updateMultiplier(datasets) {
 
     const multiplier = totalInitial > 0 ? totalBalance / totalInitial : 1.0;
     const multiplierEl = document.getElementById('multiplier');
-    multiplierEl.textContent = multiplier.toFixed(2) + 'X';
-    multiplierEl.style.color = multiplier >= 1 ? 'var(--green)' : 'var(--red)';
+    if (multiplierEl) {
+        multiplierEl.textContent = multiplier.toFixed(2) + 'X';
+        multiplierEl.style.color = multiplier >= 1 ? 'var(--green)' : 'var(--red)';
+    }
 }
 
 // Load positions from API
@@ -1126,41 +1183,60 @@ function loadAPIUsage() {
                         ${daysRemaining ? `<div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-800); color: var(--gray-400); font-size: 0.7rem;">~${daysRemaining.toFixed(0)} days remaining at current rate</div>` : ''}
                     </div>
 
-                    <!-- Stats Grid -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-                        <!-- Last Execution -->
-                        <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem;">
-                            <div style="color: var(--gray-400); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Last Call</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: var(--gray-200);">$${lastExec.cost ? lastExec.cost.toFixed(4) : '0.0000'}</div>
-                            <div style="color: var(--gray-500); font-size: 0.65rem; margin-top: 0.25rem;">${lastExec.tokens ? lastExec.tokens.toLocaleString() : '0'} tokens</div>
+                    <!-- Bot Tracking Stats (Last 7 Days) -->
+                    <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem;">
+                        <div style="color: var(--gray-400); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; border-bottom: 1px solid var(--gray-800); padding-bottom: 0.5rem;">Your Bot Usage (7 Days)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <!-- Total Calls -->
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Total Calls</div>
+                                <div style="color: var(--gray-200); font-weight: 700; font-size: 1rem;">${botUsage.total_calls_7d || 0}</div>
+                            </div>
+                            <!-- Total Tokens -->
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Total Tokens</div>
+                                <div style="color: var(--gray-200); font-weight: 700; font-size: 1rem;">${botUsage.total_tokens_7d ? botUsage.total_tokens_7d.toLocaleString() : '0'}</div>
+                            </div>
                         </div>
-
-                        <!-- Daily Average (from our tracking) -->
-                        <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem;">
-                            <div style="color: var(--gray-400); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Daily Avg (Bot)</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: var(--gray-200);">$${botUsage.daily_avg_cost ? botUsage.daily_avg_cost.toFixed(4) : '0.0000'}</div>
-                            <div style="color: var(--gray-500); font-size: 0.65rem; margin-top: 0.25rem;">${botUsage.total_calls_7d || 0} calls/7d</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                            <!-- Total Cost -->
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Total Cost</div>
+                                <div style="color: var(--orange); font-weight: 700; font-size: 1rem;">$${botUsage.total_cost_7d ? botUsage.total_cost_7d.toFixed(4) : '0.0000'}</div>
+                            </div>
+                            <!-- Avg Per Call -->
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Avg/Call</div>
+                                <div style="color: var(--gray-200); font-weight: 700; font-size: 1rem;">$${botUsage.avg_cost_per_call ? botUsage.avg_cost_per_call.toFixed(4) : '0.0000'}</div>
+                            </div>
                         </div>
+                        ${botUsage.daily_avg_cost > 0 ? `<div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-800); color: var(--gray-400); font-size: 0.7rem;">Daily average: $${botUsage.daily_avg_cost.toFixed(4)}/day</div>` : ''}
                     </div>
 
-                    <!-- Bot Usage (Last 7 Days) -->
-                    <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem;">
-                        <div style="color: var(--gray-400); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; border-bottom: 1px solid var(--gray-800); padding-bottom: 0.5rem;">Bot Usage (7 Days)</div>
-                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; font-size: 0.75rem;">
-                            <div style="color: var(--gray-500);">Total Cost:</div>
-                            <div style="color: var(--gray-200); font-weight: 600; text-align: right;">$${botUsage.total_cost_7d ? botUsage.total_cost_7d.toFixed(4) : '0.0000'}</div>
-
-                            <div style="color: var(--gray-500);">Avg/Call:</div>
-                            <div style="color: var(--gray-200); font-weight: 600; text-align: right;">$${botUsage.avg_cost_per_call ? botUsage.avg_cost_per_call.toFixed(4) : '0.0000'}</div>
-
-                            <div style="color: var(--gray-500);">Tokens Used:</div>
-                            <div style="color: var(--gray-200); font-weight: 600; text-align: right;">${botUsage.total_tokens_7d ? botUsage.total_tokens_7d.toLocaleString() : '0'}</div>
+                    <!-- Last Execution Info -->
+                    ${lastExec.cost > 0 ? `
+                    <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem;">
+                        <div style="color: var(--gray-400); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Last Execution</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Cost</div>
+                                <div style="color: var(--gray-200); font-weight: 700; font-size: 1rem;">$${lastExec.cost.toFixed(4)}</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Tokens</div>
+                                <div style="color: var(--gray-200); font-weight: 700; font-size: 1rem;">${lastExec.tokens.toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--gray-500); font-size: 0.65rem;">Time</div>
+                                <div style="color: var(--gray-400); font-size: 0.7rem;">${new Date(lastExec.time).toLocaleTimeString()}</div>
+                            </div>
                         </div>
                     </div>
+                    ` : ''}
 
                     <!-- Info Notice -->
-                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; font-size: 0.7rem; color: var(--gray-400); line-height: 1.5;">
-                        💡 Credits and usage synced from OpenRouter API. Bot usage calculated from portfolio decisions in the last 7 days.
+                    <div style="padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; font-size: 0.7rem; color: var(--gray-400); line-height: 1.5;">
+                        💡 Credits from OpenRouter API. Usage tracked from your bot's portfolio decisions.
                     </div>
                 </div>
             `;
