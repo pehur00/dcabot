@@ -2,14 +2,21 @@
 
 ## Overview
 
-This project uses **Tailwind CSS CLI** for production builds instead of the CDN. The build process generates a minified CSS file that includes only the utility classes actually used in the templates.
+This project uses **Tailwind CSS v4** with the standalone CLI for production builds. Tailwind v4 uses **CSS-based configuration** instead of JavaScript config files.
 
 ## Files
 
-- `tailwind.config.js` - Tailwind configuration (custom colors, dark mode)
-- `saas/static/css/tailwind.input.css` - Source CSS with Tailwind directives
+- `saas/static/css/tailwind.input.css` - Source CSS with Tailwind v4 directives and theme configuration
 - `saas/static/css/tailwind.output.css` - Generated CSS (gitignored, built on deployment)
 - `build-tailwind.sh` - Build script that downloads Tailwind CLI and generates CSS
+
+## Tailwind v4 Changes
+
+**What's New:**
+- Configuration in CSS using `@theme` directive (no more `tailwind.config.js`)
+- Faster builds with native Rust/Oxide engine
+- Better CSS-in-JS support
+- Native nesting support
 
 ## Local Development
 
@@ -51,27 +58,44 @@ The `render.yaml` build command automatically:
 
 No manual intervention needed on Render.
 
-## Custom Configuration
+## Custom Configuration (Tailwind v4)
 
-### Dark Mode
-Configured with `darkMode: 'class'` - toggle with `.dark` class on `<html>` element.
+All configuration is done in `saas/static/css/tailwind.input.css` using CSS directives.
 
-### Custom Colors
-Extended gray palette for dark UI:
-- `gray-950`: #0a0a0a
-- `gray-900`: #111111
-- `gray-850`: #1a1a1a
-- `gray-800`: #1f1f1f
-- `gray-750`: #2a2a2a
-- `gray-700`: #333333
+### Custom Theme Colors
+
+```css
+@theme {
+    --color-gray-950: #0a0a0a;
+    --color-gray-900: #111111;
+    --color-gray-850: #1a1a1a;
+    --color-gray-800: #1f1f1f;
+    --color-gray-750: #2a2a2a;
+    --color-gray-700: #333333;
+}
+```
+
+Use in HTML: `bg-gray-950`, `text-gray-850`, `border-gray-700`, etc.
 
 ### Custom Utilities
-- `.scrollbar-hide` - Hides scrollbars while maintaining scrollability
+
+```css
+@utility scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+```
+
+Use in HTML: `overflow-x-auto scrollbar-hide`
 
 ## File Sizes
 
 - **CDN Version**: ~3MB (includes all Tailwind classes)
-- **Production Build**: ~39KB (only used classes, minified)
+- **Production Build v4**: ~16KB (only used classes, minified, faster engine)
 
 ## Why Not CDN?
 

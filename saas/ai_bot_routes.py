@@ -1118,8 +1118,9 @@ def register_ai_bot_routes(app):
                 """, (current_user.id,))
                 usage_stats = cursor.fetchone()
 
-                # Calculate daily average
-                daily_avg_cost = (usage_stats['total_cost'] or 0) / 7
+                # Calculate daily average (convert Decimal to float)
+                total_cost = float(usage_stats['total_cost']) if usage_stats['total_cost'] else 0.0
+                daily_avg_cost = total_cost / 7.0
 
                 # Get last execution cost
                 cursor.execute("""
