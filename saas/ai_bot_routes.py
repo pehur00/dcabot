@@ -597,7 +597,9 @@ def register_ai_bot_routes(app):
                             confidence,
                             reasoning,
                             action_taken,
-                            skip_reason
+                            skip_reason,
+                            position_size_pct,
+                            leverage_used
                         FROM ai_decisions
                         WHERE portfolio_decision_id = %s
                         ORDER BY symbol

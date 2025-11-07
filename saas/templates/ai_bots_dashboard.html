@@ -1000,12 +1000,17 @@ function loadDecisionsLog() {
                                 '<span style="background: var(--green); color: #fff; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">EXECUTED</span>' :
                                 '<span style="background: var(--gray-700); color: var(--gray-400); padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.6rem; font-weight: 700;">SKIPPED</span>';
 
+                            const positionSizePct = sym.position_size_pct ? (sym.position_size_pct * 100).toFixed(1) : null;
+                            const leverageUsed = sym.leverage_used;
+
                             symbolsHtml += `
                                 <div style="background: var(--gray-800); border-radius: 4px; padding: 0.6rem; margin-bottom: 0.5rem;">
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; flex-wrap: wrap;">
                                         <span style="color: var(--gray-300); font-weight: 700; font-size: 0.75rem;">${sym.symbol}</span>
                                         <span style="color: ${symDecisionColor}; font-weight: 800; font-size: 0.75rem; text-transform: uppercase;">${sym.decision}</span>
                                         <span style="color: var(--gray-400); font-size: 0.7rem;">${sym.confidence}%</span>
+                                        ${positionSizePct ? `<span style="background: var(--gray-700); color: var(--gray-300); padding: 0.15rem 0.35rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600;">${positionSizePct}%</span>` : ''}
+                                        ${leverageUsed ? `<span style="background: var(--gray-700); color: var(--cyan); padding: 0.15rem 0.35rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600;">${leverageUsed}x</span>` : ''}
                                         ${symActionBadge}
                                     </div>
                                     <div style="color: var(--gray-400); font-size: 0.72rem; line-height: 1.4;">

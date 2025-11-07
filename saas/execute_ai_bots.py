@@ -573,7 +573,11 @@ class AIBotExecutor:
 
             total_balance = float(balance_info[0])
             used_balance = float(balance_info[1])
-            available_balance = total_balance - used_balance
+            available_balance_raw = total_balance - used_balance
+
+            # Apply 2% safety margin to prevent "cannot cover estimated loss" errors
+            # Phemex requires buffer for fees (0.15%) + estimated losses + volatility
+            available_balance = available_balance_raw * 0.98
 
             # Get symbol constraints from market_data (already fetched in process_bot_decision)
             symbol_constraints = market_data.get('symbol_constraints', {})
@@ -639,7 +643,7 @@ class AIBotExecutor:
                 position_value_usd = qty * current_price
                 logger.warning(f"Order quantity {qty_raw:.6f} exceeds maximum {max_order_qty}. Using maximum: {qty:.6f}")
 
-            logger.info(f"AI Decision: Use {ai_position_size_pct*100}% of ${available_balance:.2f} available (${total_balance:.2f} total) = ${position_value_usd:.2f} with {ai_leverage}x leverage")
+            logger.info(f"AI Decision: Use {ai_position_size_pct*100}% of ${available_balance:.2f} available (${total_balance:.2f} total, {available_balance_raw:.2f} raw - 2% margin) = ${position_value_usd:.2f} with {ai_leverage}x leverage")
             logger.info(f"Calculated quantity: {qty_raw:.6f} → Rounded: {qty:.6f} (step={qty_step})")
 
             # Determine order side and position side
@@ -672,8 +676,8 @@ class AIBotExecutor:
 
             # Set leverage first (use AI's leverage decision)
             try:
-                phemex_client.set_leverage(symbol, ai_leverage, pos_side)
-                logger.info(f"Set leverage to {ai_leverage}x for {symbol} ({pos_side})")
+                phemex_client.set_leverage(symbol, ai_leverage)
+                logger.info(f"Set leverage to {ai_leverage}x for {symbol}")
             except Exception as e:
                 logger.warning(f"Failed to set leverage (may already be set): {e}")
 
@@ -876,7 +880,13 @@ class AIBotExecutor:
         try:
             # Get account info (returns tuple: (total_balance, used_balance))
             balance_info = phemex_client.get_account_balance()
-            balance = float(balance_info[0]) if balance_info else 0
+
+            # Skip metrics update if balance fetch failed (prevents saving $0 to DB)
+            if balance_info is None or balance_info[0] is None:
+                logger.warning(f"Skipping performance metrics update - failed to fetch balance for bot {bot['id']}")
+                return
+
+            balance = float(balance_info[0])
 
             # Get positions for ALL symbols in portfolio trading
             pos_side = "Long" if bot['side'] == "Long" else "Short"
