@@ -100,9 +100,24 @@ class PhemexClient(TradingClient):
     def get_account_balance(self):
         try:
             response = self._send_request("GET", "/g-accounts/positions", {'currency': 'USDT'})
+
+            # Debug: Log full response to understand balance structure
+            self.logger.info(f"Phemex balance response: {response}")
+
             balance_info = response['data']['account']
+
+            # Debug: Log balance fields to understand what's available
+            self.logger.info(f"Balance info fields: {list(balance_info.keys())}")
+            self.logger.info(f"accountBalanceRv: {balance_info.get('accountBalanceRv', 'NOT_FOUND')}")
+            self.logger.info(f"totalUsedBalanceRv: {balance_info.get('totalUsedBalanceRv', 'NOT_FOUND')}")
+            self.logger.info(f"accountBalanceEv: {balance_info.get('accountBalanceEv', 'NOT_FOUND')}")
+            self.logger.info(f"totalUsedBalanceEv: {balance_info.get('totalUsedBalanceEv', 'NOT_FOUND')}")
+
             usdt_balance = balance_info.get('accountBalanceRv', 0)
             used_balance = balance_info.get('totalUsedBalanceRv', 0)
+
+            self.logger.info(f"Final balance values: Total=${float(usdt_balance):.2f}, Used=${float(used_balance):.2f}")
+
             return float(usdt_balance), float(used_balance)
         except PhemexAPIException as e:
             self.logger.error(
