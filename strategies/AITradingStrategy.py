@@ -199,11 +199,19 @@ Current Price: ${price:,.2f}
 - Risk Profile: {self.bot_config.get('risk_profile', 'moderate')}
 {constraints_text}
 
+**LEVERAGE AGGRESSION LEVELS:**
+Choose your approach based on market conditions and confidence:
+- CONSERVATIVE (2-4x): Low confidence, high volatility, uncertain markets
+- MODERATE (4-7x): Decent confidence, normal market conditions, balanced risk/reward
+- AGGRESSIVE (7-10x): High confidence, strong trends, favorable market conditions
+- SPECULATIVE (10x+): Maximum conviction, clear breakout/breakdown signals
+
 **TRADING RULES:**
 - You MUST decide position size (1-{self.bot_config['max_position_size'] * 100}% of balance)
-- You MUST decide leverage (1-{self.bot_config['leverage']}x)
+- You MUST decide leverage based on your chosen aggression level
 - You MUST set stop-loss and take-profit levels
-- Risk management is critical - be conservative
+- Higher aggression requires higher confidence and stronger signals
+- Risk management is critical - scale aggression appropriately
 - IMPORTANT: Ensure your position size meets the minimum order requirement shown above"""
 
         # Build full prompt
@@ -227,10 +235,12 @@ Based on the comprehensive analysis above, make a COMPLETE trading decision:
 
 **IMPORTANT:**
 - Larger positions = higher risk, require higher confidence
-- Use leverage proportional to confidence: 70-80% confidence → 3-5x leverage, 80-90% → 5-8x leverage
-- Consider market volatility when sizing positions
+- Leverage is strategic: Use higher leverage (5-10x) for strong trends/confidence, lower (2-4x) for uncertain/volatile markets
+- Consider market conditions: bull markets → higher leverage, bear/sideways → more conservative
+- Volatile symbols (altcoins) may need lower leverage than BTC/ETH
+- Leverage affects ALL positions for this symbol (choose wisely)
 - Keep reasoning concise but insightful (3-4 sentences)
-- Be conservative with confidence scores but reasonable with leverage (avoid 1x unless low confidence)
+- Be conservative with confidence scores but strategic with leverage
 
 **Output Format (JSON only, no markdown):**
 {{
@@ -245,9 +255,9 @@ Based on the comprehensive analysis above, make a COMPLETE trading decision:
 }}
 
 **Example valid responses:**
-- Conservative: {{"decision": "BUY", "position_size_pct": 0.02, "leverage": 2, "confidence": 65, ...}}
-- Moderate: {{"decision": "SELL", "position_size_pct": 0.05, "leverage": 5, "confidence": 80, ...}}
-- Aggressive: {{"decision": "BUY", "position_size_pct": {self.bot_config['max_position_size']}, "leverage": {self.bot_config['leverage']}, "confidence": 90, ...}}
+- CONSERVATIVE: {{"decision": "BUY", "position_size_pct": 0.02, "leverage": 3, "confidence": 65, "reasoning": "Cautious approach in uncertain market"}}
+- MODERATE: {{"decision": "SELL", "position_size_pct": 0.04, "leverage": 6, "confidence": 78, "reasoning": "Decent signals with balanced risk"}}
+- AGGRESSIVE: {{"decision": "BUY", "position_size_pct": 0.06, "leverage": 9, "confidence": 88, "reasoning": "Strong momentum and clear breakout pattern"}}
 
 Respond with ONLY the JSON, no other text."""
 
@@ -516,14 +526,23 @@ Analyze the portfolio and provide a decision for each symbol.
 2. **Per-Symbol Decisions:** For each symbol provide decision, confidence, position_size_pct, leverage, stop_loss, take_profit, reasoning, risk_level
 3. **Risk Assessment:** Overall portfolio risk
 
+**LEVERAGE AGGRESSION LEVELS (Portfolio-wide):**
+Choose your overall approach based on market conditions:
+- CONSERVATIVE (2-4x): Low confidence, high volatility, uncertain markets, capital preservation
+- MODERATE (4-7x): Balanced approach, normal market conditions, reasonable growth
+- AGGRESSIVE (7-10x): High confidence, strong trends, maximizing returns
+- SPECULATIVE (10x+): Maximum conviction, clear market regime, high-risk tolerance
+
 **RULES:**
 - Consider correlations (BTC/ETH move together)
-- Balance diversification
+- Balance diversification across symbols and aggression levels
 - Can HOLD some symbols while BUY/SELL others
 - Available to spend: ${balance['available']:.0f}
 - Meet minimum order sizes
-- Use leverage proportional to confidence: 70-80% confidence → 3-5x leverage, 80-90% → 5-8x leverage
-- Avoid 1x leverage unless confidence is low (<70%)
+- Use different aggression levels per symbol based on their individual market conditions
+- More volatile symbols (altcoins) may need CONSERVATIVE while BTC/ETH can use AGGRESSIVE
+- Leverage affects ALL positions for that symbol (symbol-level setting)
+- Maintain overall portfolio risk balance
 
 **OUTPUT (JSON only, no markdown):**
 {{
@@ -531,8 +550,9 @@ Analyze the portfolio and provide a decision for each symbol.
   "risk_assessment": "Brief risk assessment",
   "reasoning": "Why this portfolio action",
   "decisions": {{
-    "BTCUSDT": {{"decision": "BUY|SELL|HOLD|REDUCE|CLOSE", "confidence": 75, "position_size_pct": 0.03, "leverage": 3, "stop_loss": 67500, "take_profit": 70000, "reasoning": "Why", "risk_level": "MEDIUM"}},
-    "ETHUSDT": {{...}},
+    "BTCUSDT": {{"decision": "BUY", "confidence": 85, "position_size_pct": 0.05, "leverage": 8, "stop_loss": 67500, "take_profit": 70000, "reasoning": "Strong breakout with high volume and momentum", "risk_level": "HIGH"}},
+    "ETHUSDT": {{"decision": "HOLD", "confidence": 60, "position_size_pct": 0.03, "leverage": 4, "stop_loss": 3400, "take_profit": 3800, "reasoning": "Consolidating, waiting for clear direction", "risk_level": "MEDIUM"}},
+    "SOLUSDT": {{"decision": "SELL", "confidence": 75, "position_size_pct": 0.02, "leverage": 3, "stop_loss": 180, "take_profit": 150, "reasoning": "Overbought with bearish divergence", "risk_level": "MEDIUM"}},
     ... for each symbol
   }}
 }}"""
@@ -591,22 +611,20 @@ Analyze the portfolio and provide a decision for each symbol.
                     # Ensure leverage is always present and valid
                     max_lev = int(self.bot_config.get('leverage', 10))
                     if 'leverage' not in decision_data or decision_data['leverage'] is None:
-                        default_leverage = min(max_lev, 5)  # Default to 5x or max allowed (more reasonable)
+                        default_leverage = min(max_lev, 4)  # Default to MODERATE aggression (4x)
                         decision_data['leverage'] = default_leverage
-                        logger.warning(f"Portfolio decision for {symbol} missing leverage, setting to {default_leverage}x")
+                        logger.warning(f"Portfolio decision for {symbol} missing leverage, setting to {default_leverage}x (MODERATE default)")
                     else:
                         # Ensure leverage is integer and within bounds
                         try:
                             leverage_value = int(decision_data['leverage'])
-                            # If AI chose 1x, boost it to at least 3x unless max leverage is very low
-                            if leverage_value == 1 and max_lev >= 3:
-                                leverage_value = 3
-                                logger.info(f"AI chose 1x leverage for {symbol}, boosting to 3x for better risk-adjusted returns")
+                            # Only correct obviously wrong values (like 1x with high confidence)
+                            # Let the AI's strategic choices stand when they're reasonable
                             decision_data['leverage'] = max(1, min(max_lev, leverage_value))
                         except (ValueError, TypeError):
-                            default_leverage = min(max_lev, 5)
+                            default_leverage = min(max_lev, 4)
                             decision_data['leverage'] = default_leverage
-                            logger.warning(f"Portfolio decision for {symbol} has invalid leverage, setting to {default_leverage}x")
+                            logger.warning(f"Portfolio decision for {symbol} has invalid leverage, setting to {default_leverage}x (MODERATE default)")
 
                     # Ensure position_size_pct is always present and valid
                     max_pos = float(self.bot_config.get('max_position_size', 0.10))
