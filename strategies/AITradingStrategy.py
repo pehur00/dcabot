@@ -583,6 +583,37 @@ Analyze the portfolio and provide a decision for each symbol.
                 # Try to fix truncated JSON
                 decision = self._fix_truncated_json(json_str if 'json_str' in locals() else content)
 
+            # Validate and fix missing leverage/position_size values in portfolio decisions
+            if 'decisions' in decision and isinstance(decision['decisions'], dict):
+                for symbol, decision_data in decision['decisions'].items():
+                    # Ensure leverage is always present and valid
+                    max_lev = int(self.bot_config.get('leverage', 10))
+                    if 'leverage' not in decision_data or decision_data['leverage'] is None:
+                        default_leverage = min(max_lev, 3)  # Default to 3x or max allowed
+                        decision_data['leverage'] = default_leverage
+                        logger.warning(f"Portfolio decision for {symbol} missing leverage, setting to {default_leverage}x")
+                    else:
+                        # Ensure leverage is integer and within bounds
+                        try:
+                            decision_data['leverage'] = max(1, min(max_lev, int(decision_data['leverage'])))
+                        except (ValueError, TypeError):
+                            default_leverage = min(max_lev, 3)
+                            decision_data['leverage'] = default_leverage
+                            logger.warning(f"Portfolio decision for {symbol} has invalid leverage, setting to {default_leverage}x")
+
+                    # Ensure position_size_pct is always present and valid
+                    max_pos = float(self.bot_config.get('max_position_size', 0.10))
+                    if 'position_size_pct' not in decision_data or decision_data['position_size_pct'] is None:
+                        default_pos_size = 0.02  # Default to 2%
+                        decision_data['position_size_pct'] = default_pos_size
+                        logger.warning(f"Portfolio decision for {symbol} missing position_size_pct, setting to {default_pos_size*100:.1f}%")
+                    else:
+                        try:
+                            decision_data['position_size_pct'] = max(0.01, min(max_pos, float(decision_data['position_size_pct'])))
+                        except (ValueError, TypeError):
+                            decision_data['position_size_pct'] = 0.02
+                            logger.warning(f"Portfolio decision for {symbol} has invalid position_size_pct, setting to 2.0%")
+
             # Calculate cost
             input_tokens = usage.get('prompt_tokens', 0)
             output_tokens = usage.get('completion_tokens', 0)
