@@ -1007,3 +1007,117 @@ def register_ai_bot_routes(app):
             logger.error(f"Reset AI bot error: {e}", exc_info=True)
             flash('Error resetting bot', 'error')
             return redirect(url_for('ai_bots_dashboard'))
+
+    @app.route('/api/openrouter-usage')
+    @login_required
+    def get_openrouter_usage():
+        """Get OpenRouter API usage and balance for current user's bots"""
+        from saas import database as db
+        from saas.security import decrypt_api_key
+        import requests
+        from datetime import datetime, timedelta
+
+        try:
+            # Get user's API key (from first active bot, or user settings if we add that)
+            with db.get_db() as conn:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+                # Get first active bot's API key
+                cursor.execute("""
+                    SELECT ai_api_key
+                    FROM ai_bots
+                    WHERE user_id = %s AND is_active = true
+                    LIMIT 1
+                """, (current_user.id,))
+                bot = cursor.fetchone()
+
+                if not bot or not bot['ai_api_key']:
+                    return jsonify({'error': 'No active bot with OpenRouter API key found'}), 404
+
+                # Decrypt API key
+                api_key = decrypt_api_key(bot['ai_api_key'])
+
+                # Fetch balance from OpenRouter
+                headers = {
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+
+                # OpenRouter credits endpoint (correct endpoint per docs)
+                response = requests.get(
+                    'https://openrouter.ai/api/v1/credits',
+                    headers=headers,
+                    timeout=10
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+                    return jsonify({'error': 'Failed to fetch OpenRouter credits'}), 500
+
+                response_json = response.json()
+                logger.info(f"OpenRouter credits API response: {response_json}")  # Debug logging
+
+                # Parse credits response
+                credits_data = response_json.get('data', {})
+                total_credits = float(credits_data.get('total_credits', 0))
+                used_credits = float(credits_data.get('used_credits', 0))
+                remaining_credits = float(credits_data.get('remaining_credits', 0) or (total_credits - used_credits))
+
+                # Calculate usage stats from recent decisions
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) as total_calls,
+                        SUM(api_cost) as total_cost,
+                        SUM(input_tokens + output_tokens) as total_tokens,
+                        AVG(api_cost) as avg_cost_per_call
+                    FROM ai_portfolio_decisions
+                    WHERE ai_bot_id IN (
+                        SELECT id FROM ai_bots WHERE user_id = %s
+                    )
+                    AND decision_time >= NOW() - INTERVAL '7 days'
+                """, (current_user.id,))
+                usage_stats = cursor.fetchone()
+
+                # Calculate daily average
+                daily_avg_cost = (usage_stats['total_cost'] or 0) / 7
+
+                # Get last execution cost
+                cursor.execute("""
+                    SELECT api_cost, input_tokens, output_tokens, decision_time
+                    FROM ai_portfolio_decisions
+                    WHERE ai_bot_id IN (
+                        SELECT id FROM ai_bots WHERE user_id = %s
+                    )
+                    ORDER BY decision_time DESC
+                    LIMIT 1
+                """, (current_user.id,))
+                last_execution = cursor.fetchone()
+
+                # Calculate estimated days remaining
+                estimated_days = (remaining_credits / daily_avg_cost) if daily_avg_cost > 0 else float('inf')
+
+                return jsonify({
+                    'credits': {
+                        'total': total_credits,
+                        'used': used_credits,
+                        'remaining': remaining_credits
+                    },
+                    'bot_usage': {
+                        'total_calls_7d': usage_stats['total_calls'] or 0,
+                        'total_cost_7d': float(usage_stats['total_cost'] or 0),
+                        'total_tokens_7d': int(usage_stats['total_tokens'] or 0),
+                        'avg_cost_per_call': float(usage_stats['avg_cost_per_call'] or 0),
+                        'daily_avg_cost': daily_avg_cost
+                    },
+                    'last_execution': {
+                        'cost': float(last_execution['api_cost']) if last_execution else 0,
+                        'tokens': int((last_execution['input_tokens'] or 0) + (last_execution['output_tokens'] or 0)) if last_execution else 0,
+                        'time': last_execution['decision_time'].isoformat() if last_execution else None
+                    },
+                    'estimated_days_remaining': estimated_days if estimated_days != float('inf') else None
+                })
+
+        except Exception as e:
+            logger.error(f"Error fetching OpenRouter usage: {e}", exc_info=True)
+            return jsonify({'error': str(e)}), 500

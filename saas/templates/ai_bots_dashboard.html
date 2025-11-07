@@ -129,7 +129,7 @@
                     </div>
                 </div>
 
-                <div id="chart-container" style="position: relative; height: 520px;">
+                <div id="chart-container" style="position: relative; height: 380px;">
                     <canvas id="balance-chart"></canvas>
                 </div>
 
@@ -141,10 +141,11 @@
             <!-- Tabbed Interface (Right - 30%) -->
             <div class="tabs-container">
                 <div class="tabs">
-                    <button class="tab" data-tab="positions" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">POSITIONS</button>
-                    <button class="tab" data-tab="trades" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">TRADES</button>
-                    <button class="tab active" data-tab="modelchat" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">BOT CHAT</button>
-                    <button class="tab" data-tab="leaderboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">LEADERBOARD</button>
+                    <button class="tab" data-tab="positions" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">POSITIONS</button>
+                    <button class="tab" data-tab="trades" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">TRADES</button>
+                    <button class="tab active" data-tab="modelchat" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">BOT CHAT</button>
+                    <button class="tab" data-tab="apiusage" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">API USAGE</button>
+                    <button class="tab" data-tab="leaderboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">LEADERBOARD</button>
                 </div>
 
                 <!-- Positions Tab -->
@@ -200,6 +201,15 @@
                     <div id="decisions-log">
                         <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.9rem;">
                             Loading AI decisions...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Usage Tab -->
+                <div class="tab-content" id="tab-apiusage">
+                    <div id="api-usage-content" style="padding: 0.75rem;">
+                        <div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.85rem;">
+                            Loading API usage...
                         </div>
                     </div>
                 </div>
@@ -432,6 +442,8 @@ document.querySelectorAll('.tab').forEach(tab => {
             loadPositions();
         } else if (tabName === 'trades') {
             loadTrades();
+        } else if (tabName === 'apiusage') {
+            loadAPIUsage();
         }
     });
 });
@@ -1062,6 +1074,102 @@ function loadTrades() {
         .catch(error => {
             console.error('[ERROR] Failed to load trades:', error);
             tradesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading trades</div>';
+        });
+}
+
+// Load API Usage Stats
+function loadAPIUsage() {
+    const apiUsageContent = document.getElementById('api-usage-content');
+    if (!apiUsageContent) return;
+
+    apiUsageContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.85rem;">Loading API usage...</div>';
+
+    fetch('/api/openrouter-usage')
+        .then(response => response.json())
+        .then(data => {
+            console.log('[DEBUG] OpenRouter API response:', data);  // Debug logging
+
+            if (data.error) {
+                apiUsageContent.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.85rem;">${data.error}</div>`;
+                return;
+            }
+
+            const credits = data.credits || {};
+            const botUsage = data.bot_usage || {};
+            const lastExec = data.last_execution || {};
+            const daysRemaining = data.estimated_days_remaining;
+
+            const remaining = credits.remaining || 0;
+            const total = credits.total || 0;
+            const used = credits.used || 0;
+            const balancePercent = total > 0 ? ((remaining / total) * 100) : 0;
+            const balanceColor = balancePercent > 50 ? 'var(--green)' : balancePercent > 20 ? 'var(--yellow)' : 'var(--red)';
+
+            let html = `
+                <div style="padding: 0.5rem;">
+                    <!-- OpenRouter Balance -->
+                    <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <span style="color: var(--gray-400); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">Credits Remaining</span>
+                            <a href="https://openrouter.ai/credits" target="_blank" style="color: var(--blue); font-size: 0.7rem; text-decoration: none;">Add Credits →</a>
+                        </div>
+                        <div style="font-size: 2rem; font-weight: 700; color: ${balanceColor}; margin-bottom: 0.5rem;">
+                            $${remaining.toFixed(2)}
+                        </div>
+                        <div style="background: var(--gray-800); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+                            <div style="background: ${balanceColor}; height: 100%; width: ${balancePercent}%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: var(--gray-500); font-size: 0.7rem;">
+                            <span>${balancePercent.toFixed(1)}% of $${total.toFixed(2)}</span>
+                            <span style="color: var(--gray-400);">Spent: $${used.toFixed(4)}</span>
+                        </div>
+                        ${daysRemaining ? `<div style="text-align: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-800); color: var(--gray-400); font-size: 0.7rem;">~${daysRemaining.toFixed(0)} days remaining at current rate</div>` : ''}
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                        <!-- Last Execution -->
+                        <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem;">
+                            <div style="color: var(--gray-400); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Last Call</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: var(--gray-200);">$${lastExec.cost ? lastExec.cost.toFixed(4) : '0.0000'}</div>
+                            <div style="color: var(--gray-500); font-size: 0.65rem; margin-top: 0.25rem;">${lastExec.tokens ? lastExec.tokens.toLocaleString() : '0'} tokens</div>
+                        </div>
+
+                        <!-- Daily Average (from our tracking) -->
+                        <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem;">
+                            <div style="color: var(--gray-400); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">Daily Avg (Bot)</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: var(--gray-200);">$${botUsage.daily_avg_cost ? botUsage.daily_avg_cost.toFixed(4) : '0.0000'}</div>
+                            <div style="color: var(--gray-500); font-size: 0.65rem; margin-top: 0.25rem;">${botUsage.total_calls_7d || 0} calls/7d</div>
+                        </div>
+                    </div>
+
+                    <!-- Bot Usage (Last 7 Days) -->
+                    <div style="background: var(--gray-950); border: 1px solid var(--gray-700); border-radius: 8px; padding: 0.75rem;">
+                        <div style="color: var(--gray-400); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; border-bottom: 1px solid var(--gray-800); padding-bottom: 0.5rem;">Bot Usage (7 Days)</div>
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; font-size: 0.75rem;">
+                            <div style="color: var(--gray-500);">Total Cost:</div>
+                            <div style="color: var(--gray-200); font-weight: 600; text-align: right;">$${botUsage.total_cost_7d ? botUsage.total_cost_7d.toFixed(4) : '0.0000'}</div>
+
+                            <div style="color: var(--gray-500);">Avg/Call:</div>
+                            <div style="color: var(--gray-200); font-weight: 600; text-align: right;">$${botUsage.avg_cost_per_call ? botUsage.avg_cost_per_call.toFixed(4) : '0.0000'}</div>
+
+                            <div style="color: var(--gray-500);">Tokens Used:</div>
+                            <div style="color: var(--gray-200); font-weight: 600; text-align: right;">${botUsage.total_tokens_7d ? botUsage.total_tokens_7d.toLocaleString() : '0'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Info Notice -->
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; font-size: 0.7rem; color: var(--gray-400); line-height: 1.5;">
+                        💡 Credits and usage synced from OpenRouter API. Bot usage calculated from portfolio decisions in the last 7 days.
+                    </div>
+                </div>
+            `;
+
+            apiUsageContent.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('[ERROR] Failed to load API usage:', error);
+            apiUsageContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.85rem;">Error loading API usage</div>';
         });
 }
 
