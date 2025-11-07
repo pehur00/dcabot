@@ -112,7 +112,10 @@ class AIBotExecutor:
             ai_api_key = decrypt_api_key(bot['ai_api_key'])
 
             # Step 2: Initialize clients
-            use_testnet = bot.get('testnet', True)  # Default to testnet for safety
+            # Check TESTNET environment variable like Martingale strategy does
+            env_testnet = os.getenv('TESTNET', 'False').lower() in ('true', '1', 't')
+            # Use environment variable if set, otherwise use database value (default to False for mainnet)
+            use_testnet = env_testnet if os.getenv('TESTNET') else bot.get('testnet', False)
             phemex_client = PhemexClient(
                 api_key=exchange_api_key,
                 api_secret=exchange_api_secret,
