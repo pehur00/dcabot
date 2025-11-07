@@ -628,7 +628,9 @@ def register_ai_bot_routes(app):
                         'confidence': sym['confidence'],
                         'reasoning': sym['reasoning'],
                         'action_taken': sym['action_taken'],
-                        'skip_reason': sym['skip_reason']
+                        'skip_reason': sym['skip_reason'],
+                        'position_size_pct': float(sym['position_size_pct']) if sym['position_size_pct'] else None,
+                        'leverage_used': sym['leverage_used']
                     })
 
                 formatted_decisions.append({

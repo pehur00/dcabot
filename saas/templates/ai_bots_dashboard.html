@@ -889,6 +889,20 @@ function getModelColor(modelName) {
     return '#6B7280';
 }
 
+// Extract short model name (part after colon or full name)
+function getShortModelName(modelName) {
+    if (!modelName) return '';
+
+    // If model name contains colon (e.g., "DeepSeek: DeepSeek V3.1 Terminus")
+    // Extract the part after the colon
+    if (modelName.includes(':')) {
+        return modelName.split(':')[1].trim();
+    }
+
+    // Otherwise return as-is
+    return modelName;
+}
+
 // Generate deterministic color for bot based on bot ID
 function getBotColor(botId) {
     const colors = [
@@ -1028,7 +1042,8 @@ function loadDecisionsLog() {
                             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem;">
                                 <div style="flex: 1;">
                                     <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem; flex-wrap: wrap;">
-                                        <span style="color: ${modelColor}; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em;">${d.model_name}</span>
+                                        <span style="color: var(--gray-200); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em;">${d.bot_name}</span>
+                                        <span style="color: ${modelColor}; font-weight: 600; font-size: 0.7rem; letter-spacing: 0.01em;">(${getShortModelName(d.model_name)})</span>
                                         <span style="color: ${actionColor}; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">${d.portfolio_action}</span>
                                         <span style="background: var(--gray-800); color: var(--gray-400); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600;">${d.symbols.length} symbols</span>
                                     </div>
