@@ -482,6 +482,8 @@ Respond with ONLY the JSON, no other text."""
         market_data = portfolio_context['market_data']
         symbol_constraints = portfolio_context['symbol_constraints']
         symbols = portfolio_context['symbols']
+        selected_symbols = portfolio_context.get('selected_symbols', symbols)
+        position_only_symbols = portfolio_context.get('position_only_symbols', [])
 
         # Build market analysis for all symbols (moderately compressed)
         market_analysis = []
@@ -494,8 +496,16 @@ Respond with ONLY the JSON, no other text."""
             current_price = md['current_price']
             min_value_usd = float(min_qty) * float(current_price) if min_qty else 0
 
+            # Mark symbol category
+            if symbol in position_only_symbols:
+                symbol_label = f"**{symbol} [POSITION ONLY]:**"
+            elif symbol in selected_symbols:
+                symbol_label = f"**{symbol} [AVAILABLE]:**"
+            else:
+                symbol_label = f"**{symbol}:**"
+
             # Balanced format: readable but not verbose
-            symbol_section = f"""**{symbol}:**
+            symbol_section = f"""{symbol_label}
 Price: ${md['current_price']:.0f} | 24h: {md.get('change_24h', 0):+.1f}% | RSI: {md.get('rsi', 50)}
 EMAs: 20m={md.get('ema20_1m', 0):.0f} 50m={md.get('ema50_5m', 0):.0f} 100h={md.get('ema100_1h', 0):.0f}
 Vol: {md.get('volume_trend', 'N/A')} | MinOrder: {min_qty} (${min_value_usd:.0f})
@@ -533,7 +543,13 @@ Choose your overall approach based on market conditions:
 - AGGRESSIVE (7-10x): High confidence, strong trends, maximizing returns
 - SPECULATIVE (10x+): Maximum conviction, clear market regime, high-risk tolerance
 
+**SYMBOL CATEGORIES:**
+- **Selected for new trades:** {', '.join(selected_symbols)} - You can open NEW positions in these
+- **Existing positions only:** {', '.join(position_only_symbols) if position_only_symbols else 'None'} - Manage/close only, NO new positions
+
 **RULES:**
+- ONLY open NEW positions in selected symbols ({', '.join(selected_symbols)})
+- For position-only symbols, you can HOLD, ADD to existing position, or CLOSE - but NO new positions
 - Consider correlations (BTC/ETH move together)
 - Balance diversification across symbols and aggression levels
 - Can HOLD some symbols while BUY/SELL others

@@ -51,7 +51,8 @@ class AIBotExecutor:
 
             logger.info(f"Found {len(active_bots)} active AI bot(s)")
 
-            # OPTIMIZATION: Collect all unique symbols across all bots
+            # OPTIMIZATION: Collect all unique symbols across all bots (selected symbols only)
+            # Note: We'll also fetch data for any symbols with open positions on-demand
             unique_symbols = set()
             for bot in active_bots:
                 # Parse symbols from JSONB column (stored as JSON string)
@@ -64,7 +65,7 @@ class AIBotExecutor:
                     symbols = [bot['symbol']]
                 unique_symbols.update(symbols)
 
-            logger.info(f"Unique symbols to fetch: {', '.join(unique_symbols)}")
+            logger.info(f"Selected symbols to fetch: {', '.join(unique_symbols)}")
 
             # OPTIMIZATION: Fetch market data once per symbol (shared across all bots)
             market_data_cache = {}
@@ -139,13 +140,48 @@ class AIBotExecutor:
             )
             logger.info(f"Using {'TESTNET' if use_testnet else 'MAINNET'} for bot #{bot_id}")
 
-            # Step 3: PORTFOLIO-LEVEL DECISION (one AI call for all symbols)
+            # Step 3: Check for existing positions (any symbol, not just selected)
+            logger.info(f"\n--- Checking for existing positions ---")
+            pos_side = "Long" if bot['side'] == "Long" else "Short"
+            all_positions = phemex_client.get_all_positions()
+            position_symbols = set()
+
+            # Collect symbols that have open positions
+            for pos in all_positions:
+                if pos.get('side') == pos_side and float(pos.get('size', 0)) != 0:
+                    symbol = pos.get('symbol')
+                    position_symbols.add(symbol)
+                    logger.info(f"Found existing position: {symbol} ({pos_side})")
+
+            # Combine selected symbols + position symbols for AI analysis
+            all_symbols_for_ai = set(allowed_symbols) | position_symbols
+
+            # Fetch market data for any position symbols not already cached
+            for symbol in position_symbols:
+                if symbol not in market_data_cache:
+                    try:
+                        logger.info(f"Fetching market data for position symbol {symbol}...")
+                        market_data_cache[symbol] = self.market_data_fetcher.fetch_all_data(symbol)
+                        logger.info(f"✓ {symbol}: ${market_data_cache[symbol]['current_price']:,.2f}")
+                    except Exception as e:
+                        logger.error(f"Failed to fetch {symbol}: {e}")
+                        market_data_cache[symbol] = None
+
+            logger.info(f"Selected symbols (for new trades): {', '.join(allowed_symbols)}")
+            if position_symbols - set(allowed_symbols):
+                logger.info(f"Position-only symbols (manage existing): {', '.join(position_symbols - set(allowed_symbols))}")
+
+            # Step 4: PORTFOLIO-LEVEL DECISION (one AI call for all symbols)
             logger.info(f"\n--- Making Portfolio Decision ---")
 
             # Build portfolio context (all symbols + positions)
             portfolio_context = self.build_portfolio_context(
-                bot, allowed_symbols, market_data_cache, phemex_client
+                bot, list(all_symbols_for_ai), market_data_cache, phemex_client
             )
+
+            # Add metadata about which symbols are selected vs position-only
+            portfolio_context['selected_symbols'] = list(allowed_symbols)
+            portfolio_context['position_only_symbols'] = list(position_symbols - set(allowed_symbols))
 
             if not portfolio_context:
                 logger.warning("Failed to build portfolio context - skipping bot")
