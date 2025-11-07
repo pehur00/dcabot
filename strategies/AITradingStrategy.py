@@ -227,10 +227,10 @@ Based on the comprehensive analysis above, make a COMPLETE trading decision:
 
 **IMPORTANT:**
 - Larger positions = higher risk, require higher confidence
-- Higher leverage = more risk, use conservatively
+- Use leverage proportional to confidence: 70-80% confidence → 3-5x leverage, 80-90% → 5-8x leverage
 - Consider market volatility when sizing positions
 - Keep reasoning concise but insightful (3-4 sentences)
-- Be conservative with confidence scores
+- Be conservative with confidence scores but reasonable with leverage (avoid 1x unless low confidence)
 
 **Output Format (JSON only, no markdown):**
 {{
@@ -522,6 +522,8 @@ Analyze the portfolio and provide a decision for each symbol.
 - Can HOLD some symbols while BUY/SELL others
 - Available to spend: ${balance['available']:.0f}
 - Meet minimum order sizes
+- Use leverage proportional to confidence: 70-80% confidence → 3-5x leverage, 80-90% → 5-8x leverage
+- Avoid 1x leverage unless confidence is low (<70%)
 
 **OUTPUT (JSON only, no markdown):**
 {{
@@ -589,15 +591,20 @@ Analyze the portfolio and provide a decision for each symbol.
                     # Ensure leverage is always present and valid
                     max_lev = int(self.bot_config.get('leverage', 10))
                     if 'leverage' not in decision_data or decision_data['leverage'] is None:
-                        default_leverage = min(max_lev, 3)  # Default to 3x or max allowed
+                        default_leverage = min(max_lev, 5)  # Default to 5x or max allowed (more reasonable)
                         decision_data['leverage'] = default_leverage
                         logger.warning(f"Portfolio decision for {symbol} missing leverage, setting to {default_leverage}x")
                     else:
                         # Ensure leverage is integer and within bounds
                         try:
-                            decision_data['leverage'] = max(1, min(max_lev, int(decision_data['leverage'])))
+                            leverage_value = int(decision_data['leverage'])
+                            # If AI chose 1x, boost it to at least 3x unless max leverage is very low
+                            if leverage_value == 1 and max_lev >= 3:
+                                leverage_value = 3
+                                logger.info(f"AI chose 1x leverage for {symbol}, boosting to 3x for better risk-adjusted returns")
+                            decision_data['leverage'] = max(1, min(max_lev, leverage_value))
                         except (ValueError, TypeError):
-                            default_leverage = min(max_lev, 3)
+                            default_leverage = min(max_lev, 5)
                             decision_data['leverage'] = default_leverage
                             logger.warning(f"Portfolio decision for {symbol} has invalid leverage, setting to {default_leverage}x")
 
