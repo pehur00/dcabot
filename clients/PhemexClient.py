@@ -159,6 +159,7 @@ class PhemexClient(TradingClient):
                     'side': position["side"],  # Added for display
                     'avgEntryPriceRp': position.get('avgEntryPriceRp', 0),  # Added for entry price display
                     'markPriceRp': position.get('markPriceRp', 0),  # Added for current price display
+                    'leverage': position.get('leverageRr', '1').replace('-', ''),  # Phemex uses 'leverageRr' field, strip '-' prefix for cross margin
                     'margin_level': margin_level
                 }
             else:

@@ -1160,7 +1160,7 @@ def register_ai_bot_routes(app):
                                 entry_price = float(position.get('avgEntryPriceRp', 0))
                                 mark_price = float(position.get('markPriceRp', 0))
                                 unrealised_pnl = float(position.get('unrealisedPnl', 0))
-                                leverage = int(position.get('leverage', 1))
+                                leverage = int(float(position.get('leverage', 1)))  # Convert to float first to handle string values
                                 side = position.get('side', 'Unknown')
                                 notional = size * mark_price  # Position value
 
