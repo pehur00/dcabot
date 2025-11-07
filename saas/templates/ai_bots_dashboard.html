@@ -12,7 +12,7 @@
             <p style="color: var(--gray-500); margin-bottom: 2rem;">
                 Create your first AI trading bot to start comparing different AI models.
             </p>
-            <a href="{{ url_for('create_ai_bot') }}" class="btn btn-primary">Create AI Bot</a>
+            <button class="btn btn-primary" onclick="openAiBotModal()">Create AI Bot</button>
         </div>
         {% else %}
 
@@ -90,6 +90,7 @@
                         {% if bot['is_active'] %}
                         <span style="background: var(--green); width: 8px; height: 8px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px var(--green);"></span>
                         {% endif %}
+                        <button onclick="openAiBotModal({{ bot['id'] }})" style="background: transparent; border: none; color: var(--gray-500); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="Edit Settings">⚙️</button>
                         <form method="POST" action="{{ url_for('toggle_ai_bot', bot_id=bot['id']) }}" style="display: inline; margin: 0;">
                             <button type="submit" style="background: transparent; border: none; color: var(--gray-500); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="{{ 'Pause' if bot['is_active'] else 'Resume' }}">
                                 {% if bot['is_active'] %}⏸{% else %}▶️{% endif %}
@@ -1347,6 +1348,257 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 console.log('[DEBUG] Script loaded, Chart.js available:', typeof Chart !== 'undefined');
+</script>
+
+<!-- Include AI Bot Modal -->
+{% include 'ai_bot_modal.html' %}
+
+<!-- Modal Management JavaScript -->
+<script>
+let currentModalData = null;
+
+// Open AI Bot Modal (create or edit mode)
+function openAiBotModal(botId = null) {
+    const modal = document.getElementById('aiBotModal');
+    const form = document.getElementById('aiBotForm');
+
+    // Reset form
+    form.reset();
+    currentModalData = null;
+
+    if (botId) {
+        // Edit mode - load bot data
+        loadEditModal(botId);
+    } else {
+        // Create mode - load fresh form
+        loadCreateModal();
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Load create modal data
+function loadCreateModal() {
+    fetch('/ai-bots/modal')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentModalData = data;
+                populateModalForm(data.mode, data.bot, data.models);
+            } else {
+                alert('Error loading modal: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading create modal:', error);
+            alert('Error loading modal');
+        });
+}
+
+// Load edit modal data
+function loadEditModal(botId) {
+    fetch(`/ai-bots/modal/${botId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentModalData = data;
+                populateModalForm(data.mode, data.bot, data.models);
+            } else {
+                alert('Error loading modal: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading edit modal:', error);
+            alert('Error loading modal');
+        });
+}
+
+// Populate modal form with data
+function populateModalForm(mode, bot, models) {
+    const form = document.getElementById('aiBotForm');
+    const title = document.getElementById('modalTitle');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Set mode-specific UI elements
+    document.getElementById('modalMode').value = mode;
+
+    if (mode === 'edit' && bot) {
+        title.textContent = `Edit AI Bot: ${bot.name}`;
+        submitBtn.textContent = 'Update Bot';
+        document.getElementById('botId').value = bot.id;
+
+        // Populate form fields
+        document.getElementById('name').value = bot.name || '';
+        document.getElementById('model_config_id').value = bot.model_config_id || '';
+
+        // Handle API keys with masking
+        document.getElementById('exchange_api_key').value = bot.exchange_api_key || '';
+        document.getElementById('ai_api_key').value = bot.ai_api_key || '';
+
+        // Show/hide API key sections
+        document.getElementById('apiKeySection').style.display = 'block';
+        document.getElementById('apiKeyWarning').style.display = 'block';
+
+        // Populate symbols
+        if (bot.symbols) {
+            try {
+                const symbols = typeof bot.symbols === 'string' ? JSON.parse(bot.symbols) : bot.symbols;
+                const symbolCheckboxes = document.querySelectorAll('input[name="symbols"]');
+                symbolCheckboxes.forEach(checkbox => {
+                    checkbox.checked = symbols.includes(checkbox.value);
+                });
+            } catch (e) {
+                console.error('Error parsing symbols:', e);
+            }
+        }
+
+        // Populate other fields
+        document.querySelector(`input[name="side"][value="${bot.side || 'Long'}"]`).checked = true;
+        document.getElementById('max_position_size').value = bot.max_position_size || 0.02;
+        document.getElementById('max_leverage').value = bot.max_leverage || 10;
+        document.getElementById('risk_profile').value = bot.risk_profile || 'moderate';
+
+        document.getElementById('is_active').checked = bot.is_active || false;
+        document.getElementById('testnet').checked = bot.testnet || false;
+
+    } else {
+        // Create mode
+        title.textContent = 'Create New AI Bot';
+        submitBtn.textContent = 'Create Bot';
+        document.getElementById('botId').value = '';
+
+        // Hide API key sections for create mode
+        document.getElementById('apiKeySection').style.display = 'none';
+        document.getElementById('apiKeyWarning').style.display = 'none';
+
+        // Set default values
+        document.getElementById('max_position_size').value = 0.02;
+        document.getElementById('max_leverage').value = 10;
+        document.getElementById('risk_profile').value = 'moderate';
+        document.getElementById('testnet').checked = true;
+
+        // Check some default symbols
+        const defaultSymbols = ['BTCUSDT', 'ETHUSDT'];
+        const symbolCheckboxes = document.querySelectorAll('input[name="symbols"]');
+        symbolCheckboxes.forEach(checkbox => {
+            checkbox.checked = defaultSymbols.includes(checkbox.value);
+        });
+    }
+
+    // Populate model dropdown
+    populateModelDropdown(models, bot?.model_config_id);
+}
+
+// Populate model dropdown with categorization
+function populateModelDropdown(models, selectedModelId = null) {
+    const select = document.getElementById('model_config_id');
+    select.innerHTML = '';
+
+    // Group models by category
+    const categories = {};
+    models.forEach(model => {
+        if (!categories[model.category]) {
+            categories[model.category] = [];
+        }
+        categories[model.category].push(model);
+    });
+
+    // Create optgroups for each category
+    Object.keys(categories).forEach(category => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = getCategoryLabel(category);
+
+        categories[category].forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} (${model.provider})`;
+            if (model.id == selectedModelId) {
+                option.selected = true;
+            }
+            optgroup.appendChild(option);
+        });
+
+        select.appendChild(optgroup);
+    });
+}
+
+// Get user-friendly category label
+function getCategoryLabel(category) {
+    const labels = {
+        'budget': '💰 Budget Models',
+        'recommended': '⭐ Recommended',
+        'premium': '🚀 Premium'
+    };
+    return labels[category] || category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+// Close modal
+function closeAiBotModal() {
+    const modal = document.getElementById('aiBotModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    currentModalData = null;
+}
+
+// Handle form submission
+function submitAiBotForm() {
+    const form = document.getElementById('aiBotForm');
+    const formData = new FormData(form);
+
+    // Collect selected symbols
+    const selectedSymbols = [];
+    document.querySelectorAll('input[name="symbols"]:checked').forEach(checkbox => {
+        selectedSymbols.push(checkbox.value);
+    });
+    formData.set('symbols', JSON.stringify(selectedSymbols));
+
+    // Show loading state
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    fetch('/ai-bots/save', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeAiBotModal();
+            // Reload page to show updated data
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error saving bot:', error);
+        alert('Error saving bot');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('aiBotModal');
+    if (event.target === modal) {
+        closeAiBotModal();
+    }
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeAiBotModal();
+    }
+});
 </script>
 
 {% endblock %}

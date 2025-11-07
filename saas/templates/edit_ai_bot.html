@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Edit AI Bot - {{ bot['name'] }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-group { margin-bottom: 1.5rem; }
+    .form-label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #9CA3AF; }
+    .form-control { width: 100%; padding: 0.75rem; background: #374151; border: 1px solid #4B5563; border-radius: 8px; color: #F9FAFB; font-size: 0.95rem; }
+    .form-control:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    .btn { padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; border: none; }
+    .btn-primary { background: #3B82F6; color: white; }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-secondary { background: #6B7280; color: white; }
+    .btn-secondary:hover { background: #4B5563; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .checkbox-label { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #374151; border: 1px solid #4B5563; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .checkbox-label:hover { background: #4B5563; }
+    .checkbox-label input { margin: 0; }
+    .radio-group { display: flex; gap: 1rem; }
+    .radio-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .radio-label input { margin: 0; }
+    .model-option { padding: 1rem; background: #374151; border: 1px solid #4B5563; border-radius: 8px; margin-bottom: 0.5rem; }
+    .model-option:hover { border-color: #3B82F6; }
+    .model-option.selected { border-color: #3B82F6; background: #1E40AF; }
+    .model-name { font-weight: 600; color: #F9FAFB; margin-bottom: 0.25rem; }
+    .model-details { font-size: 0.85rem; color: #9CA3AF; }
+    .status-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.5rem; }
+    .status-active { background: #10B981; box-shadow: 0 0 8px #10B981; }
+    .status-inactive { background: #EF4444; }
+    .current-credentials { background: #065F46; border: 1px solid #10B981; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    .warning-box { background: #451A03; border: 1px solid #F59E0B; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 style="color: #F9FAFB; margin: 0; font-size: 1.875rem;">Edit AI Bot</h1>
+        <a href="{{ url_for('ai_bots_dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: {% if category == 'error' %}#991B1B{% else %}#065F46{% endif %}; border: 1px solid {% if category == 'error' %}#EF4444{% else %}#10B981{% endif %}; color: #F9FAFB;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('update_ai_bot', bot_id=bot['id']) }}">
+        <div style="background: #1F2937; padding: 2rem; border-radius: 12px; border: 1px solid #374151;">
+
+            <!-- Current Status -->
+            <div class="form-group">
+                <label class="form-label">Current Status</label>
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <span class="status-indicator {{ 'status-active' if bot['is_active'] else 'status-inactive' }}"></span>
+                    <span>{{ 'Active' if bot['is_active'] else 'Inactive' }} bot</span>
+                    <span style="margin-left: 1rem; color: #9CA3AF;">{{ 'LIVE' if not bot['testnet'] else 'TESTNET' }}</span>
+                </div>
+            </div>
+
+            <!-- Basic Settings -->
+            <div class="form-group">
+                <label class="form-label" for="name">Bot Name</label>
+                <input type="text" id="name" name="name" class="form-control" value="{{ bot['name'] }}" required>
+            </div>
+
+            <!-- AI Model -->
+            <div class="form-group">
+                <label class="form-label">AI Model</label>
+                <div style="margin-bottom: 1rem;">
+                    <div class="model-option" style="border-color: #3B82F6;">
+                        <div class="model-name">Current: {{ bot['model_name'] }} ({{ bot['provider'] }})</div>
+                        <div class="model-details">Provider: {{ bot['provider'] }}</div>
+                    </div>
+                </div>
+                <select id="model_config_id" name="model_config_id" class="form-control">
+                    {% for model in models %}
+                        <option value="{{ model.id }}" {% if model.id == bot['model_config_id'] %}selected{% endif %}>
+                            {{ model.name }} ({{ model.provider }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- API Credentials Warning -->
+            <div class="warning-box">
+                <strong>⚠️ API Credentials Required</strong>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">You need to provide fresh API credentials. Current credentials are not displayed for security.</p>
+            </div>
+
+            <!-- Phemex API Credentials -->
+            <div class="form-group">
+                <label class="form-label" for="exchange_api_key">Phemex API Key</label>
+                <input type="text" id="exchange_api_key" name="exchange_api_key" class="form-control" placeholder="Enter Phemex API Key" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="exchange_api_secret">Phemex API Secret</label>
+                <input type="password" id="exchange_api_secret" name="exchange_api_secret" class="form-control" placeholder="Enter Phemex API Secret" required>
+            </div>
+
+            <!-- OpenRouter API Key -->
+            <div class="form-group">
+                <label class="form-label" for="ai_api_key">OpenRouter API Key</label>
+                <input type="text" id="ai_api_key" name="ai_api_key" class="form-control" placeholder="Enter OpenRouter API Key" required>
+                <small style="color: #9CA3AF; display: block; margin-top: 0.5rem; font-size: 0.85rem;">
+                    Get your API key from <a href="https://openrouter.ai/keys" target="_blank" style="color: #3B82F6;">OpenRouter Dashboard</a>
+                </small>
+            </div>
+
+            <!-- Trading Symbols -->
+            <div class="form-group">
+                <label class="form-label">Trading Symbols</label>
+                <div class="checkbox-group">
+                    {% set available_symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT', 'FILUSDT'] %}
+                    {% for symbol in available_symbols %}
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="symbols" value="{{ symbol }}"
+                                   {% if symbol in bot['symbols'] %}checked{% endif %}>
+                            <span>{{ symbol }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Trading Side -->
+            <div class="form-group">
+                <label class="form-label">Trading Side</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="side" value="Long" {% if bot['side'] == 'Long' %}checked{% endif %}>
+                        <span>Long (Buy Dips)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="side" value="Short" {% if bot['side'] == 'Short' %}checked{% endif %}>
+                        <span>Short (Sell Rips)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Risk Settings -->
+            <div class="form-group">
+                <label class="form-label" for="max_position_size">Max Position Size (%)</label>
+                <input type="number" id="max_position_size" name="max_position_size" class="form-control"
+                       value="{{ bot['max_position_size'] }}" min="0.01" max="0.5" step="0.01" required>
+                <small style="color: #9CA3AF; display: block; margin-top: 0.5rem; font-size: 0.85rem;">
+                    Maximum % of balance to use per position (0.01 = 1%, 0.5 = 50%)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="max_leverage">Max Leverage</label>
+                <input type="number" id="max_leverage" name="max_leverage" class="form-control"
+                       value="{{ bot['max_leverage'] }}" min="1" max="100" step="1" required>
+                <small style="color: #9CA3AF; display: block; margin-top: 0.5rem; font-size: 0.85rem;">
+                    Maximum leverage multiplier (1x to 100x)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="risk_profile">Risk Profile</label>
+                <select id="risk_profile" name="risk_profile" class="form-control">
+                    <option value="conservative" {% if bot['risk_profile'] == 'conservative' %}selected{% endif %}>Conservative</option>
+                    <option value="moderate" {% if bot['risk_profile'] == 'moderate' %}selected{% endif %}>Moderate</option>
+                    <option value="aggressive" {% if bot['risk_profile'] == 'aggressive' %}selected{% endif %}>Aggressive</option>
+                </select>
+            </div>
+
+            <!-- Environment -->
+            <div class="form-group">
+                <label class="form-label">Environment Settings</label>
+                <div style="display: flex; gap: 2rem;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_active" {% if bot['is_active'] %}checked{% endif %}>
+                        <span>Active</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="testnet" {% if bot['testnet'] %}checked{% endif %}>
+                        <span>Testnet</span>
+                    </label>
+                </div>
+                <small style="color: #9CA3AF; display: block; margin-top: 0.5rem; font-size: 0.85rem;">
+                    ⚠️ Uncheck Testnet for live trading with real money
+                </small>
+            </div>
+
+            <!-- Buttons -->
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Update Bot</button>
+                <a href="{{ url_for('ai_bots_dashboard') }}" class="btn btn-secondary" style="flex: 0.5; text-align: center;">Cancel</a>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update model selection styling
+    const modelSelect = document.getElementById('model_config_id');
+    modelSelect.addEventListener('change', function() {
+        const options = this.querySelectorAll('option');
+        options.forEach(opt => {
+            const parent = opt.closest('div');
+            if (parent && parent.classList.contains('model-option')) {
+                if (opt.selected) {
+                    parent.classList.add('selected');
+                } else {
+                    parent.classList.remove('selected');
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

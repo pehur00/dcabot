@@ -310,6 +310,257 @@ def register_ai_bot_routes(app):
             flash('Error creating AI bot(s)', 'error')
             return redirect(url_for('create_ai_bot'))
 
+    @app.route('/ai-bots/modal')
+    @login_required
+    def ai_bot_modal():
+        """Load AI bot modal for creating new bot"""
+        from saas import database as db
+
+        try:
+            # Get available AI models
+            with db.get_db() as conn:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+                cursor.execute("""
+                    SELECT id, name, provider, category, pricing_per_input_token, pricing_per_output_token
+                    FROM ai_model_configs
+                    WHERE is_active = true
+                    ORDER BY category, provider, name
+                """)
+                models = cursor.fetchall()
+
+            return jsonify({
+                'success': True,
+                'mode': 'create',
+                'models': [dict(model) for model in models],
+                'bot': None
+            })
+
+        except Exception as e:
+            logger.error(f"Error loading create modal: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+    @app.route('/ai-bots/modal/<int:bot_id>')
+    @login_required
+    def ai_bot_edit_modal(bot_id):
+        """Load AI bot modal for editing existing bot"""
+        from saas import database as db
+
+        try:
+            # Get bot data and available models
+            with db.get_db() as conn:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+                # Get bot data
+                cursor.execute("""
+                    SELECT
+                        ab.*,
+                        amc.name as model_name,
+                        amc.provider
+                    FROM ai_bots ab
+                    JOIN ai_model_configs amc ON ab.model_config_id = amc.id
+                    WHERE ab.id = %s AND ab.user_id = %s
+                """, (bot_id, current_user.id))
+                bot = cursor.fetchone()
+
+                if not bot:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Bot not found'
+                    }), 404
+
+                # Get available models
+                cursor.execute("""
+                    SELECT id, name, provider, category, pricing_per_input_token, pricing_per_output_token
+                    FROM ai_model_configs
+                    WHERE is_active = true
+                    ORDER BY category, provider, name
+                """)
+                models = cursor.fetchall()
+
+            # Convert bot to dict and mask sensitive data
+            bot_dict = dict(bot)
+            # Mask API keys for security
+            if bot_dict.get('exchange_api_key'):
+                bot_dict['exchange_api_key'] = '***' + bot_dict['exchange_api_key'][-4:] if len(bot_dict['exchange_api_key']) > 4 else '***'
+            if bot_dict.get('ai_api_key'):
+                bot_dict['ai_api_key'] = '***' + bot_dict['ai_api_key'][-4:] if len(bot_dict['ai_api_key']) > 4 else '***'
+
+            return jsonify({
+                'success': True,
+                'mode': 'edit',
+                'bot': bot_dict,
+                'models': [dict(model) for model in models]
+            })
+
+        except Exception as e:
+            logger.error(f"Error loading edit modal: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+    @app.route('/ai-bots/save', methods=['POST'])
+    @login_required
+    def ai_bot_save():
+        """Unified save endpoint for creating and updating AI bots"""
+        from saas import database as db
+        from saas.security import encrypt_api_key, decrypt_api_key
+        import json
+
+        try:
+            bot_id = request.form.get('bot_id')
+            mode = request.form.get('mode')  # 'create' or 'edit'
+
+            # Validate form data
+            required_fields = ['name', 'model_config_id', 'symbols', 'side', 'max_position_size',
+                             'max_leverage', 'risk_profile', 'exchange_api_key', 'ai_api_key']
+
+            form_data = {}
+            for field in required_fields:
+                value = request.form.get(field)
+                if not value and field not in ['symbols']:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Missing required field: {field}'
+                    }), 400
+                form_data[field] = value
+
+            # Parse symbols (JSON string from frontend)
+            try:
+                symbols = json.loads(form_data['symbols'])
+                if not symbols:
+                    return jsonify({
+                        'success': False,
+                        'error': 'At least one trading symbol is required'
+                    }), 400
+            except json.JSONDecodeError:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid symbols format'
+                }), 400
+
+            # Parse boolean fields
+            is_active = request.form.get('is_active') == 'on'
+            testnet = request.form.get('testnet') == 'on'
+
+            with db.get_db() as conn:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+                if mode == 'create':
+                    # Create new bot
+                    cursor.execute("""
+                        INSERT INTO ai_bots (
+                            user_id, name, model_config_id, symbols, side,
+                            max_position_size, max_leverage, risk_profile,
+                            exchange_api_key, exchange_api_secret, ai_api_key,
+                            is_active, testnet, initial_balance_snapshot, snapshot_taken_at,
+                            created_at, updated_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+                        ) RETURNING id
+                    """, (
+                        current_user.id,
+                        form_data['name'],
+                        form_data['model_config_id'],
+                        json.dumps(symbols),
+                        form_data['side'],
+                        float(form_data['max_position_size']),
+                        int(form_data['max_leverage']),
+                        form_data['risk_profile'],
+                        encrypt_api_key(form_data['exchange_api_key']),
+                        encrypt_api_key(request.form.get('exchange_api_secret')),
+                        encrypt_api_key(form_data['ai_api_key']),
+                        is_active,
+                        testnet,
+                        0.0,  # Will be updated when first executed
+                        None
+                    ))
+
+                    bot_id = cursor.fetchone()['id']
+                    action = 'created'
+
+                else:  # edit mode
+                    # Update existing bot - first get current bot data
+                    cursor.execute("""
+                        SELECT exchange_api_key, exchange_api_secret, ai_api_key
+                        FROM ai_bots
+                        WHERE id = %s AND user_id = %s
+                    """, (bot_id, current_user.id))
+
+                    current_bot = cursor.fetchone()
+                    if not current_bot:
+                        return jsonify({
+                            'success': False,
+                            'error': 'Bot not found'
+                        }), 404
+
+                    # Handle API keys - if user provided new ones, use them; otherwise keep existing
+                    exchange_api_key = form_data['exchange_api_key']
+                    exchange_api_secret = request.form.get('exchange_api_secret')
+                    ai_api_key = form_data['ai_api_key']
+
+                    # Check if API keys are masked (indicating user didn't change them)
+                    if exchange_api_key.startswith('***'):
+                        exchange_api_key = decrypt_api_key(current_bot['exchange_api_key'])
+                    if exchange_api_secret.startswith('***'):
+                        exchange_api_secret = decrypt_api_key(current_bot['exchange_api_secret'])
+                    if ai_api_key.startswith('***'):
+                        ai_api_key = decrypt_api_key(current_bot['ai_api_key'])
+
+                    cursor.execute("""
+                        UPDATE ai_bots SET
+                            name = %s,
+                            model_config_id = %s,
+                            symbols = %s,
+                            side = %s,
+                            max_position_size = %s,
+                            max_leverage = %s,
+                            risk_profile = %s,
+                            exchange_api_key = %s,
+                            exchange_api_secret = %s,
+                            ai_api_key = %s,
+                            is_active = %s,
+                            testnet = %s,
+                            updated_at = NOW()
+                        WHERE id = %s AND user_id = %s
+                    """, (
+                        form_data['name'],
+                        form_data['model_config_id'],
+                        json.dumps(symbols),
+                        form_data['side'],
+                        float(form_data['max_position_size']),
+                        int(form_data['max_leverage']),
+                        form_data['risk_profile'],
+                        encrypt_api_key(exchange_api_key),
+                        encrypt_api_key(exchange_api_secret),
+                        encrypt_api_key(ai_api_key),
+                        is_active,
+                        testnet,
+                        bot_id,
+                        current_user.id
+                    ))
+
+                    action = 'updated'
+
+            return jsonify({
+                'success': True,
+                'message': f'AI bot {action} successfully!',
+                'bot_id': bot_id
+            })
+
+        except Exception as e:
+            logger.error(f"Error saving AI bot: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
 
     @app.route('/api/ai-bots/chart-data')
     @login_required
@@ -911,6 +1162,127 @@ def register_ai_bot_routes(app):
         except Exception as e:
             logger.error(f"Positions API error: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
+
+
+    @app.route('/ai-bots/<int:bot_id>/edit', methods=['GET'])
+    @login_required
+    def edit_ai_bot(bot_id):
+        """Edit AI bot settings"""
+        from saas import database as db
+
+        try:
+            with db.get_db() as conn:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+                # Get bot details with user verification
+                cursor.execute("""
+                    SELECT b.*, m.name as model_name, m.provider
+                    FROM ai_bots b
+                    JOIN ai_model_configs m ON b.model_config_id = m.id
+                    WHERE b.id = %s AND b.user_id = %s
+                """, (bot_id, current_user.id))
+
+                bot = cursor.fetchone()
+                if not bot:
+                    flash('Bot not found or access denied', 'error')
+                    return redirect(url_for('ai_bots_dashboard'))
+
+                # Get available AI models
+                cursor.execute("""
+                    SELECT id, name, provider
+                    FROM ai_model_configs
+                    ORDER BY provider, name
+                """)
+                models = cursor.fetchall()
+
+                return render_template('edit_ai_bot.html', bot=bot, models=models)
+
+        except Exception as e:
+            logger.error(f"Edit AI bot error: {e}", exc_info=True)
+            flash('Error loading bot settings', 'error')
+            return redirect(url_for('ai_bots_dashboard'))
+
+    @app.route('/ai-bots/<int:bot_id>/update', methods=['POST'])
+    @login_required
+    def update_ai_bot(bot_id):
+        """Update AI bot settings"""
+        from saas import database as db
+        from saas.security import encrypt_api_key
+
+        try:
+            with db.get_db() as conn:
+                from psycopg2.extras import RealDictCursor
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+                # Verify bot belongs to current user
+                cursor.execute("""
+                    SELECT id, name FROM ai_bots
+                    WHERE id = %s AND user_id = %s
+                """, (bot_id, current_user.id))
+
+                if not cursor.fetchone():
+                    flash('Bot not found or access denied', 'error')
+                    return redirect(url_for('ai_bots_dashboard'))
+
+                # Get form data
+                name = request.form.get('name', '').strip()
+                model_config_id = request.form.get('model_config_id', type=int)
+                exchange_api_key_encrypted = request.form.get('exchange_api_key', '').strip()
+                exchange_api_secret_encrypted = request.form.get('exchange_api_secret', '').strip()
+                ai_api_key_encrypted = request.form.get('ai_api_key', '').strip()
+                symbols = request.form.getlist('symbols')
+                side = request.form.get('side', 'Long')
+                max_position_size = request.form.get('max_position_size', type=float)
+                max_leverage = request.form.get('max_leverage', type=int)
+                risk_profile = request.form.get('risk_profile', 'moderate')
+                is_active = request.form.get('is_active') == 'on'
+                testnet = request.form.get('testnet') == 'on'
+
+                # Validation
+                if not name:
+                    flash('Bot name is required', 'error')
+                    return redirect(url_for('edit_ai_bot', bot_id=bot_id))
+
+                if not exchange_api_key_encrypted or not exchange_api_secret_encrypted:
+                    flash('Exchange API credentials are required', 'error')
+                    return redirect(url_for('edit_ai_bot', bot_id=bot_id))
+
+                if not ai_api_key_encrypted:
+                    flash('AI API key is required', 'error')
+                    return redirect(url_for('edit_ai_bot', bot_id=bot_id))
+
+                if not symbols:
+                    flash('At least one trading symbol is required', 'error')
+                    return redirect(url_for('edit_ai_bot', bot_id=bot_id))
+
+                # Encrypt API keys
+                exchange_api_key = encrypt_api_key(exchange_api_key_encrypted)
+                exchange_api_secret = encrypt_api_key(exchange_api_secret_encrypted)
+                ai_api_key = encrypt_api_key(ai_api_key_encrypted)
+
+                # Update bot
+                cursor.execute("""
+                    UPDATE ai_bots
+                    SET name = %s, model_config_id = %s, exchange_api_key = %s,
+                        exchange_api_secret = %s, ai_api_key = %s, symbols = %s,
+                        side = %s, max_position_size = %s, max_leverage = %s,
+                        risk_profile = %s, is_active = %s, testnet = %s,
+                        updated_at = NOW()
+                    WHERE id = %s AND user_id = %s
+                """, (name, model_config_id, exchange_api_key, exchange_api_secret,
+                      ai_api_key, symbols, side, max_position_size, max_leverage,
+                      risk_profile, is_active, testnet, bot_id, current_user.id))
+
+                conn.commit()
+
+                flash(f'Bot "{name}" updated successfully', 'success')
+                return redirect(url_for('ai_bots_dashboard'))
+
+        except Exception as e:
+            logger.error(f"Update AI bot error: {e}", exc_info=True)
+            flash('Error updating bot', 'error')
+            return redirect(url_for('edit_ai_bot', bot_id=bot_id))
 
 
     @app.route('/ai-bots/<int:bot_id>/delete', methods=['POST'])

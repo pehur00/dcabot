@@ -1,0 +1,665 @@
+<!-- AI Bot Modal Template - Unified for Create/Edit -->
+<div id="aiBotModal" class="modal" style="display: none;">
+    <div class="modal-content" style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; margin: 2rem auto;">
+        <div class="modal-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid #374151;">
+            <h2 id="modalTitle" style="margin: 0; color: #f9fafb; font-size: 1.5rem;">Create AI Bot</h2>
+            <button type="button" onclick="closeBotModal()" style="background: transparent; border: none; color: #9ca3af; font-size: 1.5rem; cursor: pointer; float: right;">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 2rem;">
+            <form id="botForm" method="POST">
+                <!-- Bot ID (hidden for edit mode) -->
+                <input type="hidden" id="botId" name="bot_id" value="">
+
+                <!-- Bot Name -->
+                <div class="form-group">
+                    <label for="botName" class="form-label">Bot Name</label>
+                    <input type="text" id="botName" name="name" class="form-control" required
+                           placeholder="Enter bot name" value="">
+                </div>
+
+                <!-- AI Model Selection -->
+                <div class="form-group">
+                    <label class="form-label">AI Model</label>
+                    <div id="modelSelection">
+                        <select id="modelConfigId" name="model_config_id" class="form-control" required>
+                            <option value="">Select Model</option>
+                            <!-- Models will be populated dynamically -->
+                        </select>
+                        <div id="modelInfo" style="margin-top: 0.5rem; padding: 0.75rem; background: #374151; border-radius: 6px; border: 1px solid #4b5563; display: none;">
+                            <div class="model-details" style="font-size: 0.85rem; color: #9ca3af;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Profile -->
+                <div class="form-group">
+                    <label class="form-label">Risk Profile</label>
+                    <select id="riskProfile" name="risk_profile" class="form-control">
+                        <option value="conservative">Conservative</option>
+                        <option value="moderate" selected>Moderate</option>
+                        <option value="aggressive">Aggressive</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <!-- Custom Risk Settings (shown when 'custom' is selected) -->
+                <div id="customRiskSettings" style="display: none;">
+                    <div style="background: #374151; padding: 1rem; border-radius: 8px; border: 1px solid #4b5563; margin-top: 0.5rem;">
+                        <div class="form-group">
+                            <label for="customMaxPositionSize" class="form-label">Max Position Size (%)</label>
+                            <input type="number" id="customMaxPositionSize" name="custom_max_position_size"
+                                   class="form-control" min="0.01" max="0.5" step="0.01" placeholder="e.g., 0.10">
+                        </div>
+                        <div class="form-group">
+                            <label for="customMaxLeverage" class="form-label">Max Leverage</label>
+                            <input type="number" id="customMaxLeverage" name="custom_max_leverage"
+                                   class="form-control" min="1" max="100" step="1" placeholder="e.g., 10">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trading Symbols -->
+                <div class="form-group">
+                    <label class="form-label">Trading Symbols</label>
+                    <div id="symbolSelection" class="grid-container">
+                        <!-- Symbol checkboxes will be populated dynamically -->
+                    </div>
+                    <small style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.5rem;">
+                        Select cryptocurrencies the bot will trade. For Martingale: Consider BTC, ETH for stability. For AI: Choose correlated pairs for hedging.
+                    </small>
+                </div>
+
+                <!-- Trading Side -->
+                <div class="form-group">
+                    <label class="form-label">Trading Side</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="side" value="Long" checked>
+                            <span>Long (Buy Dips)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="side" value="Short">
+                            <span>Short (Sell Rips)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- API Credentials Section -->
+                <div class="api-credentials-section">
+                    <div class="form-group">
+                        <label class="form-label">Exchange API Credentials (Phemex)</label>
+
+                        <!-- Exchange API Key -->
+                        <div class="form-group">
+                            <div class="api-key-group">
+                                <input type="text" id="exchangeApiKey" name="exchange_api_key"
+                                       class="form-control" placeholder="Enter Phemex API Key" required>
+                                <button type="button" class="api-key-toggle" onclick="toggleApiKeyVisibility('exchangeApiKey')"
+                                        style="margin-left: 0.5rem; padding: 0.5rem 1rem; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #9ca3af; cursor: pointer;">
+                                    <span id="exchangeKeyToggle">Show</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Exchange API Secret -->
+                        <div class="form-group">
+                            <div class="api-key-group">
+                                <input type="password" id="exchangeApiSecret" name="exchange_api_secret"
+                                       class="form-control" placeholder="Enter Phemex API Secret" required>
+                                <button type="button" class="api-key-toggle" onclick="toggleApiKeyVisibility('exchangeApiSecret')"
+                                        style="margin-left: 0.5rem; padding: 0.5rem 1rem; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #9ca3af; cursor: pointer;">
+                                    <span id="exchangeSecretToggle">Show</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <small style="color: #9ca3af; font-size: 0.85rem; display: block; margin-top: 0.5rem;">
+                            📋 <strong>Create API Key:</strong>
+                            <a href="https://phemex.com/register" target="_blank" style="color: #3b82f6;">Phemex Registration</a> →
+                            <a href="https://phemex.com/user/apikey" target="_blank" style="color: #3b82f6;">Generate API Keys</a>
+                        </small>
+                    </div>
+
+                    <!-- OpenRouter API Key -->
+                    <div class="form-group">
+                        <label class="form-label">AI API Credentials (OpenRouter)</label>
+                        <div class="form-group">
+                            <input type="text" id="aiApiKey" name="ai_api_key" class="form-control"
+                                   placeholder="Enter OpenRouter API Key" required>
+                        </div>
+
+                        <small style="color: #9ca3af; font-size: 0.85rem; display: block; margin-top: 0.5rem;">
+                            🤖 <strong>Single Key for 400+ Models:</strong>
+                            <a href="https://openrouter.ai/keys" target="_blank" style="color: #3b82f6;">Get API Key</a> →
+                            Free models available (GLM-4.5-Flash, Qwen3 Max) + Premium models
+                        </small>
+                    </div>
+
+                    <div id="apiCredentialsWarning" class="warning-box" style="background: #451a03; border: 1px solid #f59e0b; padding: 1rem; border-radius: 8px; margin-top: 1rem; display: none;">
+                        <strong>⚠️ API Key Security</strong>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #fbbf24;">
+                            Your API keys are encrypted and stored securely. Enter new credentials to overwrite existing ones, or leave fields unchanged to preserve current settings.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Environment Settings -->
+                <div class="form-group">
+                    <label class="form-label">Environment Settings</label>
+                    <div style="display: flex; gap: 2rem;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="isActive" name="is_active" checked>
+                            <span>Active</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="testnet" name="testnet" checked>
+                            <span>Testnet</span>
+                        </label>
+                    </div>
+                    <small style="color: #9ca3af; display: block; margin-top: 0.5rem; font-size: 0.85rem;">
+                        ⚠️ <strong>Testnet:</strong> Use test funds for development and testing
+                    </small>
+                    <small style="color: #9ca3af; display: block; margin-top: 0.25rem; font-size: 0.85rem;">
+                        💰 <strong>Mainnet:</strong> Use real money for live trading
+                    </small>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer" style="padding: 1.5rem 2rem; border-top: 1px solid #374151; display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" onclick="closeBotModal()" class="btn-secondary">Cancel</button>
+            <button type="button" id="saveBotBtn" class="btn-primary" onclick="saveBot()">Save Bot</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modal styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #9ca3af;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    background: #374151;
+    border: 1px solid #4b5563;
+    border-radius: 8px;
+    color: #f9fafb;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* API Key Group */
+.api-key-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.api-key-group .form-control {
+    flex: 1;
+}
+
+.api-key-toggle {
+    white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+/* Button styles */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    border: none;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+
+/* Radio and Checkbox styles */
+.radio-group, .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.radio-label, .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.radio-label input, .checkbox-label input {
+    margin: 0;
+}
+
+/* Warning box styles */
+.warning-box {
+    background: #451a03;
+    border: 1px solid #f59e0b;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.warning-box strong {
+    color: #fbbf24;
+}
+
+.warning-box p {
+    margin: 0.5rem 0 0 0;
+}
+
+/* Grid layout for symbols */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Success notification */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: #f9fafb;
+    font-weight: 600;
+    z-index: 10000;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification.success {
+    background: #065f46;
+    border: 1px solid #10b981;
+}
+
+.notification.error {
+    background: #991b1b;
+    border: 1px solid #dc2626;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+</style>
+
+<script>
+// Global variables
+let currentMode = 'create'; // 'create' or 'edit'
+let botData = null;
+
+// Popular trading symbols
+const TRADING_SYMBOLS = [
+    'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT',
+    'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT', 'FILUSDT'
+];
+
+// Initialize modal
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup symbol selection
+    setupSymbolSelection();
+
+    // Setup model selection
+    setupModelSelection();
+
+    // Setup risk profile handling
+    setupRiskProfile();
+
+    // Setup form submission
+    document.getElementById('botForm').addEventListener('submit', handleFormSubmit);
+});
+
+// Setup symbol selection checkboxes
+function setupSymbolSelection() {
+    const container = document.getElementById('symbolSelection');
+    container.innerHTML = '';
+
+    TRADING_SYMBOLS.forEach(symbol => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.innerHTML = `
+            <input type="checkbox" name="symbols" value="${symbol}">
+            <span>${symbol}</span>
+        `;
+        container.appendChild(label);
+    });
+}
+
+// Setup model selection
+function setupModelSelection() {
+    const modelSelect = document.getElementById('modelConfigId');
+    const modelInfo = document.getElementById('modelInfo');
+
+    // Load models dynamically when modal opens
+    // This will be called from the open modal functions
+}
+
+// Setup risk profile handling
+function setupRiskProfile() {
+    const riskSelect = document.getElementById('riskProfile');
+    const customSettings = document.getElementById('customRiskSettings');
+
+    riskSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customSettings.style.display = 'block';
+        } else {
+            customSettings.style.display = 'none';
+        }
+    });
+}
+
+// Open modal for creating new bot
+function openCreateBotModal() {
+    currentMode = 'create';
+    resetForm();
+    document.getElementById('modalTitle').textContent = 'Create AI Bot';
+    document.getElementById('botId').value = '';
+
+    // Load models and symbols
+    loadModels();
+    setupSymbolSelection();
+
+    showModal();
+}
+
+// Open modal for editing existing bot
+function openEditBotModal(botId) {
+    currentMode = 'edit';
+
+    // Show loading state
+    document.getElementById('modalTitle').textContent = 'Loading Bot Settings...';
+    showModal();
+
+    // Load bot data and populate form
+    loadBotData(botId);
+}
+
+// Load models from API
+function loadModels() {
+    fetch('/ai-bots/models')
+        .then(response => response.json())
+        .then(models => {
+            const modelSelect = document.getElementById('modelConfigId');
+            modelSelect.innerHTML = '<option value="">Select Model</option>';
+
+            // Group models by provider
+            const modelsByProvider = {};
+            models.forEach(model => {
+                if (!modelsByProvider[model.provider]) {
+                    modelsByProvider[model.provider] = [];
+                }
+                modelsByProvider[model.provider].push(model);
+            });
+
+            // Add grouped options
+            Object.entries(modelsByProvider).forEach(([provider, providerModels]) => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = provider.toUpperCase();
+
+                providerModels.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = `${model.name} (${provider})`;
+                    modelSelect.appendChild(option);
+                });
+            });
+
+            // Hide loading state
+            document.getElementById('modalTitle').textContent = currentMode === 'create' ? 'Create AI Bot' : 'Edit Bot Settings';
+        })
+        .catch(error => {
+            console.error('Error loading models:', error);
+            showNotification('Error loading models', 'error');
+        });
+}
+
+// Load bot data for editing
+function loadBotData(botId) {
+    fetch(`/ai-bots/modal/${botId}`)
+        .then(response => response.json())
+        .then(data => {
+            botData = data.bot;
+            const models = data.models;
+
+            // Populate form fields
+            document.getElementById('botId').value = botId;
+            document.getElementById('botName').value = botData.name || '';
+            document.getElementById('modelConfigId').value = botData.model_config_id || '';
+            document.getElementById('riskProfile').value = botData.risk_profile || 'moderate';
+            document.getElementById('side').value = botData.side || 'Long';
+            document.getElementById('isActive').checked = botData.is_active || false;
+            document.getElementById('testnet').checked = botData.testnet || false;
+
+            // Populate model select
+            const modelSelect = document.getElementById('modelConfigId');
+            modelSelect.innerHTML = '<option value="">Select Model</option>';
+
+            if (models && models.length > 0) {
+                modelsByProvider = {};
+                models.forEach(model => {
+                    if (!modelsByProvider[model.provider]) {
+                        modelsByProvider[model.provider] = [];
+                    }
+                    modelsByProvider[model.provider].push(model);
+                });
+
+                Object.entries(modelsByProvider).forEach(([provider, providerModels]) => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = provider.toUpperCase();
+
+                    providerModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = `${model.name} (${provider})`;
+                        if (model.id === botData.model_config_id) {
+                            option.selected = true;
+                        }
+                        modelSelect.appendChild(option);
+                    });
+                });
+            }
+
+            // Populate symbols
+            const checkboxes = document.querySelectorAll('input[name="symbols"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = botData.symbols && botData.symbols.includes(checkbox.value);
+            });
+
+            // Show API credentials warning for edit mode
+            document.getElementById('apiCredentialsWarning').style.display = 'block';
+
+            // Hide loading state
+            document.getElementById('modalTitle').textContent = 'Edit Bot Settings';
+        })
+        .catch(error => {
+            console.error('Error loading bot data:', error);
+            showNotification('Error loading bot settings', 'error');
+            closeBotModal();
+        });
+}
+
+// Reset form to create mode
+function resetForm() {
+    document.getElementById('botForm').reset();
+    document.getElementById('botName').value = '';
+    document.getElementById('modelConfigId').value = '';
+    document.getElementById('riskProfile').value = 'moderate';
+    document.getElementById('side').value = 'Long';
+    document.getElementById('isActive').checked = true;
+    document.getElementById('testnet').checked = true;
+
+    // Reset symbols
+    const checkboxes = document.querySelectorAll('input[name="symbols"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    // Hide custom risk settings
+    document.getElementById('customRiskSettings').display = 'none';
+    document.getElementById('apiCredentialsWarning').style.display = 'none';
+}
+
+// Show modal
+function showModal() {
+    const modal = document.getElementById('aiBotModal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close modal
+function closeBotModal() {
+    const modal = document.getElementById('aiBotModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Toggle API key visibility
+function toggleApiKeyVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const toggle = document.getElementById(inputId + 'Toggle');
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        toggle.textContent = 'Hide';
+    } else {
+        input.type = 'password';
+        toggle.textContent = 'Show';
+    }
+}
+
+// Handle form submission
+async function handleFormSubmit(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('botForm');
+    const formData = new FormData(form);
+
+    try {
+        // Show loading state
+        const saveBtn = document.getElementById('saveBotBtn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+
+        const response = await fetch('/ai-bots/save', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification(result.message, 'success');
+
+            // Refresh dashboard after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showNotification(result.message || 'Error saving bot', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving bot:', error);
+        showNotification('Error saving bot', 'error');
+    } finally {
+        // Reset button state
+        const saveBtn = document.getElementById('saveBotModal');
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+    }
+}
+
+// Show notification
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// Export functions for external use
+window.openCreateBotModal = openCreateBotModal;
+window.openEditBotModal = openEditBotModal;
+window.closeBotModal = closeBotModal;
+</script>
