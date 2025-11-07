@@ -1137,7 +1137,15 @@ def register_ai_bot_routes(app):
                         available_balance = total_balance - used_balance
 
                         # Get positions for each symbol
+                        # Parse symbols from JSONB (can be list, string, or None)
+                        import json
                         symbols = bot['symbols'] if bot['symbols'] else []
+                        if isinstance(symbols, str):
+                            symbols = json.loads(symbols)
+                        # Fallback to legacy single symbol column if no symbols array
+                        if not symbols:
+                            symbols = [bot.get('symbol')] if bot.get('symbol') else []
+
                         pos_side = "Long" if bot['side'] == "Long" else "Short"
 
                         positions = []

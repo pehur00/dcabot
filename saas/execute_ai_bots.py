@@ -54,8 +54,15 @@ class AIBotExecutor:
             # OPTIMIZATION: Collect all unique symbols across all bots
             unique_symbols = set()
             for bot in active_bots:
-                allowed_symbols = bot.get('allowed_symbols', [bot['symbol']])
-                unique_symbols.update(allowed_symbols)
+                # Parse symbols from JSONB column (stored as JSON string)
+                symbols = bot.get('symbols', [])
+                if isinstance(symbols, str):
+                    import json
+                    symbols = json.loads(symbols)
+                # Fallback to legacy single symbol if no symbols array
+                if not symbols:
+                    symbols = [bot['symbol']]
+                unique_symbols.update(symbols)
 
             logger.info(f"Unique symbols to fetch: {', '.join(unique_symbols)}")
 
@@ -98,7 +105,15 @@ class AIBotExecutor:
         """
         bot_id = bot['id']
         model_name = bot['model_name']
-        allowed_symbols = bot.get('allowed_symbols', [bot['symbol']])
+
+        # Parse symbols from JSONB column (stored as JSON string)
+        import json
+        allowed_symbols = bot.get('symbols', [])
+        if isinstance(allowed_symbols, str):
+            allowed_symbols = json.loads(allowed_symbols)
+        # Fallback to legacy single symbol if no symbols array
+        if not allowed_symbols:
+            allowed_symbols = [bot['symbol']]
 
         logger.info(f"\n{'='*60}")
         logger.info(f"Executing Bot #{bot_id}: {bot['name']}")
@@ -893,7 +908,8 @@ class AIBotExecutor:
 
             # Get positions for ALL symbols in portfolio trading
             pos_side = "Long" if bot['side'] == "Long" else "Short"
-            symbols = bot.get('symbols', [bot.get('symbol')])  # Support both single and multi-symbol bots
+            # Parse symbols from JSONB column (already parsed in allowed_symbols above)
+            symbols = allowed_symbols
 
             open_positions = 0
             total_position_value = 0
