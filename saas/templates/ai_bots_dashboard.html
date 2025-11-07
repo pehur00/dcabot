@@ -96,6 +96,9 @@
                                 {% if bot['is_active'] %}⏸{% else %}▶️{% endif %}
                             </button>
                         </form>
+                        <form method="POST" action="{{ url_for('reset_ai_bot', bot_id=bot['id']) }}" onsubmit="return confirm('⚠️ Reset bot history?\n\nThis will clear:\n• All trade history\n• All AI decisions\n• All performance data\n• All balance snapshots\n\nYour bot configuration and Phemex positions will remain intact.\n\nContinue?')" style="display: inline; margin: 0;">
+                            <button type="submit" style="background: transparent; border: none; color: #f59e0b; cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="Reset History">🔄</button>
+                        </form>
                         <form method="POST" action="{{ url_for('delete_ai_bot', bot_id=bot['id']) }}" onsubmit="return confirm(&quot;Delete bot?&quot;)" style="display: inline; margin: 0;">
                             <button type="submit" style="background: transparent; border: none; color: var(--red); cursor: pointer; font-size: 0.85rem; padding: 0.2rem; line-height: 1;" title="Delete">🗑️</button>
                         </form>
@@ -104,16 +107,14 @@
                 {% endfor %}
 
                 <!-- Add Bot Button -->
-                <a href="{{ url_for('create_ai_bot') }}" style="text-decoration: none;">
-                    <div style="background: var(--gray-900); border: 2px dashed var(--gray-700); border-radius: 8px; padding: 0.65rem 1rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 120px; height: 73px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#06B6D4'; this.querySelector('span').style.color='#06B6D4'; this.querySelector('svg').style.color='#06B6D4'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--gray-700)'; this.querySelector('span').style.color='var(--gray-500)'; this.querySelector('svg').style.color='var(--gray-500)'">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gray-500); transition: color 0.2s;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="16"></line>
-                            <line x1="8" y1="12" x2="16" y2="12"></line>
-                        </svg>
-                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; transition: color 0.2s;">Add Bot</span>
-                    </div>
-                </a>
+                <div onclick="openAiBotModal()" style="background: var(--gray-900); border: 2px dashed var(--gray-700); border-radius: 8px; padding: 0.65rem 1rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 120px; height: 73px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='#06B6D4'; this.querySelector('span').style.color='#06B6D4'; this.querySelector('svg').style.color='#06B6D4'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='var(--gray-700)'; this.querySelector('span').style.color='var(--gray-500)'; this.querySelector('svg').style.color='var(--gray-500)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--gray-500); transition: color 0.2s;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; transition: color 0.2s;">Add Bot</span>
+                </div>
             </div>
         </div>
 
@@ -435,6 +436,9 @@
 }
 </style>
 
+<!-- Include AI Bot Modal (must be included before scripts that use it) -->
+{% include 'ai_bot_modal.html' %}
+
 <!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Chart.js Date Adapter (required for time scale) -->
@@ -504,17 +508,11 @@ function loadChartData() {
     const botFilter = document.getElementById('bot-filter')?.value || 'all';
 
     const url = `/api/ai-bots/chart-data?hours=${hours}&bot=${botFilter}`;
-    console.log('[DEBUG] Loading chart data from:', url);
 
     fetch(url)
-        .then(response => {
-            console.log('[DEBUG] Response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('[DEBUG] Data received:', data);
             if (data.success) {
-                console.log('[DEBUG] Datasets count:', data.datasets.length);
                 renderChart(data.datasets);
                 updateMultiplier(data.datasets);
             } else {
@@ -522,22 +520,20 @@ function loadChartData() {
             }
         })
         .catch(error => {
-            console.error('[ERROR] Fetch failed:', error);
+            console.error('Fetch failed:', error);
         });
 }
 
 // Render chart with Chart.js
 function renderChart(datasets) {
-    console.log('[DEBUG] renderChart called with datasets:', datasets);
-
     if (typeof Chart === 'undefined') {
-        console.error('[ERROR] Chart.js not loaded!');
+        console.error('Chart.js not loaded!');
         return;
     }
 
     const ctx = document.getElementById('balance-chart')?.getContext('2d');
     if (!ctx) {
-        console.error('[ERROR] Canvas element not found!');
+        console.error('Canvas element not found!');
         return;
     }
 
@@ -546,10 +542,8 @@ function renderChart(datasets) {
         chart.destroy();
     }
 
-    // Color palette
     // Filter out datasets with no history data points
     datasets = datasets.filter(dataset => {
-        console.log('[DEBUG] Processing dataset:', dataset.label, 'data points:', dataset.data.length);
         return dataset.data.length > 0; // Only show bots with actual balance history
     });
 
@@ -699,9 +693,8 @@ function renderChart(datasets) {
                 }
             }
         });
-        console.log('[DEBUG] Chart created successfully!');
     } catch (error) {
-        console.error('[ERROR] Failed to create chart:', error);
+        console.error('Failed to create chart:', error);
     }
 
     // Update legend with bot-specific colors and avatars
@@ -709,12 +702,6 @@ function renderChart(datasets) {
     legendContainer.innerHTML = '';
 
     datasets.forEach((dataset, index) => {
-        // Debug: Log what we received from API
-        console.log('[DEBUG] Legend update for bot:', dataset.label);
-        console.log('[DEBUG] currentBalance from API:', dataset.currentBalance);
-        console.log('[DEBUG] initialBalance from API:', dataset.initialBalance);
-        console.log('[DEBUG] Last snapshot balance:', dataset.data.length > 0 ? dataset.data[dataset.data.length - 1].y : 'no data');
-
         // Use real-time balance from API if available, otherwise use last snapshot
         const currentBalance = dataset.currentBalance !== null && dataset.currentBalance !== undefined
             ? dataset.currentBalance
@@ -723,10 +710,6 @@ function renderChart(datasets) {
         const initialBalance = dataset.initialBalance || (dataset.data.length > 0 ? dataset.data[0].y : 100);
         const change = currentBalance - initialBalance;
         const changePercent = initialBalance > 0 ? ((change / initialBalance) * 100).toFixed(2) : '0.00';
-
-        console.log('[DEBUG] Using currentBalance:', currentBalance);
-        console.log('[DEBUG] Using initialBalance:', initialBalance);
-        console.log('[DEBUG] Calculated change: $' + change.toFixed(2), '(' + changePercent + '%)');
 
         const botColor = getBotColor(dataset.bot_id);
         const botAvatar = getBotAvatar(dataset.bot_name, dataset.bot_id, 24);
@@ -1069,7 +1052,7 @@ function loadDecisionsLog() {
             }
         })
         .catch(error => {
-            console.error('[ERROR] Failed to load decisions:', error);
+            console.error('Failed to load decisions:', error);
             log.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading decisions</div>';
         });
 }
@@ -1150,7 +1133,7 @@ function loadTrades() {
             }
         })
         .catch(error => {
-            console.error('[ERROR] Failed to load trades:', error);
+            console.error('Failed to load trades:', error);
             tradesContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.9rem;">Error loading trades</div>';
         });
 }
@@ -1165,7 +1148,6 @@ function loadAPIUsage() {
     fetch('/api/openrouter-usage')
         .then(response => response.json())
         .then(data => {
-            console.log('[DEBUG] OpenRouter API response:', data);  // Debug logging
 
             if (data.error) {
                 apiUsageContent.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.85rem;">${data.error}</div>`;
@@ -1265,7 +1247,7 @@ function loadAPIUsage() {
             apiUsageContent.innerHTML = html;
         })
         .catch(error => {
-            console.error('[ERROR] Failed to load API usage:', error);
+            console.error('Failed to load API usage:', error);
             apiUsageContent.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--red); font-size: 0.85rem;">Error loading API usage</div>';
         });
 }
@@ -1294,7 +1276,6 @@ if (document.getElementById('trades-filter')) {
 
 // Initial load
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[DEBUG] DOMContentLoaded fired');
 
     // Apply bot-specific colors and generate avatars for bot cards
     document.querySelectorAll('.bot-card').forEach(card => {
@@ -1338,266 +1319,350 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     {% if bots %}
-    console.log('[DEBUG] Bots exist, loading data...');
     loadChartData();
     loadPositions();
     loadDecisionsLog();
-    {% else %}
-    console.log('[DEBUG] No bots, skipping data load');
     {% endif %}
 });
-
-console.log('[DEBUG] Script loaded, Chart.js available:', typeof Chart !== 'undefined');
 </script>
-
-<!-- Include AI Bot Modal -->
-{% include 'ai_bot_modal.html' %}
 
 <!-- Modal Management JavaScript -->
 <script>
-let currentModalData = null;
+document.addEventListener('DOMContentLoaded', function() {
+    let currentModalData = null;
 
-// Open AI Bot Modal (create or edit mode)
-function openAiBotModal(botId = null) {
-    const modal = document.getElementById('aiBotModal');
-    const form = document.getElementById('aiBotForm');
+    // Make functions globally accessible
+    window.openAiBotModal = function(botId = null) {
+        const modal = document.getElementById('aiBotModal');
+        const form = document.getElementById('botForm');
 
-    // Reset form
-    form.reset();
-    currentModalData = null;
-
-    if (botId) {
-        // Edit mode - load bot data
-        loadEditModal(botId);
-    } else {
-        // Create mode - load fresh form
-        loadCreateModal();
-    }
-
-    // Show modal
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-// Load create modal data
-function loadCreateModal() {
-    fetch('/ai-bots/modal')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                currentModalData = data;
-                populateModalForm(data.mode, data.bot, data.models);
-            } else {
-                alert('Error loading modal: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading create modal:', error);
-            alert('Error loading modal');
-        });
-}
-
-// Load edit modal data
-function loadEditModal(botId) {
-    fetch(`/ai-bots/modal/${botId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                currentModalData = data;
-                populateModalForm(data.mode, data.bot, data.models);
-            } else {
-                alert('Error loading modal: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading edit modal:', error);
-            alert('Error loading modal');
-        });
-}
-
-// Populate modal form with data
-function populateModalForm(mode, bot, models) {
-    const form = document.getElementById('aiBotForm');
-    const title = document.getElementById('modalTitle');
-    const submitBtn = document.getElementById('submitBtn');
-
-    // Set mode-specific UI elements
-    document.getElementById('modalMode').value = mode;
-
-    if (mode === 'edit' && bot) {
-        title.textContent = `Edit AI Bot: ${bot.name}`;
-        submitBtn.textContent = 'Update Bot';
-        document.getElementById('botId').value = bot.id;
-
-        // Populate form fields
-        document.getElementById('name').value = bot.name || '';
-        document.getElementById('model_config_id').value = bot.model_config_id || '';
-
-        // Handle API keys with masking
-        document.getElementById('exchange_api_key').value = bot.exchange_api_key || '';
-        document.getElementById('ai_api_key').value = bot.ai_api_key || '';
-
-        // Show/hide API key sections
-        document.getElementById('apiKeySection').style.display = 'block';
-        document.getElementById('apiKeyWarning').style.display = 'block';
-
-        // Populate symbols
-        if (bot.symbols) {
-            try {
-                const symbols = typeof bot.symbols === 'string' ? JSON.parse(bot.symbols) : bot.symbols;
-                const symbolCheckboxes = document.querySelectorAll('input[name="symbols"]');
-                symbolCheckboxes.forEach(checkbox => {
-                    checkbox.checked = symbols.includes(checkbox.value);
-                });
-            } catch (e) {
-                console.error('Error parsing symbols:', e);
-            }
+        if (!form) {
+            console.error('AI Bot form not found!');
+            return;
         }
 
-        // Populate other fields
-        document.querySelector(`input[name="side"][value="${bot.side || 'Long'}"]`).checked = true;
-        document.getElementById('max_position_size').value = bot.max_position_size || 0.02;
-        document.getElementById('max_leverage').value = bot.max_leverage || 10;
-        document.getElementById('risk_profile').value = bot.risk_profile || 'moderate';
+        // Reset form
+        form.reset();
+        currentModalData = null;
 
-        document.getElementById('is_active').checked = bot.is_active || false;
-        document.getElementById('testnet').checked = bot.testnet || false;
-
-    } else {
-        // Create mode
-        title.textContent = 'Create New AI Bot';
-        submitBtn.textContent = 'Create Bot';
-        document.getElementById('botId').value = '';
-
-        // Hide API key sections for create mode
-        document.getElementById('apiKeySection').style.display = 'none';
-        document.getElementById('apiKeyWarning').style.display = 'none';
-
-        // Set default values
-        document.getElementById('max_position_size').value = 0.02;
-        document.getElementById('max_leverage').value = 10;
-        document.getElementById('risk_profile').value = 'moderate';
-        document.getElementById('testnet').checked = true;
-
-        // Check some default symbols
-        const defaultSymbols = ['BTCUSDT', 'ETHUSDT'];
-        const symbolCheckboxes = document.querySelectorAll('input[name="symbols"]');
-        symbolCheckboxes.forEach(checkbox => {
-            checkbox.checked = defaultSymbols.includes(checkbox.value);
-        });
-    }
-
-    // Populate model dropdown
-    populateModelDropdown(models, bot?.model_config_id);
-}
-
-// Populate model dropdown with categorization
-function populateModelDropdown(models, selectedModelId = null) {
-    const select = document.getElementById('model_config_id');
-    select.innerHTML = '';
-
-    // Group models by category
-    const categories = {};
-    models.forEach(model => {
-        if (!categories[model.category]) {
-            categories[model.category] = [];
-        }
-        categories[model.category].push(model);
-    });
-
-    // Create optgroups for each category
-    Object.keys(categories).forEach(category => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = getCategoryLabel(category);
-
-        categories[category].forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.id;
-            option.textContent = `${model.name} (${model.provider})`;
-            if (model.id == selectedModelId) {
-                option.selected = true;
-            }
-            optgroup.appendChild(option);
-        });
-
-        select.appendChild(optgroup);
-    });
-}
-
-// Get user-friendly category label
-function getCategoryLabel(category) {
-    const labels = {
-        'budget': '💰 Budget Models',
-        'recommended': '⭐ Recommended',
-        'premium': '🚀 Premium'
-    };
-    return labels[category] || category.charAt(0).toUpperCase() + category.slice(1);
-}
-
-// Close modal
-function closeAiBotModal() {
-    const modal = document.getElementById('aiBotModal');
-    modal.style.display = 'none';
-    document.body.style.overflow = 'auto';
-    currentModalData = null;
-}
-
-// Handle form submission
-function submitAiBotForm() {
-    const form = document.getElementById('aiBotForm');
-    const formData = new FormData(form);
-
-    // Collect selected symbols
-    const selectedSymbols = [];
-    document.querySelectorAll('input[name="symbols"]:checked').forEach(checkbox => {
-        selectedSymbols.push(checkbox.value);
-    });
-    formData.set('symbols', JSON.stringify(selectedSymbols));
-
-    // Show loading state
-    const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Saving...';
-
-    fetch('/ai-bots/save', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            closeAiBotModal();
-            // Reload page to show updated data
-            window.location.reload();
+        if (botId) {
+            // Edit mode - load bot data
+            loadEditModal(botId);
         } else {
-            alert('Error: ' + data.error);
+            // Create mode - load fresh form
+            loadCreateModal();
         }
-    })
-    .catch(error => {
-        console.error('Error saving bot:', error);
-        alert('Error saving bot');
-    })
-    .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+
+        // Setup symbols and show modal
+        if (window.setupSymbolSelection) {
+            window.setupSymbolSelection();
+        }
+
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeAiBotModal = function() {
+        const modal = document.getElementById('aiBotModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        currentModalData = null;
+    };
+
+    window.submitAiBotForm = function() {
+        const form = document.getElementById('botForm');
+        const formData = new FormData(form);
+
+        // Collect selected symbols
+        const selectedSymbols = [];
+        document.querySelectorAll('input[name="symbols"]:checked').forEach(checkbox => {
+            selectedSymbols.push(checkbox.value);
+        });
+        formData.set('symbols', JSON.stringify(selectedSymbols));
+
+        // Handle risk profile - set max_position_size and max_leverage
+        const riskProfile = document.getElementById('riskProfile').value;
+        const riskLimits = {
+            'conservative': { max_leverage: 2, max_position_size: 0.03 },
+            'moderate': { max_leverage: 5, max_position_size: 0.05 },
+            'aggressive': { max_leverage: 10, max_position_size: 0.10 }
+        };
+
+        if (riskProfile === 'custom') {
+            // Use custom values
+            const customMaxPos = document.getElementById('customMaxPositionSize').value;
+            const customMaxLev = document.getElementById('customMaxLeverage').value;
+            formData.set('max_position_size', customMaxPos || 0.05);
+            formData.set('max_leverage', customMaxLev || 5);
+        } else {
+            // Use preset values
+            const limits = riskLimits[riskProfile];
+            formData.set('max_position_size', limits.max_position_size);
+            formData.set('max_leverage', limits.max_leverage);
+        }
+
+        // Determine mode based on bot_id
+        const botId = document.getElementById('botId').value;
+        const mode = botId ? 'edit' : 'create';
+        formData.set('mode', mode);
+
+        // Validate credentials in create mode
+        if (mode === 'create') {
+            const exchangeApiKey = document.getElementById('exchangeApiKey').value.trim();
+            const exchangeApiSecret = document.getElementById('exchangeApiSecret').value.trim();
+            const aiApiKey = document.getElementById('aiApiKey').value.trim();
+
+            if (!exchangeApiKey) {
+                alert('Exchange API Key is required when creating a bot');
+                return;
+            }
+            if (!exchangeApiSecret) {
+                alert('Exchange API Secret is required when creating a bot');
+                return;
+            }
+            if (!aiApiKey) {
+                alert('AI API Key is required when creating a bot');
+                return;
+            }
+        }
+
+        // Show loading state
+        const submitBtn = document.getElementById('saveBotBtn');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+
+        fetch('/ai-bots/save', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.closeAiBotModal();
+                // Reload page to show updated data
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving bot:', error);
+            alert('Error saving bot');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    };
+
+    // Load create modal data
+    function loadCreateModal() {
+        fetch('/ai-bots/modal')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentModalData = data;
+                    populateModalForm(data.mode, data.bot, data.models);
+                } else {
+                    alert('Error loading modal: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading create modal:', error);
+                alert('Error loading modal');
+            });
+    }
+
+    // Load edit modal data
+    function loadEditModal(botId) {
+        fetch(`/ai-bots/modal/${botId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentModalData = data;
+                    populateModalForm(data.mode, data.bot, data.models);
+                } else {
+                    alert('Error loading modal: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading edit modal:', error);
+                alert('Error loading modal');
+            });
+    }
+
+    // Populate modal form with data
+    function populateModalForm(mode, bot, models) {
+        const title = document.getElementById('modalTitle');
+
+        if (mode === 'edit' && bot) {
+            title.textContent = `Edit AI Bot: ${bot.name}`;
+            document.getElementById('saveBotBtn').textContent = 'Update Bot';
+            document.getElementById('botId').value = bot.id;
+
+            // Populate form fields
+            document.getElementById('botName').value = bot.name || '';
+            document.getElementById('modelConfigId').value = bot.model_config_id || '';
+
+            // Clear API key fields in edit mode (don't show masked values)
+            document.getElementById('exchangeApiKey').value = '';
+            document.getElementById('exchangeApiSecret').value = '';
+            document.getElementById('aiApiKey').value = '';
+
+            // Update placeholders for edit mode
+            document.getElementById('exchangeApiKey').placeholder = '(current credentials will be kept if left empty)';
+            document.getElementById('exchangeApiSecret').placeholder = '(current credentials will be kept if left empty)';
+            document.getElementById('aiApiKey').placeholder = '(current credentials will be kept if left empty)';
+
+            // Show credential help text and warning in edit mode
+            document.getElementById('apiCredentialsWarning').style.display = 'block';
+            document.querySelectorAll('.credential-help').forEach(el => el.style.display = 'block');
+
+            // Populate symbols
+            if (bot.symbols) {
+                try {
+                    const symbols = typeof bot.symbols === 'string' ? JSON.parse(bot.symbols) : bot.symbols;
+                    const symbolCheckboxes = document.querySelectorAll('input[name="symbols"]');
+                    symbolCheckboxes.forEach(checkbox => {
+                        checkbox.checked = symbols.includes(checkbox.value);
+                    });
+                } catch (e) {
+                    console.error('Error parsing symbols:', e);
+                }
+            }
+
+            // Populate other fields
+            document.querySelector(`input[name="side"][value="${bot.side || 'Long'}"]`).checked = true;
+
+            // Set risk profile
+            const riskProfile = bot.risk_profile || 'moderate';
+            document.getElementById('riskProfile').value = riskProfile;
+
+            // Show custom risk settings if using custom profile
+            if (riskProfile === 'custom') {
+                document.getElementById('customRiskSettings').style.display = 'block';
+                document.getElementById('customMaxPositionSize').value = bot.max_position_size || 0.05;
+                document.getElementById('customMaxLeverage').value = bot.max_leverage || 5;
+            } else {
+                document.getElementById('customRiskSettings').style.display = 'none';
+            }
+
+            document.getElementById('isActive').checked = bot.is_active || false;
+            document.getElementById('testnet').checked = bot.testnet || false;
+
+        } else {
+            // Create mode
+            title.textContent = 'Create New AI Bot';
+            document.getElementById('saveBotBtn').textContent = 'Create Bot';
+            document.getElementById('botId').value = '';
+
+            // Clear and reset API credential fields
+            document.getElementById('exchangeApiKey').value = '';
+            document.getElementById('exchangeApiSecret').value = '';
+            document.getElementById('aiApiKey').value = '';
+
+            // Reset placeholders for create mode
+            document.getElementById('exchangeApiKey').placeholder = 'Enter Phemex API Key';
+            document.getElementById('exchangeApiSecret').placeholder = 'Enter Phemex API Secret';
+            document.getElementById('aiApiKey').placeholder = 'Enter OpenRouter API Key';
+
+            // Hide credential help text and warning for create mode
+            document.getElementById('apiCredentialsWarning').style.display = 'none';
+            document.querySelectorAll('.credential-help').forEach(el => el.style.display = 'none');
+
+            // Set default values
+            document.getElementById('riskProfile').value = 'moderate';
+            document.getElementById('testnet').checked = true;
+
+            // Check some default symbols
+            const defaultSymbols = ['BTCUSDT', 'ETHUSDT'];
+            const symbolCheckboxes = document.querySelectorAll('input[name="symbols"]');
+            symbolCheckboxes.forEach(checkbox => {
+                checkbox.checked = defaultSymbols.includes(checkbox.value);
+            });
+        }
+
+        // Populate model dropdown
+        populateModelDropdown(models, bot?.model_config_id);
+
+        // Setup risk profile change handler
+        const riskSelect = document.getElementById('riskProfile');
+        const customSettings = document.getElementById('customRiskSettings');
+
+        // Remove any existing event listeners
+        const newRiskSelect = riskSelect.cloneNode(true);
+        riskSelect.parentNode.replaceChild(newRiskSelect, riskSelect);
+
+        // Add event listener to show/hide custom settings
+        newRiskSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customSettings.style.display = 'block';
+            } else {
+                customSettings.style.display = 'none';
+            }
+        });
+    }
+
+    // Populate model dropdown with categorization
+    function populateModelDropdown(models, selectedModelId = null) {
+        const select = document.getElementById('modelConfigId');
+        select.innerHTML = '';
+
+        // Group models by category
+        const categories = {};
+        models.forEach(model => {
+            if (!categories[model.category]) {
+                categories[model.category] = [];
+            }
+            categories[model.category].push(model);
+        });
+
+        // Create optgroups for each category
+        Object.keys(categories).forEach(category => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = getCategoryLabel(category);
+
+            categories[category].forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = `${model.name} (${model.provider})`;
+                if (model.id == selectedModelId) {
+                    option.selected = true;
+                }
+                optgroup.appendChild(option);
+            });
+
+            select.appendChild(optgroup);
+        });
+    }
+
+    // Get user-friendly category label
+    function getCategoryLabel(category) {
+        const labels = {
+            'budget': '💰 Budget Models',
+            'recommended': '⭐ Recommended',
+            'premium': '🚀 Premium'
+        };
+        return labels[category] || category.charAt(0).toUpperCase() + category.slice(1);
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('aiBotModal');
+        if (event.target === modal) {
+            window.closeAiBotModal();
+        }
+    };
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            window.closeAiBotModal();
+        }
     });
-}
 
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('aiBotModal');
-    if (event.target === modal) {
-        closeAiBotModal();
-    }
-}
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeAiBotModal();
-    }
 });
 </script>
 

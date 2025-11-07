@@ -322,7 +322,7 @@ def register_ai_bot_routes(app):
                 from psycopg2.extras import RealDictCursor
                 cursor = conn.cursor(cursor_factory=RealDictCursor)
                 cursor.execute("""
-                    SELECT id, name, provider, category, pricing_per_input_token, pricing_per_output_token
+                    SELECT id, name, provider, category, cost_per_1m_input, cost_per_1m_output
                     FROM ai_model_configs
                     WHERE is_active = true
                     ORDER BY category, provider, name
@@ -375,7 +375,7 @@ def register_ai_bot_routes(app):
 
                 # Get available models
                 cursor.execute("""
-                    SELECT id, name, provider, category, pricing_per_input_token, pricing_per_output_token
+                    SELECT id, name, provider, category, cost_per_1m_input, cost_per_1m_output
                     FROM ai_model_configs
                     WHERE is_active = true
                     ORDER BY category, provider, name
@@ -416,9 +416,16 @@ def register_ai_bot_routes(app):
             bot_id = request.form.get('bot_id')
             mode = request.form.get('mode')  # 'create' or 'edit'
 
-            # Validate form data
-            required_fields = ['name', 'model_config_id', 'symbols', 'side', 'max_position_size',
-                             'max_leverage', 'risk_profile', 'exchange_api_key', 'ai_api_key']
+            # Define required fields based on mode
+            if mode == 'create':
+                # On create: all fields including credentials are required
+                required_fields = ['name', 'model_config_id', 'symbols', 'side', 'max_position_size',
+                                 'max_leverage', 'risk_profile', 'exchange_api_key',
+                                 'exchange_api_secret', 'ai_api_key']
+            else:
+                # On edit: credentials are optional (only update if provided)
+                required_fields = ['name', 'model_config_id', 'symbols', 'side', 'max_position_size',
+                                 'max_leverage', 'risk_profile']
 
             form_data = {}
             for field in required_fields:
@@ -454,20 +461,40 @@ def register_ai_bot_routes(app):
 
                 if mode == 'create':
                     # Create new bot
+                    # Use first symbol as primary symbol for backward compatibility
+                    primary_symbol = symbols[0] if symbols else 'BTCUSDT'
+
+                    # Fetch real balance from Phemex to use as initial snapshot
+                    from clients.PhemexClient import PhemexClient
+                    from datetime import datetime
+                    try:
+                        phemex_client = PhemexClient(
+                            api_key=form_data['exchange_api_key'],
+                            api_secret=request.form.get('exchange_api_secret'),
+                            logger=logger,
+                            testnet=testnet
+                        )
+                        balance, used_balance = phemex_client.get_account_balance()
+                        initial_balance_snapshot = balance if balance is not None else 100.0
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch initial balance for new bot: {e}. Using default 100.0")
+                        initial_balance_snapshot = 100.0
+
                     cursor.execute("""
                         INSERT INTO ai_bots (
-                            user_id, name, model_config_id, symbols, side,
+                            user_id, name, model_config_id, symbol, symbols, side,
                             max_position_size, max_leverage, risk_profile,
                             exchange_api_key, exchange_api_secret, ai_api_key,
                             is_active, testnet, initial_balance_snapshot, snapshot_taken_at,
                             created_at, updated_at
                         ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
                         ) RETURNING id
                     """, (
                         current_user.id,
                         form_data['name'],
                         form_data['model_config_id'],
+                        primary_symbol,
                         json.dumps(symbols),
                         form_data['side'],
                         float(form_data['max_position_size']),
@@ -478,8 +505,8 @@ def register_ai_bot_routes(app):
                         encrypt_api_key(form_data['ai_api_key']),
                         is_active,
                         testnet,
-                        0.0,  # Will be updated when first executed
-                        None
+                        initial_balance_snapshot,
+                        datetime.now()
                     ))
 
                     bot_id = cursor.fetchone()['id']
@@ -500,23 +527,24 @@ def register_ai_bot_routes(app):
                             'error': 'Bot not found'
                         }), 404
 
-                    # Handle API keys - if user provided new ones, use them; otherwise keep existing
-                    exchange_api_key = form_data['exchange_api_key']
-                    exchange_api_secret = request.form.get('exchange_api_secret')
-                    ai_api_key = form_data['ai_api_key']
+                    # Handle API keys - if user provided new ones, encrypt and use them; otherwise keep existing encrypted ones
+                    exchange_api_key_form = request.form.get('exchange_api_key', '').strip()
+                    exchange_api_secret_form = request.form.get('exchange_api_secret', '').strip()
+                    ai_api_key_form = request.form.get('ai_api_key', '').strip()
 
-                    # Check if API keys are masked (indicating user didn't change them)
-                    if exchange_api_key.startswith('***'):
-                        exchange_api_key = decrypt_api_key(current_bot['exchange_api_key'])
-                    if exchange_api_secret.startswith('***'):
-                        exchange_api_secret = decrypt_api_key(current_bot['exchange_api_secret'])
-                    if ai_api_key.startswith('***'):
-                        ai_api_key = decrypt_api_key(current_bot['ai_api_key'])
+                    # Determine which credentials to use
+                    exchange_api_key_encrypted = encrypt_api_key(exchange_api_key_form) if exchange_api_key_form else current_bot['exchange_api_key']
+                    exchange_api_secret_encrypted = encrypt_api_key(exchange_api_secret_form) if exchange_api_secret_form else current_bot['exchange_api_secret']
+                    ai_api_key_encrypted = encrypt_api_key(ai_api_key_form) if ai_api_key_form else current_bot['ai_api_key']
+
+                    # Use first symbol as primary symbol for backward compatibility
+                    primary_symbol = symbols[0] if symbols else 'BTCUSDT'
 
                     cursor.execute("""
                         UPDATE ai_bots SET
                             name = %s,
                             model_config_id = %s,
+                            symbol = %s,
                             symbols = %s,
                             side = %s,
                             max_position_size = %s,
@@ -532,14 +560,15 @@ def register_ai_bot_routes(app):
                     """, (
                         form_data['name'],
                         form_data['model_config_id'],
+                        primary_symbol,
                         json.dumps(symbols),
                         form_data['side'],
                         float(form_data['max_position_size']),
                         int(form_data['max_leverage']),
                         form_data['risk_profile'],
-                        encrypt_api_key(exchange_api_key),
-                        encrypt_api_key(exchange_api_secret),
-                        encrypt_api_key(ai_api_key),
+                        exchange_api_key_encrypted,
+                        exchange_api_secret_encrypted,
+                        ai_api_key_encrypted,
                         is_active,
                         testnet,
                         bot_id,
@@ -695,48 +724,54 @@ def register_ai_bot_routes(app):
                 # Create synchronized data points
                 data_points = []
 
-                # Add initial point (from initial_balance_snapshot)
-                # Always show at least the initial balance, even if no executor runs yet
-                initial_balance = float(bot['initial_balance_snapshot']) if bot['initial_balance_snapshot'] else 100.0
-                bot_created = bot['bot_created_at']
-                first_timestamp = max(bot_created, start_time)
-                data_points.append({
-                    'x': first_timestamp.isoformat(),
-                    'y': initial_balance
-                })
-
-                # Add all historical points from performance snapshots (if any)
-                if history_data:
-                    for point in history_data:
-                        data_points.append({
-                            'x': point['timestamp'].isoformat(),
-                            'y': point['balance_with_upnl']  # Plot balance + unrealised PnL
-                        })
-
-                # Fetch real-time balance for this bot (for chart legend AND final data point)
+                # Fetch real-time balance for this bot (for chart legend AND data points)
                 current_balance = None
                 try:
                     from clients.PhemexClient import PhemexClient
-                    logger.info(f"[BALANCE DEBUG] Fetching real-time balance for bot {bot_id} ({bot['bot_name']})")
                     phemex_key = decrypt_api_key(bot['exchange_api_key'])
                     phemex_secret = decrypt_api_key(bot['exchange_api_secret'])
                     phemex = PhemexClient(phemex_key, phemex_secret, logger, testnet=bot['testnet'])
                     balance_info = phemex.get_account_balance()
-                    logger.info(f"[BALANCE DEBUG] Phemex returned: {balance_info}")
                     if balance_info and balance_info[0] is not None:
                         current_balance = float(balance_info[0])
-                        logger.info(f"[BALANCE DEBUG] Successfully got real-time balance: ${current_balance:.2f}")
+                except Exception as e:
+                    logger.error(f"Failed to fetch real-time balance for bot {bot_id}: {e}")
 
-                        # Add real-time balance as final data point on chart
+                # Get initial balance for PnL calculation
+                initial_balance = float(bot['initial_balance_snapshot']) if bot['initial_balance_snapshot'] else (current_balance if current_balance is not None else 100.0)
+
+                # Build chart data based on whether we have history or not
+                if history_data:
+                    # Bot has trading history - show full timeline
+                    bot_created = bot['bot_created_at']
+                    first_timestamp = max(bot_created, start_time)
+
+                    # Add initial point
+                    data_points.append({
+                        'x': first_timestamp.isoformat(),
+                        'y': initial_balance
+                    })
+
+                    # Add all historical points from performance snapshots
+                    for point in history_data:
+                        data_points.append({
+                            'x': point['timestamp'].isoformat(),
+                            'y': point['balance_with_upnl']
+                        })
+
+                    # Add current balance as final point
+                    if current_balance is not None:
                         data_points.append({
                             'x': now.isoformat(),
                             'y': current_balance
                         })
-                        logger.info(f"[BALANCE DEBUG] Added real-time balance as final chart point")
-                    else:
-                        logger.warning(f"[BALANCE DEBUG] Phemex returned invalid balance_info: {balance_info}")
-                except Exception as e:
-                    logger.error(f"[BALANCE DEBUG] Failed to fetch real-time balance for bot {bot_id}: {e}", exc_info=True)
+                else:
+                    # No history yet - only show current balance as a single point
+                    if current_balance is not None:
+                        data_points.append({
+                            'x': now.isoformat(),
+                            'y': current_balance
+                        })
 
                 dataset_info = {
                     'label': bot['bot_name'],  # Use bot name instead of model name
@@ -749,10 +784,7 @@ def register_ai_bot_routes(app):
                     'currentBalance': current_balance,  # Real-time balance for legend
                     'initialBalance': initial_balance   # For PnL calculation
                 }
-                logger.info(f"[BALANCE DEBUG] Adding dataset for {bot['bot_name']}: currentBalance={current_balance}, initialBalance={initial_balance}")
                 datasets.append(dataset_info)
-
-            logger.info(f"[BALANCE DEBUG] Returning {len(datasets)} datasets to frontend")
             return jsonify({
                 'success': True,
                 'datasets': datasets
@@ -1396,23 +1428,57 @@ def register_ai_bot_routes(app):
                 cursor.execute("DELETE FROM ai_decisions WHERE ai_bot_id = %s", (bot_id,))
                 decisions_deleted = cursor.rowcount
 
-                cursor.execute("DELETE FROM ai_bot_balance_history WHERE ai_bot_id = %s", (bot_id,))
-                balance_history_deleted = cursor.rowcount
+                cursor.execute("DELETE FROM ai_portfolio_decisions WHERE ai_bot_id = %s", (bot_id,))
+                portfolio_decisions_deleted = cursor.rowcount
 
                 cursor.execute("DELETE FROM ai_model_performance WHERE ai_bot_id = %s", (bot_id,))
                 perf_deleted = cursor.rowcount
 
-                # Reset virtual balance to 1000 (deprecated, but kept for consistency)
+                # Fetch current Phemex balance to reset initial snapshot
+                from clients.PhemexClient import PhemexClient
+                from saas.security import decrypt_api_key
+                from datetime import datetime
+
+                new_initial_balance = 100.0  # Default fallback
+                try:
+                    # Get bot's API credentials
+                    cursor.execute("""
+                        SELECT exchange_api_key, exchange_api_secret, testnet
+                        FROM ai_bots
+                        WHERE id = %s
+                    """, (bot_id,))
+                    bot_creds = cursor.fetchone()
+
+                    if bot_creds:
+                        # Decrypt and connect to Phemex
+                        api_key = decrypt_api_key(bot_creds['exchange_api_key'])
+                        api_secret = decrypt_api_key(bot_creds['exchange_api_secret'])
+                        testnet = bot_creds['testnet']
+
+                        phemex_client = PhemexClient(
+                            api_key=api_key,
+                            api_secret=api_secret,
+                            logger=logger,
+                            testnet=testnet
+                        )
+                        balance, used_balance = phemex_client.get_account_balance()
+                        if balance is not None:
+                            new_initial_balance = balance
+                except Exception as e:
+                    logger.warning(f"Failed to fetch current balance for reset: {e}. Using default 100.0")
+
+                # Reset initial balance snapshot to current balance so chart starts fresh
                 cursor.execute("""
                     UPDATE ai_bots
-                    SET virtual_balance = 1000.0,
+                    SET initial_balance_snapshot = %s,
+                        snapshot_taken_at = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
-                """, (bot_id,))
+                """, (new_initial_balance, datetime.now(), bot_id))
 
                 conn.commit()
 
-                logger.info(f"Reset bot #{bot_id}: {trades_deleted} trades, {decisions_deleted} decisions, {balance_history_deleted} balance records, {perf_deleted} perf snapshots deleted")
+                logger.info(f"Reset bot #{bot_id}: {trades_deleted} trades, {decisions_deleted} decisions, {portfolio_decisions_deleted} portfolio decisions, {perf_deleted} perf snapshots deleted")
                 flash(f'Bot "{bot["name"]}" reset successfully. Historical data cleared, configuration kept.', 'success')
                 return redirect(url_for('ai_bots_dashboard'))
 
